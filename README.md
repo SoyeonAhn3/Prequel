@@ -150,6 +150,14 @@ prequel/
 │   └── tests/
 ├── scripts/
 │   └── sync_harness.py            # Sync harness skills → backend/
+├── Phase/
+│   ├── Phase1_ProjectSetup.md     # 🔲 Project setup & infrastructure
+│   ├── Phase2_AuthSystem.md       # 🔲 Auth & user system
+│   ├── Phase3_ProjectManagement.md # 🔲 Project CRUD & quota
+│   ├── Phase4_InterviewPipeline.md # 🔲 AI interview pipeline (core)
+│   ├── Phase5_DocGeneration.md    # 🔲 Document generation & result viewer
+│   ├── Phase6_AdminFeatures.md    # 🔲 Admin & supporting features
+│   └── Phase7_IntegrationDeploy.md # 🔲 i18n, testing & deployment
 ├── .env.example
 └── README.md
 ```
@@ -182,7 +190,13 @@ Payment integration is planned for MVP-2.
 | Phase | Status | Deliverable |
 |---|---|---|
 | Planning & Design | ✅ Done | Kickoff document, architecture, data model, requirements |
-| MVP-1 (10 features) | 📋 Planned | Interview + doc generation + auth + admin + i18n + pause/resume |
+| Phase 1: Project Setup | 🔲 Not Started | FastAPI/React scaffold, Supabase DB, Alembic, harness sync |
+| Phase 2: Auth System | 🔲 Not Started | OAuth (Google/GitHub), JWT middleware, login UI |
+| Phase 3: Project Management | 🔲 Not Started | Project CRUD, free quota, My Projects page |
+| Phase 4: Interview Pipeline | 🔲 Not Started | Prompt manager, interview orchestrator, chat UI |
+| Phase 5: Doc Generation | 🔲 Not Started | doc_engine, Mermaid diagram, result viewer |
+| Phase 6: Admin Features | 🔲 Not Started | Admin dashboard, announcements, rate limiting |
+| Phase 7: Integration & Deploy | 🔲 Not Started | i18n, E2E testing, Netlify + Railway deploy |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
 | v2 | 📋 Planned | Gap analysis, DOCX export, share links |
 

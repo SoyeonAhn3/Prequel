@@ -150,6 +150,14 @@ prequel/
 │   └── tests/
 ├── scripts/
 │   └── sync_harness.py            # 하네스 스킬 → backend/ 동기화
+├── Phase/
+│   ├── Phase1_ProjectSetup.md     # 🔲 프로젝트 셋업 & 인프라
+│   ├── Phase2_AuthSystem.md       # 🔲 인증 & 사용자 시스템
+│   ├── Phase3_ProjectManagement.md # 🔲 프로젝트 CRUD & 쿼터
+│   ├── Phase4_InterviewPipeline.md # 🔲 AI 인터뷰 파이프라인 (핵심)
+│   ├── Phase5_DocGeneration.md    # 🔲 문서 생성 & 결과 뷰어
+│   ├── Phase6_AdminFeatures.md    # 🔲 Admin & 부가 기능
+│   └── Phase7_IntegrationDeploy.md # 🔲 다국어, 테스트 & 배포
 ├── .env.example
 └── README.md
 ```
@@ -179,11 +187,17 @@ prequel/
 
 ## 현재 상태
 
-| Phase | Status | Deliverable |
+| Phase | 상태 | 산출물 |
 |---|---|---|
-| 기획 & 설계 | ✅ Done | 킥오프 문서, 시스템 아키텍처, 데이터 모델, 요구사항 정의 |
-| MVP-1 (10개 기능) | 📋 Planned | 인터뷰 + 문서 생성 + 인증 + Admin + i18n + 일시정지/이어하기 |
-| MVP-2 (5개 기능) | 📋 Planned | 결제 + 토큰 추적 + 비용 미터 + 갤러리 + 모델 라우팅 |
+| 기획 & 설계 | ✅ 완료 | 킥오프 문서, 시스템 아키텍처, 데이터 모델, 요구사항 정의 |
+| Phase 1: 프로젝트 셋업 | 🔲 미시작 | FastAPI/React 스캐폴드, Supabase DB, Alembic, 하네스 동기화 |
+| Phase 2: 인증 시스템 | 🔲 미시작 | OAuth (Google/GitHub), JWT 미들웨어, 로그인 UI |
+| Phase 3: 프로젝트 관리 | 🔲 미시작 | 프로젝트 CRUD, 무료 쿼터, 내 프로젝트 페이지 |
+| Phase 4: 인터뷰 파이프라인 | 🔲 미시작 | 프롬프트 매니저, 인터뷰 오케스트레이터, 채팅 UI |
+| Phase 5: 문서 생성 | 🔲 미시작 | doc_engine, Mermaid 다이어그램, 결과 뷰어 |
+| Phase 6: Admin 기능 | 🔲 미시작 | Admin 대시보드, 공지사항, Rate Limiting |
+| Phase 7: 통합 & 배포 | 🔲 미시작 | 다국어, E2E 테스트, Netlify + Railway 배포 |
+| MVP-2 (5개 기능) | 📋 예정 | 결제 + 토큰 추적 + 비용 미터 + 갤러리 + 모델 라우팅 |
 | v2 | 📋 Planned | 갭 분석, DOCX 내보내기, 공유 링크 |
 
 ## 로드맵

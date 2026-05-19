@@ -29,3 +29,11 @@ venv/
 # Node
 node_modules/
 dist/
+frontend/dist/
+
+# Python build
+*.egg-info/
+build/
+
+# Alembic
+backend/migrations/versions/__pycache__/
