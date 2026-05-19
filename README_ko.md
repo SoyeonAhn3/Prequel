@@ -75,7 +75,8 @@ AI가 생성한 텍스트가 아니라, AI의 질문을 통해 프로젝트 아�
 ### 사전 요구사항
 
 - Node.js 18+
-- Python 3.11+
+- Python 3.12+ (3.14 미지원 — pre-built wheel 부재)
+- [uv](https://docs.astral.sh/uv/) (Python 패키지 매니저)
 - [Anthropic API 키](https://console.anthropic.com/)
 - [Supabase 프로젝트](https://supabase.com/) (Free 티어)
 
@@ -83,13 +84,15 @@ AI가 생성한 텍스트가 아니라, AI의 질문을 통해 프로젝트 아�
 
 ```bash
 # 클론
-git clone https://github.com/your-username/prequel.git
+git clone https://github.com/SoyeonAhn3/Prequel.git
 cd prequel
 
 # 백엔드
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uv venv .venv --python 3.12
+uv pip install -r requirements.txt --python .venv/Scripts/python.exe  # Windows
+# uv pip install -r requirements.txt --python .venv/bin/python        # macOS/Linux
+.venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 
 # 프론트엔드 (새 터미널)
 cd frontend
@@ -150,8 +153,10 @@ prequel/
 │   └── tests/
 ├── scripts/
 │   └── sync_harness.py            # 하네스 스킬 → backend/ 동기화
+├── supabase/
+│   └── migrations/                # SQL 마이그레이션 파일 (001~003)
 ├── Phase/
-│   ├── Phase1_ProjectSetup.md     # 🔲 프로젝트 셋업 & 인프라
+│   ├── Phase1_ProjectSetup.md     # ✅ 프로젝트 셋업 & 인프라
 │   ├── Phase2_AuthSystem.md       # 🔲 인증 & 사용자 시스템
 │   ├── Phase3_ProjectManagement.md # 🔲 프로젝트 CRUD & 쿼터
 │   ├── Phase4_InterviewPipeline.md # 🔲 AI 인터뷰 파이프라인 (핵심)
@@ -190,7 +195,7 @@ prequel/
 | Phase | 상태 | 산출물 |
 |---|---|---|
 | 기획 & 설계 | ✅ 완료 | 킥오프 문서, 시스템 아키텍처, 데이터 모델, 요구사항 정의 |
-| Phase 1: 프로젝트 셋업 | 🔲 미시작 | FastAPI/React 스캐폴드, Supabase DB, Alembic, 하네스 동기화 |
+| Phase 1: 프로젝트 셋업 | ✅ 완료 | FastAPI/React 스캐폴드, Supabase 6 테이블 + RLS, Alembic, 하네스 동기화 |
 | Phase 2: 인증 시스템 | 🔲 미시작 | OAuth (Google/GitHub), JWT 미들웨어, 로그인 UI |
 | Phase 3: 프로젝트 관리 | 🔲 미시작 | 프로젝트 CRUD, 무료 쿼터, 내 프로젝트 페이지 |
 | Phase 4: 인터뷰 파이프라인 | 🔲 미시작 | 프롬프트 매니저, 인터뷰 오케스트레이터, 채팅 UI |
@@ -233,7 +238,7 @@ prequel/
 
 ## 한계점
 
-- **개발 전 단계** — 기획/설계 완료, 아직 구현된 코드 없음
+- **초기 개발 단계** — Phase 1(인프라) 완료, 핵심 기능 개발 진행 중
 - **데스크탑 전용** — 태블릿은 MVP-2, 모바일은 미지원
 - **언어 고정** — 프로젝트 언어(ko/en)는 생성 시 고정, 변경하려면 새 프로젝트 생성 필요
 - **MVP-1에 결제 없음** — Free 2회 소진 후 유료 전환 불가 (MVP-2까지)

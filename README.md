@@ -75,7 +75,8 @@ Estimated cost per kickoff: **$0.4–0.7** (MVP-2 model routing targets $0.3–0
 ### Prerequisites
 
 - Node.js 18+
-- Python 3.11+
+- Python 3.12+ (3.14 not supported — missing pre-built wheels)
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [Anthropic API key](https://console.anthropic.com/)
 - [Supabase project](https://supabase.com/) (free tier)
 
@@ -83,13 +84,15 @@ Estimated cost per kickoff: **$0.4–0.7** (MVP-2 model routing targets $0.3–0
 
 ```bash
 # Clone
-git clone https://github.com/your-username/prequel.git
+git clone https://github.com/SoyeonAhn3/Prequel.git
 cd prequel
 
 # Backend
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uv venv .venv --python 3.12
+uv pip install -r requirements.txt --python .venv/Scripts/python.exe  # Windows
+# uv pip install -r requirements.txt --python .venv/bin/python        # macOS/Linux
+.venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 
 # Frontend (new terminal)
 cd frontend
@@ -150,8 +153,10 @@ prequel/
 │   └── tests/
 ├── scripts/
 │   └── sync_harness.py            # Sync harness skills → backend/
+├── supabase/
+│   └── migrations/                # SQL migration files (001~003)
 ├── Phase/
-│   ├── Phase1_ProjectSetup.md     # 🔲 Project setup & infrastructure
+│   ├── Phase1_ProjectSetup.md     # ✅ Project setup & infrastructure
 │   ├── Phase2_AuthSystem.md       # 🔲 Auth & user system
 │   ├── Phase3_ProjectManagement.md # 🔲 Project CRUD & quota
 │   ├── Phase4_InterviewPipeline.md # 🔲 AI interview pipeline (core)
@@ -190,7 +195,7 @@ Payment integration is planned for MVP-2.
 | Phase | Status | Deliverable |
 |---|---|---|
 | Planning & Design | ✅ Done | Kickoff document, architecture, data model, requirements |
-| Phase 1: Project Setup | 🔲 Not Started | FastAPI/React scaffold, Supabase DB, Alembic, harness sync |
+| Phase 1: Project Setup | ✅ Done | FastAPI/React scaffold, Supabase 6 tables + RLS, Alembic, harness sync |
 | Phase 2: Auth System | 🔲 Not Started | OAuth (Google/GitHub), JWT middleware, login UI |
 | Phase 3: Project Management | 🔲 Not Started | Project CRUD, free quota, My Projects page |
 | Phase 4: Interview Pipeline | 🔲 Not Started | Prompt manager, interview orchestrator, chat UI |
@@ -233,7 +238,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Pre-development** — Planning complete, no functional code yet
+- **Early development** — Phase 1 (infrastructure) complete, core features in progress
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2
