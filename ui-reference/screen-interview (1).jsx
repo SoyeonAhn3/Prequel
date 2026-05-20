@@ -28,6 +28,10 @@ function ScreenInterview() {
             <div style={{ height: 5, background: '#fff', borderRadius: 5, overflow: 'hidden' }}>
               <div style={{ width: '30%', height: '100%', background: P.accent, borderRadius: 5 }}/>
             </div>
+            <div style={{ marginTop: 10, fontSize: 11.5, color: P.textSubtle, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              남은 시간 약 8분
+            </div>
           </div>
 
           <div style={{ marginTop: 28 }}>
@@ -57,7 +61,7 @@ function ScreenInterview() {
             ))}
           </div>
 
-          <div style={{ marginTop: 24, padding: '11px 13px', background: P.amberSoft, borderRadius: 9, fontSize: 11.5, color: '#946420', lineHeight: 1.55 }}>
+          <div style={{ marginTop: 24, padding: '11px 13px', background: P.amberSoft, borderRadius: 9, fontSize: 11.5, color: '#7e5a23', lineHeight: 1.55 }}>
             <strong>자동 저장됨</strong> · 2초 전<br/>
             언제든 일시정지 후 이어할 수 있어요.
           </div>

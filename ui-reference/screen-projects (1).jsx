@@ -47,8 +47,8 @@ function ScreenProjects() {
             <div style={{ fontSize: 12, color: P.textSubtle, marginTop: 4 }}>이어하기 가능</div>
           </div>
 
-          <div style={{ flex: 1.4, background: '#fffaf0', border: `1px solid ${P.amberSoft}`, borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: P.amberSoft, color: '#946420', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{I.spark}</div>
+          <div style={{ flex: 1.4, background: '#f5f7fb', border: `1px solid ${P.amberSoft}`, borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: P.amberSoft, color: '#7e5a23', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{I.spark}</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: P.text }}>1회 남았어요</div>
               <div style={{ fontSize: 12, color: P.textMuted, marginTop: 2 }}>유료 전환 시 월 10~30회 사용 가능</div>

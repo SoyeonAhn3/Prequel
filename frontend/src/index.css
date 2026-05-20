@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #fbfaf7;
+  --color-bg: #f8f9fb;
   --color-surface: #ffffff;
-  --color-surface-alt: #f6f4ef;
-  --color-border: #ebe7dd;
-  --color-border-strong: #d9d4c5;
-  --color-text: #1f1d18;
-  --color-text-muted: #6b6658;
-  --color-text-subtle: #9b9685;
-  --color-accent: #3d57c4;
-  --color-accent-soft: #e9ecfa;
-  --color-accent-deep: #2a3f9e;
-  --color-amber: #e8a548;
-  --color-amber-soft: #fbeed3;
-  --color-green: #3f8a5a;
-  --color-green-soft: #e2efe5;
-  --color-red: #c45a4a;
-  --color-red-soft: #f7e3df;
+  --color-surface-alt: #eff1f5;
+  --color-border: #e2e5eb;
+  --color-border-strong: #c8cdd6;
+  --color-text: #1c1f26;
+  --color-text-muted: #5a6170;
+  --color-text-subtle: #8b93a3;
+  --color-accent: #4a6b8a;
+  --color-accent-soft: #e6edf3;
+  --color-accent-deep: #2f4a64;
+  --color-amber: #c08a3e;
+  --color-amber-soft: #f1e4cd;
+  --color-green: #4a8264;
+  --color-green-soft: #e3ede7;
+  --color-red: #a85648;
+  --color-red-soft: #efddd7;
 
   --font-sans: "Pretendard", "Pretendard Variable", -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;

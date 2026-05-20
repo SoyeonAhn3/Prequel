@@ -53,7 +53,7 @@ function ResultShell({ active = 2, children, summary = '' }) {
               </div>
               <Btn kind="secondary" size="md" icon={I.download}>Markdown</Btn>
               <Btn kind="secondary" size="md" icon={I.download}>PDF</Btn>
-              <Btn kind="secondary" size="md" style={{ opacity: 0.4, cursor: 'not-allowed' }}>공유 (v2)</Btn>
+              <Btn kind="primary" size="md">공유</Btn>
             </div>
           </div>
 
@@ -144,7 +144,7 @@ function ScreenResultProfile() {
           ].map((p, i) => (
             <div key={i} style={{ padding: '20px 24px', borderLeft: i === 1 ? `1px solid ${P.border}` : 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: i === 0 ? P.accentSoft : P.amberSoft, color: i === 0 ? P.accent : '#946420', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600 }}>{p.name[0]}</div>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: i === 0 ? P.accentSoft : P.amberSoft, color: i === 0 ? P.accent : '#7e5a23', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600 }}>{p.name[0]}</div>
                 <div>
                   <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.name}</div>
                   <div style={{ fontSize: 12, color: P.textMuted, marginTop: 2 }}>{p.role}</div>
@@ -232,13 +232,13 @@ function ScreenResultArchitecture() {
             </g>
             <g transform="translate(420 50)">
               <rect width="120" height="60" rx="10" fill={P.amberSoft} stroke={P.amber}/>
-              <text x="60" y="28" fontSize="12" fontWeight="600" textAnchor="middle" fill="#946420">Claude API</text>
-              <text x="60" y="44" fontSize="10" textAnchor="middle" fill="#946420">Anthropic</text>
+              <text x="60" y="28" fontSize="12" fontWeight="600" textAnchor="middle" fill="#7e5a23">Claude API</text>
+              <text x="60" y="44" fontSize="10" textAnchor="middle" fill="#7e5a23">Anthropic</text>
             </g>
             <g transform="translate(420 170)">
               <rect width="120" height="60" rx="10" fill={P.greenSoft} stroke={P.green}/>
-              <text x="60" y="28" fontSize="12" fontWeight="600" textAnchor="middle" fill="#2c6444">Supabase</text>
-              <text x="60" y="44" fontSize="10" textAnchor="middle" fill="#2c6444">PG · Auth · RLS</text>
+              <text x="60" y="28" fontSize="12" fontWeight="600" textAnchor="middle" fill="#2f5a44">Supabase</text>
+              <text x="60" y="44" fontSize="10" textAnchor="middle" fill="#2f5a44">PG · Auth · RLS</text>
             </g>
             <g transform="translate(600 110)">
               <rect width="100" height="60" rx="10" fill={P.surfaceAlt} stroke={P.borderStrong} strokeDasharray="4 3"/>
@@ -321,7 +321,7 @@ function ScreenResultData() {
               <rect width="180" height="160" rx="10" fill={P.surface} stroke={P.amber} strokeWidth="1.5"/>
               <rect width="180" height="26" rx="10" fill={P.amberSoft}/>
               <rect y="16" width="180" height="10" fill={P.amberSoft}/>
-              <text x="14" y="18" fontSize="12" fontWeight="700" fill="#946420">interview_sessions</text>
+              <text x="14" y="18" fontSize="12" fontWeight="700" fill="#7e5a23">interview_sessions</text>
               <text x="170" y="18" fontSize="9" fontFamily={MONO} fill={P.amber} textAnchor="end">PK</text>
               {[['id', 'uuid'], ['user_id', 'fk'], ['project_type', 'enum'], ['status', 'enum'], ['answers', 'jsonb'], ['step', 'int'], ['updated_at', 'ts']].map(([n, t], i) => (
                 <g key={n}>
@@ -335,7 +335,7 @@ function ScreenResultData() {
               <rect width="180" height="140" rx="10" fill={P.surface} stroke={P.green} strokeWidth="1.5"/>
               <rect width="180" height="26" rx="10" fill={P.greenSoft}/>
               <rect y="16" width="180" height="10" fill={P.greenSoft}/>
-              <text x="14" y="18" fontSize="12" fontWeight="700" fill="#2c6444">kickoff_documents</text>
+              <text x="14" y="18" fontSize="12" fontWeight="700" fill="#2f5a44">kickoff_documents</text>
               <text x="170" y="18" fontSize="9" fontFamily={MONO} fill={P.green} textAnchor="end">PK</text>
               {[['id', 'uuid'], ['session_id', 'fk'], ['markdown', 'text'], ['mermaid', 'text'], ['version', 'int'], ['created_at', 'ts']].map(([n, t], i) => (
                 <g key={n}>
@@ -644,10 +644,10 @@ function ScreenResultDefinitionOfDone() {
 
       {/* Sign-off */}
       <div style={{ background: P.amberSoft, borderRadius: 12, padding: '16px 18px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fff', color: '#946420', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{I.check}</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fff', color: '#7e5a23', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{I.check}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#7a5217' }}>다음 단계로 넘어가기 전 합의</div>
-          <p style={{ fontSize: 12.5, color: '#7a5217', margin: '4px 0 0', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#6a4d1c' }}>다음 단계로 넘어가기 전 합의</div>
+          <p style={{ fontSize: 12.5, color: '#6a4d1c', margin: '4px 0 0', lineHeight: 1.6 }}>
             MVP-1 체크리스트 5개 항목 중 <strong>2개 완료</strong>. 파일럿 시작 전 큐레이션 책임자 지정과 보안팀 검토를 완료해야 합니다.
           </p>
         </div>

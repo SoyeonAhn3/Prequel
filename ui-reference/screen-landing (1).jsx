@@ -17,7 +17,7 @@ function ScreenLanding() {
         <div style={{ flex: 1, maxWidth: 540 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 11px 5px 9px', background: P.amberSoft, borderRadius: 999, marginBottom: 22 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: P.amber }}/>
-            <span style={{ fontSize: 12, color: '#946420', fontWeight: 600 }}>BETA · 무료 2회 제공</span>
+            <span style={{ fontSize: 12, color: '#7e5a23', fontWeight: 600 }}>BETA · 무료 2회 제공</span>
           </div>
           <h1 style={{ fontSize: 52, lineHeight: 1.12, letterSpacing: -1, fontWeight: 700, margin: 0, color: P.text }}>
             모든 좋은 프로젝트엔<br/>
@@ -96,7 +96,7 @@ function ScreenLanding() {
               <path d="M160 32 L100 55" stroke={P.borderStrong} fill="none"/>
               <text x="40" y="25" fontSize="9" textAnchor="middle" fill={P.accent} fontWeight="600">React</text>
               <text x="160" y="25" fontSize="9" textAnchor="middle" fill={P.text}>FastAPI</text>
-              <text x="100" y="69" fontSize="9" textAnchor="middle" fill="#946420" fontWeight="600">Claude</text>
+              <text x="100" y="69" fontSize="9" textAnchor="middle" fill="#7e5a23" fontWeight="600">Claude</text>
             </svg>
           </div>
         </div>

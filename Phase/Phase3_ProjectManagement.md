@@ -1,8 +1,8 @@
-# Phase 3 — Project Management `🔲 Not Started`
+# Phase 3 — Project Management `✅ Completed`
 
 > Implement project CRUD API, free usage quota enforcement, language locking, and My Projects page.
 
-**Status**: 🔲 Not Started
+**Status**: ✅ Completed
 **Prerequisites**: Phase 2 completion (Auth system, JWT middleware, login UI)
 
 ---
@@ -17,13 +17,13 @@ Build the project management layer that allows users to create, list, and delete
 
 | # | Task | Area | Status | Related FR |
 |---|---|---|---|---|
-| 1 | Project CRUD API (create/list/delete) | Backend | 🔲 | FR-013 |
-| 2 | Free usage quota check (free_used <= 2) | Backend | 🔲 | FR-012 |
-| 3 | Language locking at project creation (ko/en) | Backend | 🔲 | FR-009, ADR-004 |
-| 4 | My Projects list page | Frontend | 🔲 | FR-013 |
-| 5 | New project creation (language select + idea input) | Frontend | 🔲 | FR-013 |
-| 6 | Project deletion | Frontend | 🔲 | FR-013 |
-| 7 | Quota exceeded blocking UI | Frontend | 🔲 | FR-012 |
+| 1 | Project CRUD API (create/list/delete) | Backend | ✅ | FR-013 |
+| 2 | Free usage quota check (free_used <= 2) | Backend | ✅ | FR-012 |
+| 3 | Language locking at project creation (ko/en) | Backend | ✅ | FR-009, ADR-004 |
+| 4 | My Projects list page | Frontend | ✅ | FR-013 |
+| 5 | New project creation (language select + idea input) | Frontend | ✅ | FR-013 |
+| 6 | Project deletion | Frontend | ✅ | FR-013 |
+| 7 | Quota exceeded blocking UI | Frontend | ✅ | FR-012 |
 
 ---
 
@@ -33,29 +33,51 @@ Build the project management layer that allows users to create, list, and delete
 
 **Files**: `backend/app/api/projects.py`, `backend/app/schemas/project.py`
 
-- `POST /api/projects` — create new project (validates free_used, sets language)
-- `GET /api/projects` — list user's projects (filtered by `deleted_at IS NULL`)
-- `DELETE /api/projects/{id}` — soft-delete project (set `deleted_at`)
-- All endpoints require authenticated user (JWT middleware)
+- `GET /api/projects` — list user's projects (filtered by `deleted_at IS NULL`, ordered by `created_at DESC`)
+- `POST /api/projects` — create new project (validates `free_used >= 2` for free plan → 403, sets language)
+- `DELETE /api/projects/{id}` — soft-delete project (ownership check, sets `deleted_at`)
+- All endpoints require authenticated user (JWT `get_current_user` dependency)
 - RLS ensures user can only access own projects
 
 ### Free Quota Enforcement
 
 **Logic flow**:
-1. On `POST /api/projects`: check `users.free_used` value
+1. On `POST /api/projects`: check `users.free_used` value and `plan`
 2. If `free_used >= 2` and `plan == 'free'`: return 403 with quota exceeded message
-3. On project completion (status → `completed`): increment `free_used`
+3. On project completion (status → `completed`): increment `free_used` (Phase 4)
 4. Paid plans bypass this check (MVP-2)
+
+### Database Migration
+
+**File**: `supabase/migrations/005_add_project_columns.sql`
+
+- Added `description` (TEXT, default `''`), `current_step` (INT, default 0), `total_steps` (INT, default 10) to `projects`
+- Made `project_type` nullable (type is detected by AI after project creation)
 
 ### My Projects Page
 
-**Files**: `frontend/src/pages/ProjectsPage.tsx`
+**Files**: `frontend/src/pages/MyProjectsPage.tsx`, `frontend/src/hooks/useProjects.ts`
 
-- Dashboard cards: usage quota, completed count, in-progress count
-- Filter tabs: All / In Progress / Completed
-- Project table with name, type, status tag, language, date
-- Progress bar for in-progress projects
-- "New Project" button → language selection modal → idea input
+- 4 stat cards: usage quota (with progress bar), completed count, in-progress count, remaining quota warning
+- Filter tabs: All / In Progress / Completed (with counts)
+- Search bar for project name filtering
+- Project table with name, type, status tag, language, date, context menu
+- Progress bar for in-progress projects (based on `current_step / total_steps`)
+
+### New Project Modal
+
+**File**: `frontend/src/components/projects/NewProjectModal.tsx`
+
+- 2-step flow: language selection (ko/en with flag cards) → name + description input
+- Language note: immutable after creation (ADR-004)
+- Quota exceeded state: shows blocking message with upgrade suggestion
+
+### Delete Confirmation Modal
+
+**File**: `frontend/src/components/projects/DeleteConfirmModal.tsx`
+
+- Confirmation dialog with project name display
+- Soft-delete note: "삭제된 프로젝트는 복구할 수 있습니다"
 
 ---
 
@@ -71,11 +93,11 @@ Build the project management layer that allows users to create, list, and delete
 
 ## Completion Criteria
 
-- [ ] Create project → appears in list with correct type and language
-- [ ] Delete project → removed from list (soft-deleted)
-- [ ] Third project creation on free plan → blocked with clear message
-- [ ] Language field is immutable after project creation
-- [ ] My Projects page shows correct status tags and progress bars
+- [x] Create project → appears in list with correct type and language
+- [x] Delete project → removed from list (soft-deleted)
+- [x] Third project creation on free plan → blocked with clear message
+- [x] Language field is immutable after project creation
+- [x] My Projects page shows correct status tags and progress bars
 
 ---
 
@@ -84,15 +106,16 @@ Build the project management layer that allows users to create, list, and delete
 | Date | Description |
 |---|---|
 | 2026-05-19 | Initial creation |
+| 2026-05-20 | Phase 3 completed: CRUD API, quota enforcement, My Projects page, new project modal, delete modal, DB migration 005 |
 
 ---
 ---
 
-# Phase 3 — 프로젝트 관리 `🔲 미시작`
+# Phase 3 — 프로젝트 관리 `✅ 완료`
 
 > 프로젝트 CRUD API, 무료 횟수 제한, 언어 고정, 내 프로젝트 페이지 구현.
 
-**상태**: 🔲 미시작
+**상태**: ✅ 완료
 **선행 조건**: Phase 2 완료 (인증 시스템, JWT 미들웨어, 로그인 UI)
 
 ---
@@ -107,13 +130,13 @@ Build the project management layer that allows users to create, list, and delete
 
 | # | 작업 | 영역 | 상태 | 관련 FR |
 |---|---|---|---|---|
-| 1 | 프로젝트 CRUD API (생성/목록/삭제) | Backend | 🔲 | FR-013 |
-| 2 | 무료 횟수 체크 (free_used <= 2) | Backend | 🔲 | FR-012 |
-| 3 | 프로젝트 생성 시 언어 고정 (ko/en) | Backend | 🔲 | FR-009, ADR-004 |
-| 4 | 내 프로젝트 목록 페이지 | Frontend | 🔲 | FR-013 |
-| 5 | 새 프로젝트 생성 (언어 선택 + 아이디어 입력) | Frontend | 🔲 | FR-013 |
-| 6 | 프로젝트 삭제 | Frontend | 🔲 | FR-013 |
-| 7 | 무료 횟수 소진 시 차단 안내 UI | Frontend | 🔲 | FR-012 |
+| 1 | 프로젝트 CRUD API (생성/목록/삭제) | Backend | ✅ | FR-013 |
+| 2 | 무료 횟수 체크 (free_used <= 2) | Backend | ✅ | FR-012 |
+| 3 | 프로젝트 생성 시 언어 고정 (ko/en) | Backend | ✅ | FR-009, ADR-004 |
+| 4 | 내 프로젝트 목록 페이지 | Frontend | ✅ | FR-013 |
+| 5 | 새 프로젝트 생성 (언어 선택 + 아이디어 입력) | Frontend | ✅ | FR-013 |
+| 6 | 프로젝트 삭제 | Frontend | ✅ | FR-013 |
+| 7 | 무료 횟수 소진 시 차단 안내 UI | Frontend | ✅ | FR-012 |
 
 ---
 
@@ -123,29 +146,51 @@ Build the project management layer that allows users to create, list, and delete
 
 **파일**: `backend/app/api/projects.py`, `backend/app/schemas/project.py`
 
-- `POST /api/projects` — 새 프로젝트 생성 (free_used 검증, 언어 설정)
-- `GET /api/projects` — 사용자 프로젝트 목록 조회 (`deleted_at IS NULL` 필터)
-- `DELETE /api/projects/{id}` — 프로젝트 소프트 삭제 (`deleted_at` 설정)
-- 모든 엔드포인트는 인증 필요 (JWT 미들웨어)
+- `GET /api/projects` — 사용자 프로젝트 목록 조회 (`deleted_at IS NULL` 필터, `created_at DESC` 정렬)
+- `POST /api/projects` — 새 프로젝트 생성 (free 플랜 `free_used >= 2` 시 403, 언어 설정)
+- `DELETE /api/projects/{id}` — 프로젝트 소프트 삭제 (소유권 확인, `deleted_at` 설정)
+- 모든 엔드포인트는 인증 필요 (JWT `get_current_user` 의존성)
 - RLS로 사용자 자신의 프로젝트만 접근 가능
 
 ### 무료 쿼터 적용
 
 **로직 흐름**:
-1. `POST /api/projects` 시: `users.free_used` 값 확인
+1. `POST /api/projects` 시: `users.free_used` 값과 `plan` 확인
 2. `free_used >= 2`이고 `plan == 'free'`: 403 반환 + 쿼터 초과 메시지
-3. 프로젝트 완료(status → `completed`) 시: `free_used` 증가
+3. 프로젝트 완료(status → `completed`) 시: `free_used` 증가 (Phase 4)
 4. 유료 플랜은 이 검사를 우회 (MVP-2)
+
+### 데이터베이스 마이그레이션
+
+**파일**: `supabase/migrations/005_add_project_columns.sql`
+
+- `description` (TEXT, 기본값 `''`), `current_step` (INT, 기본값 0), `total_steps` (INT, 기본값 10) 추가
+- `project_type`을 nullable로 변경 (프로젝트 생성 후 AI가 유형을 감지)
 
 ### 내 프로젝트 페이지
 
-**파일**: `frontend/src/pages/ProjectsPage.tsx`
+**파일**: `frontend/src/pages/MyProjectsPage.tsx`, `frontend/src/hooks/useProjects.ts`
 
-- 대시보드 카드: 사용량 쿼터, 완료 수, 진행 중 수
-- 필터 탭: 전체 / 진행 중 / 완료
-- 프로젝트 테이블 (이름, 유형, 상태 태그, 언어, 날짜)
-- 진행 중 프로젝트의 프로그레스바
-- "새 프로젝트" 버튼 → 언어 선택 모달 → 아이디어 입력
+- 스탯 카드 4개: 사용량 쿼터 (프로그레스바 포함), 완료 수, 진행 중 수, 잔여 쿼터 경고
+- 필터 탭: 전체 / 진행 중 / 완료 (카운트 표시)
+- 검색바: 프로젝트 이름 필터링
+- 프로젝트 테이블 (이름, 유형, 상태 태그, 언어, 날짜, 컨텍스트 메뉴)
+- 진행 중 프로젝트의 프로그레스바 (`current_step / total_steps` 기반)
+
+### 새 프로젝트 생성 모달
+
+**파일**: `frontend/src/components/projects/NewProjectModal.tsx`
+
+- 2단계 플로우: 언어 선택 (ko/en 국기 카드) → 이름 + 설명 입력
+- 언어 고정 안내: 생성 후 변경 불가 (ADR-004)
+- 쿼터 초과 상태: 업그레이드 안내와 함께 차단 메시지 표시
+
+### 삭제 확인 모달
+
+**파일**: `frontend/src/components/projects/DeleteConfirmModal.tsx`
+
+- 프로젝트 이름 표시와 함께 확인 대화상자
+- 소프트 삭제 안내: "삭제된 프로젝트는 복구할 수 있습니다"
 
 ---
 
@@ -161,11 +206,11 @@ Build the project management layer that allows users to create, list, and delete
 
 ## 완료 기준
 
-- [ ] 프로젝트 생성 → 목록에 올바른 유형과 언어로 표시
-- [ ] 프로젝트 삭제 → 목록에서 제거 (소프트 삭제)
-- [ ] 무료 플랜에서 3번째 프로젝트 생성 → 명확한 메시지와 함께 차단
-- [ ] 언어 필드가 프로젝트 생성 후 변경 불가
-- [ ] 내 프로젝트 페이지에 올바른 상태 태그와 프로그레스바 표시
+- [x] 프로젝트 생성 → 목록에 올바른 유형과 언어로 표시
+- [x] 프로젝트 삭제 → 목록에서 제거 (소프트 삭제)
+- [x] 무료 플랜에서 3번째 프로젝트 생성 → 명확한 메시지와 함께 차단
+- [x] 언어 필드가 프로젝트 생성 후 변경 불가
+- [x] 내 프로젝트 페이지에 올바른 상태 태그와 프로그레스바 표시
 
 ---
 
@@ -174,3 +219,4 @@ Build the project management layer that allows users to create, list, and delete
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-19 | 최초 작성 |
+| 2026-05-20 | Phase 3 완료: CRUD API, 쿼터 검증, 내 프로젝트 페이지, 생성 모달, 삭제 모달, DB 마이그레이션 005 |

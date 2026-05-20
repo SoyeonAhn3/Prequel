@@ -44,10 +44,10 @@ function ScreenGuide() {
 
           {/* Tip callout */}
           <div style={{ marginTop: 28, padding: '16px 18px', background: P.amberSoft, borderRadius: 12, display: 'flex', gap: 14 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fff', color: '#946420', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{I.spark}</div>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fff', color: '#7e5a23', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{I.spark}</div>
             <div>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: '#7a5217' }}>처음이라면</div>
-              <p style={{ fontSize: 13, color: '#7a5217', margin: '4px 0 0', lineHeight: 1.6 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: '#6a4d1c' }}>처음이라면</div>
+              <p style={{ fontSize: 13, color: '#6a4d1c', margin: '4px 0 0', lineHeight: 1.6 }}>
                 "샘플 결과 보기"에서 유형별 예시를 먼저 확인해 보세요. 어떤 결과가 나오는지 미리 알면 인터뷰 답변이 훨씬 수월해집니다.
               </p>
             </div>

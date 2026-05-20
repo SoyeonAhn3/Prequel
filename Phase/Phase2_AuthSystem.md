@@ -1,15 +1,15 @@
-# Phase 2 — Auth & User System `🔲 Not Started`
+# Phase 2 — Auth & User System `✅ Completed`
 
-> Implement Supabase OAuth authentication, JWT middleware, role-based access control, and login UI.
+> Implement Supabase OAuth authentication, JWT middleware, role-based access control, login UI, landing page, and slate blue design system.
 
-**Status**: 🔲 Not Started
+**Status**: ✅ Completed
 **Prerequisites**: Phase 1 completion (FastAPI skeleton, Supabase DB, React setup)
 
 ---
 
 ## Overview
 
-Build the authentication and user management layer. Backend implements JWT verification middleware using Supabase Auth, role-based access control (user/admin), user profile API, account suspension/soft-delete logic, and terms-of-service agreement recording. Frontend implements OAuth login page (Google + GitHub), auth guard for route protection, and the common layout (TopBar, routing structure).
+Build the authentication and user management layer. Backend implements JWT verification middleware using Supabase Auth, role-based access control (user/admin), user profile API, account suspension/soft-delete logic, and terms-of-service agreement recording. Frontend implements OAuth login page (Google + GitHub), auth guard for route protection, common layout (TopBar, routing structure), slate blue design system from ui-reference, and the public landing page.
 
 ---
 
@@ -17,15 +17,18 @@ Build the authentication and user management layer. Backend implements JWT verif
 
 | # | Task | Area | Status | Related FR |
 |---|---|---|---|---|
-| 1 | Supabase Auth JWT verification middleware | Backend | 🔲 | FR-006 |
-| 2 | Role-based access control (user/admin) | Backend | 🔲 | FR-007 |
-| 3 | User profile read/update API | Backend | 🔲 | FR-006 |
-| 4 | Account suspension / soft-delete logic | Backend | 🔲 | FR-019 |
-| 5 | Terms-of-service agreement recording | Backend | 🔲 | FR-018 |
-| 6 | Supabase Auth client setup | Frontend | 🔲 | FR-006 |
-| 7 | Login/Signup page (Google + GitHub OAuth) | Frontend | 🔲 | FR-006 |
-| 8 | Auth guard (redirect when unauthenticated) | Frontend | 🔲 | — |
-| 9 | Common layout (TopBar, routing structure) | Frontend | 🔲 | — |
+| 1 | Supabase Auth JWT verification middleware | Backend | ✅ | FR-006 |
+| 2 | Role-based access control (user/admin) | Backend | ✅ | FR-007 |
+| 3 | User profile read/update API | Backend | ✅ | FR-006 |
+| 4 | Account suspension / soft-delete logic | Backend | ✅ | FR-019 |
+| 5 | Terms-of-service agreement recording | Backend | ✅ | FR-018 |
+| 6 | Supabase Auth client setup | Frontend | ✅ | FR-006 |
+| 7 | Login/Signup page (Google + GitHub OAuth) | Frontend | ✅ | FR-006 |
+| 8 | Auth guard (redirect when unauthenticated) | Frontend | ✅ | — |
+| 9 | Common layout (TopBar, routing structure) | Frontend | ✅ | — |
+| 10 | Slate blue design system (ui-reference palette) | Frontend | ✅ | — |
+| 11 | Login page redesign (2-panel split layout) | Frontend | ✅ | FR-006 |
+| 12 | Landing page (service intro, CTA, preview card) | Frontend | ✅ | FR-001 |
 
 ---
 
@@ -63,6 +66,35 @@ Build the authentication and user management layer. Backend implements JWT verif
 - React Router setup for 8 page routes
 - Auth guard wrapper component
 
+### Slate Blue Design System
+
+**Files**: `frontend/src/index.css`
+
+- Migrated from warm tone palette to slate blue palette based on `ui-reference/screens.jsx`
+- 16 color tokens updated: accent `#4a6b8a`, bg `#f8f9fb`, surface-alt `#eff1f5`, etc.
+- All existing components (TopBar, AuthGuard, Layout) automatically inherit the new palette
+
+### Login Page Redesign
+
+**Files**: `frontend/src/pages/LoginPage.tsx`
+
+- 2-panel split layout matching `ui-reference/screen-login.jsx`
+- Left panel (420px): logo, STEP 1/4 indicator, headline, value propositions checklist, footer
+- Right panel: Google/GitHub OAuth buttons, terms notice, support email
+- Existing OAuth logic preserved
+
+### Landing Page
+
+**Files**: `frontend/src/pages/LandingPage.tsx`, `frontend/src/App.tsx`
+
+- Public page at `/` — no authentication required
+- Custom header (logo, nav links: 가이드/공지사항/로그인, CTA button)
+- Hero section: beta badge, headline, description, two CTA buttons
+- Stats row: project types, average time, cost per session
+- Right preview card: interview chat mockup with progress bar
+- Floating architecture diagram mini-card
+- Based on `ui-reference/screen-landing.jsx`
+
 ---
 
 ## Design Decisions
@@ -77,12 +109,14 @@ Build the authentication and user management layer. Backend implements JWT verif
 
 ## Completion Criteria
 
-- [ ] Google OAuth login → JWT issued → authenticated API call works E2E
-- [ ] GitHub OAuth login works E2E
-- [ ] Admin role can access admin-only endpoints; user role gets 403
-- [ ] Soft-deleted user cannot log in
-- [ ] Suspended user gets clear error message
-- [ ] Unauthenticated access redirects to login page
+- [x] Google OAuth login → JWT issued → authenticated API call works E2E
+- [x] GitHub OAuth login works E2E
+- [x] Admin role can access admin-only endpoints; user role gets 403
+- [x] Soft-deleted user cannot log in
+- [x] Suspended user gets clear error message
+- [x] Unauthenticated access redirects to login page
+- [x] Slate blue palette applied, login page matches ui-reference 2-panel layout
+- [x] Landing page renders at `/` with hero, CTA, preview card
 
 ---
 
@@ -91,22 +125,24 @@ Build the authentication and user management layer. Backend implements JWT verif
 | Date | Description |
 |---|---|
 | 2026-05-19 | Initial creation |
+| 2026-05-20 | Phase 2 completed — all 9 deliverables implemented and E2E verified |
+| 2026-05-20 | Added #10-12: slate blue design system, login redesign, landing page. All implemented — Status → Completed |
 
 ---
 ---
 
-# Phase 2 — 인증 & 사용자 시스템 `🔲 미시작`
+# Phase 2 — 인증 & 사용자 시스템 `✅ 완료`
 
-> Supabase OAuth 인증, JWT 미들웨어, 역할 기반 접근 제어, 로그인 UI 구현.
+> Supabase OAuth 인증, JWT 미들웨어, 역할 기반 접근 제어, 로그인 UI, 랜딩 페이지, 슬레이트 블루 디자인 시스템 구현.
 
-**상태**: 🔲 미시작
+**상태**: ✅ 완료
 **선행 조건**: Phase 1 완료 (FastAPI 스켈레톤, Supabase DB, React 설정)
 
 ---
 
 ## 개요
 
-인증 및 사용자 관리 레이어를 구축한다. 백엔드는 Supabase Auth를 사용한 JWT 검증 미들웨어, 역할 기반 접근 제어(user/admin), 사용자 프로필 API, 계정 정지/소프트 삭제 로직, 이용약관 동의 기록을 구현한다. 프론트엔드는 OAuth 로그인 페이지(Google + GitHub), 인증 가드(라우트 보호), 공통 레이아웃(TopBar, 라우팅 구조)을 구현한다.
+인증 및 사용자 관리 레이어를 구축한다. 백엔드는 Supabase Auth를 사용한 JWT 검증 미들웨어, 역할 기반 접근 제어(user/admin), 사용자 프로필 API, 계정 정지/소프트 삭제 로직, 이용약관 동의 기록을 구현한다. 프론트엔드는 OAuth 로그인 페이지(Google + GitHub), 인증 가드(라우트 보호), 공통 레이아웃(TopBar, 라우팅 구조), ui-reference 기반 슬레이트 블루 디자인 시스템, 공개 랜딩 페이지를 구현한다.
 
 ---
 
@@ -114,15 +150,18 @@ Build the authentication and user management layer. Backend implements JWT verif
 
 | # | 작업 | 영역 | 상태 | 관련 FR |
 |---|---|---|---|---|
-| 1 | Supabase Auth JWT 검증 미들웨어 | Backend | 🔲 | FR-006 |
-| 2 | 역할 기반 접근 제어 (user/admin) | Backend | 🔲 | FR-007 |
-| 3 | 사용자 프로필 조회/수정 API | Backend | 🔲 | FR-006 |
-| 4 | 계정 정지 / 소프트 삭제 로직 | Backend | 🔲 | FR-019 |
-| 5 | 이용약관 동의 기록 | Backend | 🔲 | FR-018 |
-| 6 | Supabase Auth 클라이언트 설정 | Frontend | 🔲 | FR-006 |
-| 7 | 로그인/회원가입 페이지 (Google + GitHub OAuth) | Frontend | 🔲 | FR-006 |
-| 8 | 인증 가드 (미로그인 시 리다이렉트) | Frontend | 🔲 | — |
-| 9 | 공통 레이아웃 (TopBar, 라우팅 구조) | Frontend | 🔲 | — |
+| 1 | Supabase Auth JWT 검증 미들웨어 | Backend | ✅ | FR-006 |
+| 2 | 역할 기반 접근 제어 (user/admin) | Backend | ✅ | FR-007 |
+| 3 | 사용자 프로필 조회/수정 API | Backend | ✅ | FR-006 |
+| 4 | 계정 정지 / 소프트 삭제 로직 | Backend | ✅ | FR-019 |
+| 5 | 이용약관 동의 기록 | Backend | ✅ | FR-018 |
+| 6 | Supabase Auth 클라이언트 설정 | Frontend | ✅ | FR-006 |
+| 7 | 로그인/회원가입 페이지 (Google + GitHub OAuth) | Frontend | ✅ | FR-006 |
+| 8 | 인증 가드 (미로그인 시 리다이렉트) | Frontend | ✅ | — |
+| 9 | 공통 레이아웃 (TopBar, 라우팅 구조) | Frontend | ✅ | — |
+| 10 | 슬레이트 블루 디자인 시스템 (ui-reference 팔레트) | Frontend | ✅ | — |
+| 11 | 로그인 페이지 리디자인 (2패널 분할 레이아웃) | Frontend | ✅ | FR-006 |
+| 12 | 랜딩 페이지 (서비스 소개, CTA, 프리뷰 카드) | Frontend | ✅ | FR-001 |
 
 ---
 
@@ -160,6 +199,35 @@ Build the authentication and user management layer. Backend implements JWT verif
 - 8개 페이지 라우트를 위한 React Router 설정
 - 인증 가드 래퍼 컴포넌트
 
+### 슬레이트 블루 디자인 시스템
+
+**파일**: `frontend/src/index.css`
+
+- 웜톤 팔레트에서 `ui-reference/screens.jsx` 기반 슬레이트 블루 팔레트로 전환
+- 16개 색상 토큰 업데이트: accent `#4a6b8a`, bg `#f8f9fb`, surface-alt `#eff1f5` 등
+- 기존 컴포넌트(TopBar, AuthGuard, Layout) 자동 적용
+
+### 로그인 페이지 리디자인
+
+**파일**: `frontend/src/pages/LoginPage.tsx`
+
+- `ui-reference/screen-login.jsx` 기준 2패널 분할 레이아웃
+- 왼쪽 패널 (420px): 로고, STEP 1/4 인디케이터, 헤드라인, 가치 제안 체크리스트, 푸터
+- 오른쪽 패널: Google/GitHub OAuth 버튼, 약관 안내, 서포트 이메일
+- 기존 OAuth 로직 보존
+
+### 랜딩 페이지
+
+**파일**: `frontend/src/pages/LandingPage.tsx`, `frontend/src/App.tsx`
+
+- `/` 경로의 공개 페이지 — 인증 불필요
+- 전용 헤더 (로고, 네비 링크: 가이드/공지사항/로그인, CTA 버튼)
+- 히어로 섹션: 베타 배지, 헤드라인, 설명, CTA 버튼 2개
+- 통계 행: 프로젝트 유형 수, 평균 소요 시간, 회당 비용
+- 우측 프리뷰 카드: 인터뷰 채팅 목업 + 진행률 바
+- 플로팅 아키텍처 다이어그램 미니 카드
+- `ui-reference/screen-landing.jsx` 기반
+
 ---
 
 ## 설계 결정 사항
@@ -174,12 +242,14 @@ Build the authentication and user management layer. Backend implements JWT verif
 
 ## 완료 기준
 
-- [ ] Google OAuth 로그인 → JWT 발급 → 인증된 API 호출까지 E2E 동작
-- [ ] GitHub OAuth 로그인 E2E 동작
-- [ ] Admin 역할은 관리자 전용 엔드포인트 접근 가능; user 역할은 403
-- [ ] 소프트 삭제된 사용자는 로그인 불가
-- [ ] 정지된 사용자는 명확한 에러 메시지 수신
-- [ ] 미인증 접근 시 로그인 페이지로 리다이렉트
+- [x] Google OAuth 로그인 → JWT 발급 → 인증된 API 호출까지 E2E 동작
+- [x] GitHub OAuth 로그인 E2E 동작
+- [x] Admin 역할은 관리자 전용 엔드포인트 접근 가능; user 역할은 403
+- [x] 소프트 삭제된 사용자는 로그인 불가
+- [x] 정지된 사용자는 명확한 에러 메시지 수신
+- [x] 미인증 접근 시 로그인 페이지로 리다이렉트
+- [x] 슬레이트 블루 팔레트 적용, 로그인 페이지가 ui-reference 2패널 레이아웃과 일치
+- [x] 랜딩 페이지가 `/`에서 히어로, CTA, 프리뷰 카드와 함께 렌더링
 
 ---
 
@@ -188,3 +258,5 @@ Build the authentication and user management layer. Backend implements JWT verif
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-19 | 최초 작성 |
+| 2026-05-20 | Phase 2 완료 — 9개 항목 모두 구현 및 E2E 검증 완료 |
+| 2026-05-20 | #10-12 추가: 슬레이트 블루 디자인 시스템, 로그인 리디자인, 랜딩 페이지. 모두 구현 완료 — 상태 → 완료 |

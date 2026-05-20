@@ -131,6 +131,7 @@ prequel/
 │   │   ├── components/
 │   │   │   ├── chat/              # Chat UI — interview orchestrator
 │   │   │   ├── viewer/            # Result viewer — card UI + Mermaid
+│   │   │   ├── projects/          # New project modal, delete confirm
 │   │   │   ├── admin/             # Admin dashboard
 │   │   │   ├── auth/              # Login / signup
 │   │   │   └── common/            # ProgressBar, Header, Footer
@@ -154,11 +155,11 @@ prequel/
 ├── scripts/
 │   └── sync_harness.py            # Sync harness skills → backend/
 ├── supabase/
-│   └── migrations/                # SQL migration files (001~003)
+│   └── migrations/                # SQL migration files (001~005)
 ├── Phase/
 │   ├── Phase1_ProjectSetup.md     # ✅ Project setup & infrastructure
-│   ├── Phase2_AuthSystem.md       # 🔲 Auth & user system
-│   ├── Phase3_ProjectManagement.md # 🔲 Project CRUD & quota
+│   ├── Phase2_AuthSystem.md       # ✅ Auth & user system
+│   ├── Phase3_ProjectManagement.md # ✅ Project CRUD & quota
 │   ├── Phase4_InterviewPipeline.md # 🔲 AI interview pipeline (core)
 │   ├── Phase5_DocGeneration.md    # 🔲 Document generation & result viewer
 │   ├── Phase6_AdminFeatures.md    # 🔲 Admin & supporting features
@@ -196,14 +197,20 @@ Payment integration is planned for MVP-2.
 |---|---|---|
 | Planning & Design | ✅ Done | Kickoff document, architecture, data model, requirements |
 | Phase 1: Project Setup | ✅ Done | FastAPI/React scaffold, Supabase 6 tables + RLS, Alembic, harness sync |
-| Phase 2: Auth System | 🔲 Not Started | OAuth (Google/GitHub), JWT middleware, login UI |
-| Phase 3: Project Management | 🔲 Not Started | Project CRUD, free quota, My Projects page |
+| Phase 2: Auth System | ✅ Done | OAuth (Google/GitHub), JWT middleware, RBAC, login/landing page (ui-reference), slate blue design system |
+| Phase 3: Project Management | ✅ Done | Project CRUD API, free quota enforcement, My Projects page (stat cards, filters, search, table), new project modal, delete modal |
 | Phase 4: Interview Pipeline | 🔲 Not Started | Prompt manager, interview orchestrator, chat UI |
 | Phase 5: Doc Generation | 🔲 Not Started | doc_engine, Mermaid diagram, result viewer |
 | Phase 6: Admin Features | 🔲 Not Started | Admin dashboard, announcements, rate limiting |
 | Phase 7: Integration & Deploy | 🔲 Not Started | i18n, E2E testing, Netlify + Railway deploy |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
 | v2 | 📋 Planned | Gap analysis, DOCX export, share links |
+
+### Test Scenarios
+
+| Phase | Status | Link |
+|---|---|---|
+| Phase 3: Project Management | 🟡 Partial (2/12 Pass) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 
 ## Roadmap
 
@@ -238,7 +245,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1 (infrastructure) complete, core features in progress
+- **Early development** — Phase 1-3 (infrastructure + auth + project management) complete, core features in progress
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2
