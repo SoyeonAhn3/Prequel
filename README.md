@@ -129,12 +129,12 @@ prequel/
 ├── frontend/                      # React SPA [Netlify]
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── chat/              # Chat UI — interview orchestrator
+│   │   │   ├── interview/         # Interview UI — LeftRail, ChatCenter, RightPanel, AiMark
 │   │   │   ├── viewer/            # Result viewer — card UI + Mermaid
 │   │   │   ├── projects/          # New project modal, delete confirm
 │   │   │   ├── admin/             # Admin dashboard
 │   │   │   ├── auth/              # Login / signup
-│   │   │   └── common/            # ProgressBar, Header, Footer
+│   │   │   └── common/            # Badge, ProgressBar, Header, Footer
 │   │   ├── pages/                 # Route pages (8 screens)
 │   │   ├── hooks/                 # useInterview, useAuth, etc.
 │   │   ├── i18n/                  # ko.json, en.json
@@ -142,9 +142,11 @@ prequel/
 │   └── package.json
 ├── backend/                       # FastAPI [Railway]
 │   ├── app/
-│   │   ├── api/                   # Route handlers
+│   │   ├── api/                   # Route handlers (auth, projects, interview)
 │   │   ├── core/
 │   │   │   ├── prompt_manager.py  # Skill .md → optimized Claude prompt
+│   │   │   ├── claude_client.py   # Anthropic API singleton wrapper
+│   │   │   ├── harness_loader.py  # Skill + reference file loader
 │   │   │   └── doc_engine.py      # Interview results → Markdown doc
 │   │   ├── models/                # SQLAlchemy (6 tables)
 │   │   ├── schemas/               # Pydantic request/response
@@ -160,7 +162,7 @@ prequel/
 │   ├── Phase1_ProjectSetup.md     # ✅ Project setup & infrastructure
 │   ├── Phase2_AuthSystem.md       # ✅ Auth & user system
 │   ├── Phase3_ProjectManagement.md # ✅ Project CRUD & quota
-│   ├── Phase4_InterviewPipeline.md # 🔲 AI interview pipeline (core)
+│   ├── Phase4_InterviewPipeline.md # 🚧 AI interview pipeline (core)
 │   ├── Phase5_DocGeneration.md    # 🔲 Document generation & result viewer
 │   ├── Phase6_AdminFeatures.md    # 🔲 Admin & supporting features
 │   └── Phase7_IntegrationDeploy.md # 🔲 i18n, testing & deployment
@@ -199,7 +201,7 @@ Payment integration is planned for MVP-2.
 | Phase 1: Project Setup | ✅ Done | FastAPI/React scaffold, Supabase 6 tables + RLS, Alembic, harness sync |
 | Phase 2: Auth System | ✅ Done | OAuth (Google/GitHub), JWT middleware, RBAC, login/landing page (ui-reference), slate blue design system |
 | Phase 3: Project Management | ✅ Done | Project CRUD API, free quota enforcement, My Projects page (stat cards, filters, search, table), new project modal, delete modal |
-| Phase 4: Interview Pipeline | 🔲 Not Started | Prompt manager, interview orchestrator, chat UI |
+| Phase 4: Interview Pipeline | 🚧 In Progress | Backend API complete (6 endpoints), chat UI shell complete, frontend↔backend connection pending |
 | Phase 5: Doc Generation | 🔲 Not Started | doc_engine, Mermaid diagram, result viewer |
 | Phase 6: Admin Features | 🔲 Not Started | Admin dashboard, announcements, rate limiting |
 | Phase 7: Integration & Deploy | 🔲 Not Started | i18n, E2E testing, Netlify + Railway deploy |
@@ -245,7 +247,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-3 (infrastructure + auth + project management) complete, core features in progress
+- **Early development** — Phase 1-3 complete, Phase 4 in progress (backend API done, chat UI shell done, frontend↔backend connection pending)
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2

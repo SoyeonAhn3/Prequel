@@ -29,6 +29,7 @@ Build the authentication and user management layer. Backend implements JWT verif
 | 10 | Slate blue design system (ui-reference palette) | Frontend | ✅ | — |
 | 11 | Login page redesign (2-panel split layout) | Frontend | ✅ | FR-006 |
 | 12 | Landing page (service intro, CTA, preview card) | Frontend | ✅ | FR-001 |
+| 13 | Dev auth bypass (`DEV_BYPASS_AUTH`) | Full-stack | ✅ | — |
 
 ---
 
@@ -95,6 +96,15 @@ Build the authentication and user management layer. Backend implements JWT verif
 - Floating architecture diagram mini-card
 - Based on `ui-reference/screen-landing.jsx`
 
+### Dev Auth Bypass
+
+**Files**: `.env`, `backend/app/middleware/auth.py`, `frontend/src/hooks/useAuth.ts`, `frontend/src/components/auth/AuthGuard.tsx`
+
+- `DEV_BYPASS_AUTH=true` in `.env` enables development-only auth bypass
+- Backend: `get_current_user()` returns a mock admin user without token validation
+- Frontend: `useAuth` sets a mock session and fetches profile from API; `AuthGuard` skips login redirect
+- Remove `DEV_BYPASS_AUTH` and `VITE_DEV_BYPASS_AUTH` from `.env` to restore normal auth flow
+
 ---
 
 ## Design Decisions
@@ -127,6 +137,7 @@ Build the authentication and user management layer. Backend implements JWT verif
 | 2026-05-19 | Initial creation |
 | 2026-05-20 | Phase 2 completed — all 9 deliverables implemented and E2E verified |
 | 2026-05-20 | Added #10-12: slate blue design system, login redesign, landing page. All implemented — Status → Completed |
+| 2026-05-21 | Added #13: dev auth bypass — skip OAuth in local development via `DEV_BYPASS_AUTH` env flag |
 
 ---
 ---
@@ -162,6 +173,7 @@ Build the authentication and user management layer. Backend implements JWT verif
 | 10 | 슬레이트 블루 디자인 시스템 (ui-reference 팔레트) | Frontend | ✅ | — |
 | 11 | 로그인 페이지 리디자인 (2패널 분할 레이아웃) | Frontend | ✅ | FR-006 |
 | 12 | 랜딩 페이지 (서비스 소개, CTA, 프리뷰 카드) | Frontend | ✅ | FR-001 |
+| 13 | Dev 인증 바이패스 (`DEV_BYPASS_AUTH`) | Full-stack | ✅ | — |
 
 ---
 
@@ -228,6 +240,15 @@ Build the authentication and user management layer. Backend implements JWT verif
 - 플로팅 아키텍처 다이어그램 미니 카드
 - `ui-reference/screen-landing.jsx` 기반
 
+### Dev 인증 바이패스
+
+**파일**: `.env`, `backend/app/middleware/auth.py`, `frontend/src/hooks/useAuth.ts`, `frontend/src/components/auth/AuthGuard.tsx`
+
+- `.env`에 `DEV_BYPASS_AUTH=true` 설정 시 개발용 인증 바이패스 활성화
+- 백엔드: `get_current_user()`가 토큰 검증 없이 mock admin 유저 반환
+- 프론트엔드: `useAuth`가 mock 세션 설정 후 API에서 프로필 조회; `AuthGuard`가 로그인 리다이렉트 건너뜀
+- 운영 배포 시 `.env`에서 `DEV_BYPASS_AUTH`와 `VITE_DEV_BYPASS_AUTH`를 제거하면 원래 인증 흐름 복원
+
 ---
 
 ## 설계 결정 사항
@@ -260,3 +281,4 @@ Build the authentication and user management layer. Backend implements JWT verif
 | 2026-05-19 | 최초 작성 |
 | 2026-05-20 | Phase 2 완료 — 9개 항목 모두 구현 및 E2E 검증 완료 |
 | 2026-05-20 | #10-12 추가: 슬레이트 블루 디자인 시스템, 로그인 리디자인, 랜딩 페이지. 모두 구현 완료 — 상태 → 완료 |
+| 2026-05-21 | #13 추가: dev 인증 바이패스 — `DEV_BYPASS_AUTH` 환경변수로 로컬 개발 시 OAuth 건너뜀 |

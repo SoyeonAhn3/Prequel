@@ -1,6 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthContext } from '../../contexts/AuthContext'
 
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+
 export default function AuthGuard() {
   const { session, loading } = useAuthContext()
 
@@ -12,7 +14,7 @@ export default function AuthGuard() {
     )
   }
 
-  if (!session) {
+  if (!session && !DEV_BYPASS) {
     return <Navigate to="/login" replace />
   }
 

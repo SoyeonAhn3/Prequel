@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     CORS_ORIGINS: str = "http://localhost:5173"
     LOG_LEVEL: str = "INFO"
+    DEV_BYPASS_AUTH: bool = False
 
     model_config = {"env_file": "../.env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

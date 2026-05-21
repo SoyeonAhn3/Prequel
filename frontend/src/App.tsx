@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import MyProjectsPage from './pages/MyProjectsPage'
+import InterviewPage from './pages/InterviewPage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/projects" element={<MyProjectsPage />} />
             </Route>
+            <Route path="/projects/:projectId/interview" element={<InterviewPage />} />
           </Route>
 
           {/* Default */}

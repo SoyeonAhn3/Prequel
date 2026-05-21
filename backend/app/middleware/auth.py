@@ -1,6 +1,21 @@
 from fastapi import Depends, HTTPException, Request
 
+from app.config import settings
 from app.core.supabase import get_supabase
+
+_DEV_MOCK_USER: dict = {
+    "id": "00000000-0000-0000-0000-000000000000",
+    "email": "dev@localhost",
+    "display_name": "Dev User",
+    "avatar_url": None,
+    "role": "admin",
+    "free_used": 0,
+    "plan": "free",
+    "plan_expires_at": None,
+    "agreed_terms_at": "2026-01-01T00:00:00+00:00",
+    "created_at": "2026-01-01T00:00:00+00:00",
+    "updated_at": "2026-01-01T00:00:00+00:00",
+}
 
 
 def _extract_token(request: Request) -> str:
@@ -10,7 +25,25 @@ def _extract_token(request: Request) -> str:
     return auth_header[7:]
 
 
+def _ensure_dev_user() -> dict:
+    sb = get_supabase()
+    result = (
+        sb.table("users")
+        .select("*")
+        .eq("id", _DEV_MOCK_USER["id"])
+        .execute()
+    )
+    if result.data:
+        return result.data[0]
+    insert_data = {k: v for k, v in _DEV_MOCK_USER.items() if k not in ("created_at", "updated_at")}
+    sb.table("users").insert(insert_data).execute()
+    return _DEV_MOCK_USER
+
+
 async def get_current_user(request: Request) -> dict:
+    if settings.DEV_BYPASS_AUTH:
+        return _ensure_dev_user()
+
     token = _extract_token(request)
     sb = get_supabase()
 

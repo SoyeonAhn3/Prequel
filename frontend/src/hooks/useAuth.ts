@@ -32,6 +32,12 @@ export function useAuth() {
   }
 
   useEffect(() => {
+    if (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true') {
+      setSession({ access_token: 'dev-bypass' } as Session)
+      fetchProfile().finally(() => setLoading(false))
+      return
+    }
+
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s)
       if (s) {

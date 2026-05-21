@@ -1,16 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useProjects } from '../hooks/useProjects'
 import type { Project } from '../hooks/useProjects'
 import NewProjectModal from '../components/projects/NewProjectModal'
+import { Plus, AlertTriangle, Search, MoreVertical } from 'lucide-react'
 import DeleteConfirmModal from '../components/projects/DeleteConfirmModal'
+import Badge from '../components/common/Badge'
 
 type FilterTab = 'all' | 'in_progress' | 'completed'
 
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  in_progress: { label: '진행 중', className: 'bg-accent-soft text-accent-deep' },
-  completed: { label: '완료', className: 'bg-green-soft text-green' },
-  paused: { label: '일시정지', className: 'bg-amber-soft text-amber' },
+const STATUS_MAP: Record<string, { label: string; variant: 'accent' | 'green' | 'amber' }> = {
+  in_progress: { label: '진행 중', variant: 'accent' },
+  completed: { label: '완료', variant: 'green' },
+  paused: { label: '일시정지', variant: 'amber' },
 }
 
 function formatDate(iso: string) {
@@ -22,6 +25,7 @@ function formatDate(iso: string) {
 }
 
 export default function MyProjectsPage() {
+  const navigate = useNavigate()
   const { user, refetchProfile } = useAuthContext()
   const { projects, loading, error, createProject, deleteProject } = useProjects()
 
@@ -30,6 +34,17 @@ export default function MyProjectsPage() {
   const [showNewModal, setShowNewModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpenId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const filtered = projects.filter((p) => {
     if (activeTab !== 'all' && p.status !== activeTab) return false
@@ -77,7 +92,7 @@ export default function MyProjectsPage() {
           disabled={isQuotaExceeded}
           className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          <Plus size={14} strokeWidth={2.5} />
           새 프로젝트
         </button>
       </div>
@@ -88,7 +103,7 @@ export default function MyProjectsPage() {
         <div className="flex-1 bg-surface border border-border rounded-xl p-4">
           <div className="flex justify-between items-center">
             <span className="text-xs text-text-muted">이번 달 사용</span>
-            <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded bg-accent-soft text-accent-deep">FREE</span>
+            <Badge variant="accent" className="font-semibold">FREE</Badge>
           </div>
           <div className="flex items-baseline gap-1.5 mt-2">
             <span className="text-[26px] font-bold tracking-tight">{freeUsed}</span>
@@ -117,7 +132,7 @@ export default function MyProjectsPage() {
         {user?.plan === 'free' && (
           <div className="flex-[1.4] bg-[#f5f7fb] border border-amber-soft rounded-xl p-4 flex items-center gap-3.5">
             <div className="w-9 h-9 rounded-lg bg-amber-soft text-amber flex items-center justify-center shrink-0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3l9 18H3L12 3z" /><path d="M12 10v4M12 17h.01" /></svg>
+              <AlertTriangle size={18} />
             </div>
             <div>
               <div className="text-[13px] font-semibold text-text">
@@ -137,7 +152,7 @@ export default function MyProjectsPage() {
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => { setActiveTab(tab.key); setMenuOpenId(null) }}
               className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
                 activeTab === tab.key
                   ? 'bg-surface text-text shadow-sm font-semibold'
@@ -151,7 +166,7 @@ export default function MyProjectsPage() {
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border rounded-lg w-[220px]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-muted shrink-0"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+          <Search size={14} className="text-text-muted shrink-0" />
           <input
             type="text"
             placeholder="프로젝트 검색"
@@ -196,6 +211,7 @@ export default function MyProjectsPage() {
             const progress = project.total_steps > 0
               ? Math.round((project.current_step / project.total_steps) * 100)
               : 0
+            const isLastRow = i === filtered.length - 1
 
             return (
               <div
@@ -206,7 +222,12 @@ export default function MyProjectsPage() {
               >
                 {/* Name + Progress */}
                 <div>
-                  <div className="font-semibold text-text">{project.name}</div>
+                  <div
+                    className="font-semibold text-text hover:text-accent cursor-pointer transition-colors"
+                    onClick={() => navigate(`/projects/${project.id}/interview`)}
+                  >
+                    {project.name}
+                  </div>
                   {project.status === 'in_progress' && progress > 0 && (
                     <div className="flex items-center gap-2 mt-1.5">
                       <div className="w-20 h-[3px] bg-surface-alt rounded">
@@ -223,24 +244,35 @@ export default function MyProjectsPage() {
                 <div className="text-text-muted text-xs">{project.project_type ?? '-'}</div>
                 {/* Status Tag */}
                 <div>
-                  <span className={`inline-block text-[11px] font-medium px-2 py-0.5 rounded ${status.className}`}>
+                  <Badge variant={status.variant}>
                     {status.label}
-                  </span>
+                  </Badge>
                 </div>
                 {/* Language */}
                 <div className="text-text-muted text-xs font-mono uppercase">{project.language}</div>
                 {/* Date */}
                 <div className="text-text-subtle text-xs font-mono">{formatDate(project.updated_at)}</div>
                 {/* Menu */}
-                <div className="relative flex justify-end">
+                <div ref={menuOpenId === project.id ? menuRef : undefined} className="relative flex justify-end">
                   <button
                     onClick={() => setMenuOpenId(menuOpenId === project.id ? null : project.id)}
                     className="text-text-subtle hover:text-text cursor-pointer p-1"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+                    <MoreVertical size={16} />
                   </button>
                   {menuOpenId === project.id && (
-                    <div className="absolute right-0 top-8 z-10 w-32 bg-surface border border-border rounded-lg shadow-lg py-1">
+                    <div className={`absolute right-0 z-10 w-32 bg-surface border border-border rounded-lg shadow-lg py-1 ${isLastRow ? 'bottom-8' : 'top-8'}`}>
+                      {project.status === 'in_progress' && (
+                        <button
+                          onClick={() => {
+                            setMenuOpenId(null)
+                            navigate(`/projects/${project.id}/interview`)
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
+                        >
+                          이어하기
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setMenuOpenId(null)

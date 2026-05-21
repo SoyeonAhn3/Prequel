@@ -129,12 +129,12 @@ prequel/
 ├── frontend/                      # React SPA [Netlify]
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── chat/              # 채팅 UI — 인터뷰 오케스트레이터
+│   │   │   ├── interview/         # 인터뷰 UI — LeftRail, ChatCenter, RightPanel, AiMark
 │   │   │   ├── viewer/            # 결과 뷰어 — 카드 UI + Mermaid
 │   │   │   ├── projects/          # 새 프로젝트 모달, 삭제 확인
 │   │   │   ├── admin/             # Admin 대시보드
 │   │   │   ├── auth/              # 로그인/회원가입
-│   │   │   └── common/            # ProgressBar, Header, Footer
+│   │   │   └── common/            # Badge, ProgressBar, Header, Footer
 │   │   ├── pages/                 # 라우트별 페이지 (8개 화면)
 │   │   ├── hooks/                 # useInterview, useAuth 등
 │   │   ├── i18n/                  # ko.json, en.json
@@ -145,6 +145,8 @@ prequel/
 │   │   ├── api/                   # API 라우터
 │   │   ├── core/
 │   │   │   ├── prompt_manager.py  # 스킬 .md → 최적화된 Claude 프롬프트
+│   │   │   ├── claude_client.py   # Anthropic API 싱글톤 래퍼
+│   │   │   ├── harness_loader.py  # 스킬 + Reference 파일 로더
 │   │   │   └── doc_engine.py      # 인터뷰 결과 → Markdown 문서
 │   │   ├── models/                # SQLAlchemy (6개 테이블)
 │   │   ├── schemas/               # Pydantic 요청/응답
@@ -160,7 +162,7 @@ prequel/
 │   ├── Phase1_ProjectSetup.md     # ✅ 프로젝트 셋업 & 인프라
 │   ├── Phase2_AuthSystem.md       # ✅ 인증 & 사용자 시스템
 │   ├── Phase3_ProjectManagement.md # ✅ 프로젝트 CRUD & 쿼터
-│   ├── Phase4_InterviewPipeline.md # 🔲 AI 인터뷰 파이프라인 (핵심)
+│   ├── Phase4_InterviewPipeline.md # 🚧 AI 인터뷰 파이프라인 (핵심)
 │   ├── Phase5_DocGeneration.md    # 🔲 문서 생성 & 결과 뷰어
 │   ├── Phase6_AdminFeatures.md    # 🔲 Admin & 부가 기능
 │   └── Phase7_IntegrationDeploy.md # 🔲 다국어, 테스트 & 배포
@@ -199,7 +201,7 @@ prequel/
 | Phase 1: 프로젝트 셋업 | ✅ 완료 | FastAPI/React 스캐폴드, Supabase 6 테이블 + RLS, Alembic, 하네스 동기화 |
 | Phase 2: 인증 시스템 | ✅ 완료 | OAuth (Google/GitHub), JWT 미들웨어, RBAC, 로그인/랜딩 페이지 (ui-reference), 슬레이트 블루 디자인 시스템 |
 | Phase 3: 프로젝트 관리 | ✅ 완료 | 프로젝트 CRUD API, 무료 쿼터 검증, 내 프로젝트 페이지 (스탯카드, 필터, 검색, 테이블), 생성 모달, 삭제 모달 |
-| Phase 4: 인터뷰 파이프라인 | 🔲 미시작 | 프롬프트 매니저, 인터뷰 오케스트레이터, 채팅 UI |
+| Phase 4: 인터뷰 파이프라인 | 🚧 진행 중 | 백엔드 API 완료 (6개 엔드포인트), 채팅 UI 껍데기 완료, 프론트↔백 연결 대기 |
 | Phase 5: 문서 생성 | 🔲 미시작 | doc_engine, Mermaid 다이어그램, 결과 뷰어 |
 | Phase 6: Admin 기능 | 🔲 미시작 | Admin 대시보드, 공지사항, Rate Limiting |
 | Phase 7: 통합 & 배포 | 🔲 미시작 | 다국어, E2E 테스트, Netlify + Railway 배포 |
@@ -245,7 +247,7 @@ prequel/
 
 ## 한계점
 
-- **초기 개발 단계** — Phase 1-3(인프라 + 인증 + 프로젝트 관리) 완료, 핵심 기능 개발 진행 중
+- **초기 개발 단계** — Phase 1-3 완료, Phase 4 진행 중 (백엔드 API 완료, 채팅 UI 껍데기 완료, 프론트↔백 연결 대기)
 - **데스크탑 전용** — 태블릿은 MVP-2, 모바일은 미지원
 - **언어 고정** — 프로젝트 언어(ko/en)는 생성 시 고정, 변경하려면 새 프로젝트 생성 필요
 - **MVP-1에 결제 없음** — Free 2회 소진 후 유료 전환 불가 (MVP-2까지)
