@@ -55,7 +55,8 @@ export default function MyProjectsPage() {
   const completedCount = projects.filter((p) => p.status === 'completed').length
   const inProgressCount = projects.filter((p) => p.status === 'in_progress').length
   const freeUsed = user?.free_used ?? 0
-  const remaining = Math.max(0, 2 - freeUsed)
+  const devBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+  const remaining = devBypass ? 999 : Math.max(0, 2 - freeUsed)
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: '전체', count: projects.length },
@@ -75,7 +76,7 @@ export default function MyProjectsPage() {
     setDeleteTarget(null)
   }
 
-  const isQuotaExceeded = user?.plan === 'free' && freeUsed >= 2
+  const isQuotaExceeded = !devBypass && user?.plan === 'free' && freeUsed >= 2
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -129,7 +130,7 @@ export default function MyProjectsPage() {
         </div>
 
         {/* Remaining Warning */}
-        {user?.plan === 'free' && (
+        {!devBypass && user?.plan === 'free' && (
           <div className="flex-[1.4] bg-[#f5f7fb] border border-amber-soft rounded-xl p-4 flex items-center gap-3.5">
             <div className="w-9 h-9 rounded-lg bg-amber-soft text-amber flex items-center justify-center shrink-0">
               <AlertTriangle size={18} />
@@ -262,7 +263,7 @@ export default function MyProjectsPage() {
                   </button>
                   {menuOpenId === project.id && (
                     <div className={`absolute right-0 z-10 w-32 bg-surface border border-border rounded-lg shadow-lg py-1 ${isLastRow ? 'bottom-8' : 'top-8'}`}>
-                      {project.status === 'in_progress' && (
+                      {(project.status === 'in_progress' || project.status === 'paused') && (
                         <button
                           onClick={() => {
                             setMenuOpenId(null)

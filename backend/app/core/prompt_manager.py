@@ -13,6 +13,7 @@ INTERVIEW_STEPS = [
     {"title": "유형별 심화 (1/3)", "topic": "type_deep_1"},
     {"title": "유형별 심화 (2/3)", "topic": "type_deep_2"},
     {"title": "마무리 확인", "topic": "wrap_up"},
+    {"title": "AI 제안", "topic": "suggestions"},
 ]
 
 
@@ -101,15 +102,17 @@ def build_system_prompt(
             base += f"- {ins['label']}: {ins['value']}\n"
 
     base += (
-        "\n응답 형식 (반드시 이 JSON 형식으로만 응답):\n"
+        "\n응답 형식:\n"
+        "반드시 아래 JSON 객체만 출력하세요. JSON 앞뒤에 어떤 텍스트도, 코드 펜스(```)도 붙이지 마세요.\n"
         '{\n'
-        '  "message": "사용자에게 보여줄 대화 메시지",\n'
+        '  "message": "사용자에게 보여줄 대화 메시지 (마크다운 사용 가능)",\n'
         '  "insights": [{"label": "항목명", "value": "추출된 값"}],\n'
         '  "step_complete": false,\n'
         '  "topics": ["관련 주제 태그"],\n'
         '  "importance": "높음",\n'
         '  "example_answers": [{"label": "예시 항목", "text": "예시 내용"}]\n'
         '}\n'
+        "중요: message 필드 안에 대화 내용을 넣고, JSON 바깥에는 아무것도 쓰지 마세요.\n"
     )
 
     blocks = [
@@ -124,6 +127,23 @@ def build_system_prompt(
         blocks.append({
             "type": "text",
             "text": f"\n현재 단계 지시사항:\n{step_content}",
+        })
+
+    if step_number == len(INTERVIEW_STEPS):
+        blocks.append({
+            "type": "text",
+            "text": (
+                "\n현재 단계 지시사항:\n"
+                "## STEP 11 — AI 제안\n"
+                "지금까지 수집된 모든 정보를 바탕으로 프로젝트에 도움이 될 제안을 합니다.\n\n"
+                "아래 카테고리별로 2~3개씩 실행 가능한 제안을 마크다운으로 작성하세요:\n"
+                "1. **기능 아이디어** — 사용자가 언급하지 않았지만 유용할 수 있는 기능\n"
+                "2. **기술적 접근** — 아키텍처, 기술 스택, 데이터 처리 관련 제안\n"
+                "3. **리스크 대응** — 식별된 리스크에 대한 구체적 완화 방안\n\n"
+                "각 제안에는 **제안 내용**, **기대 효과**, **우선순위(높음/중간/낮음)**를 포함하세요.\n"
+                "사용자가 제안을 검토하고 피드백하면 반영하세요.\n"
+                "사용자가 만족하면 step_complete: true를 반환하세요.\n"
+            ),
         })
 
     return blocks

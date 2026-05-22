@@ -47,3 +47,28 @@ export interface InterviewStats {
   answerCount: number
   avgAnswerTime: string
 }
+
+export interface InterviewApiResponse {
+  session_id: string
+  status: string
+  current_step: number
+  total_steps: number
+  step_title: string
+  question: string | null
+  topics: string[]
+  importance: string | null
+  example_answers: { label: string; text: string }[]
+  insights: { label: string; value: string; is_new: boolean; pending: boolean }[]
+  steps: {
+    title: string
+    status: string
+    summary: string | null
+    question_index: number | null
+    question_total: number | null
+  }[]
+  messages: { role: string; text: string; time: string | null }[]
+  phase: number
+  total_phases: number
+  phase_label: string
+  answer_count: number
+}

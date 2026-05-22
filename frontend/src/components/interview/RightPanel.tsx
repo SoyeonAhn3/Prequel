@@ -4,9 +4,11 @@ import type { CapturedInsight } from './types'
 
 interface RightPanelProps {
   captured: CapturedInsight[]
+  totalExpected?: number
+  lastSavedLabel?: string
 }
 
-export default function RightPanel({ captured }: RightPanelProps) {
+export default function RightPanel({ captured, totalExpected, lastSavedLabel }: RightPanelProps) {
   const completedCount = captured.filter((c) => !c.pending).length
 
   return (
@@ -18,7 +20,7 @@ export default function RightPanel({ captured }: RightPanelProps) {
           수집된 정보
         </div>
         <div className="flex-1" />
-        <Badge variant="accent">{completedCount}/8</Badge>
+        <Badge variant="accent">{completedCount}/{totalExpected ?? captured.length}</Badge>
       </div>
       <div className="text-[11.5px] text-text-muted leading-relaxed">
         답변에 따라 자동으로 킥오프 문서가 작성됩니다
@@ -105,7 +107,7 @@ export default function RightPanel({ captured }: RightPanelProps) {
       >
         <div className="flex items-center gap-1.5 font-bold mb-1">
           <Lock size={11} />
-          자동 저장됨 · 방금 전
+          자동 저장됨 · {lastSavedLabel ?? '방금 전'}
         </div>
         <div className="opacity-85">브라우저를 닫아도 안전합니다</div>
       </div>

@@ -20,14 +20,14 @@ This is the most critical phase of the entire project. It implements the heart o
 | 1 | Harness file loader (skill .md + Reference reading) | Backend | ✅ | FR-020 |
 | 2 | `prompt_manager.py` — STEP splitting | Backend | ✅ | FR-020 |
 | 3 | `prompt_manager.py` — CLI section removal | Backend | ✅ | FR-020 |
-| 4 | `prompt_manager.py` — Reference type-based filtering | Backend | 🔲 | FR-020 |
+| 4 | `prompt_manager.py` — Reference type-based filtering | Backend | ⏭️ N/A | FR-020 |
 | 5 | `prompt_manager.py` — Conversation history compression | Backend | ✅ | FR-020 |
 | 6 | `prompt_manager.py` — Anthropic Prompt Caching | Backend | ✅ | FR-020 |
 | 7 | Project type auto-detection API | Backend | ✅ | FR-002 |
 | 8 | Interview orchestrator (start → question → answer loop) | Backend | ✅ | FR-001 |
 | 9 | Session management — event-based saving | Backend | ✅ | FR-011, ADR-003 |
 | 10 | Session pause/resume API | Backend | ✅ | FR-011 |
-| 11 | 5-minute inactivity auto-pause logic | Backend | 🔲 | FR-011 |
+| 11 | 5-minute inactivity auto-pause logic | Frontend | ✅ | FR-011 |
 | 12 | Chat UI — 3-column layout (left rail / center chat / right insights) | Frontend | ✅ | FR-001 |
 | 13 | Chat UI — message bubbles (AI/user) + dimmed history + "모두 보기" | Frontend | ✅ | FR-001 |
 | 14 | Chat UI — current question card (topic tags, importance, 예시 답변 보기) | Frontend | ✅ | FR-001 |
@@ -40,9 +40,13 @@ This is the most critical phase of the entire project. It implements the heart o
 | 21 | Right panel — document preview button + auto-save indicator | Frontend | ✅ | FR-011 |
 | 22 | Center top bar — breadcrumb (STEP > topic > question #) + pause button | Frontend | ✅ | FR-011 |
 | 23 | Center bottom — stats bar (elapsed time, answer count, avg answer time) | Frontend | ✅ | FR-010 |
-| 24 | Project type detection result confirm/edit UI | Frontend | 🔲 | FR-002 |
-| 25 | Pause button + `beforeunload` session save | Frontend | 🔲 | FR-011 |
-| 26 | Resume from project list ("In Progress" → resume) | Frontend | 🔲 | FR-011 |
+| 24 | Project type detection result confirm/edit UI | Frontend | ✅ | FR-002 |
+| 25 | Pause button + `beforeunload` session save | Frontend | ✅ | FR-011 |
+| 26 | Resume from project list ("In Progress" → resume) | Frontend | ✅ | FR-011 |
+| 27 | `/kickoff-suggest` — AI 제안 (STEP 11로 통합) | Backend | ✅ | FR-021 |
+| 28 | ~~제안 검토 UI~~ (채팅 UI로 대체, 별도 UI 불필요) | — | ✅ | FR-021 |
+
+> **V4 Phase Transition Flow** (#29-39) → **Phase 5**로 분리됨
 
 ---
 
@@ -106,7 +110,25 @@ Singleton Anthropic client wrapper:
 - Auto-detects project type from first response insights and updates projects table
 - Token tracking: accumulates input+output tokens in `session.token_used`
 
-**Flow**: User idea → type detection → confirmation → planning interview (common 7 + type-specific 3 questions) → optional design interview → completion
+**Flow**: User idea → type detection → confirmation → planning interview (common 7 + type-specific 3 questions) → `/kickoff-suggest` → Phase 5 (phase transition & validation)
+
+### Post-Interview: `/kickoff-suggest`
+
+**Files**: `backend/app/api/suggest.py`, `backend/skills/kickoff-suggest.md`
+
+After the 10-step interview completes, the system automatically triggers `/kickoff-suggest`:
+- Takes all collected interview insights as input
+- Calls Claude API to generate actionable suggestions (feature ideas, technical approaches, risk mitigations)
+- Returns structured suggestion list with category, priority, and rationale
+- User reviews suggestions in a dedicated UI: accept, reject, or edit each item
+- Accepted suggestions are stored and carried forward into Phase 6 design skills as additional context
+
+**Endpoints**:
+- `POST /api/suggest/generate` — generate suggestions from completed interview session
+- `GET /api/suggest/{session_id}` — retrieve suggestions for a session
+- `PUT /api/suggest/{suggestion_id}` — update suggestion status (accept/reject/edit)
+
+> **V4 Phase Transition Flow** — See **Phase 5** for full specification (evaluate → done → phase modal → gap/checklist branch)
 
 ### Interview Schemas
 
@@ -196,6 +218,9 @@ Event-based saving triggers:
 | 2026-05-21 | Backend complete (#1-10 ✅): harness_loader, prompt_manager (STEP split, CLI removal, compression, caching), claude_client, interview API (6 endpoints), schemas — all tested E2E with curl |
 | 2026-05-21 | Frontend UI shell complete (#12-23 ✅): InterviewPage, LeftRail, ChatCenter, RightPanel, AiMark — mock data, 3-column layout |
 | 2026-05-21 | Code cleanup: Badge component extracted (5 repetitions → 1 common component), lucide-react adopted (17 inline SVGs replaced) |
+| 2026-05-22 | Added `/kickoff-suggest` (#27-28): post-interview AI suggestion generation + review UI as Phase 4 deliverables |
+| 2026-05-22 | Implemented #11 (5-min auto-pause, frontend), #24 (type confirm/edit UI), #25 (beforeunload save), #26 (paused project resume). #4 marked N/A (no type-specific references yet) |
+| 2026-05-22 | Added V4 Phase Transition Flow (#29-39): dynamic step system, kickoff-evaluate/done/gap/checklist skill integration, proposal card, phase complete modal, gap branch UI. Design skills (How) deferred to Phase 5. "Design later" feature deferred to V2 |
 
 ---
 ---
@@ -222,14 +247,14 @@ Event-based saving triggers:
 | 1 | 하네스 파일 로더 (스킬 .md + Reference 읽기) | Backend | ✅ | FR-020 |
 | 2 | `prompt_manager.py` — STEP 분할 로딩 | Backend | ✅ | FR-020 |
 | 3 | `prompt_manager.py` — CLI 전용 섹션 제거 | Backend | ✅ | FR-020 |
-| 4 | `prompt_manager.py` — Reference 유형별 필터링 | Backend | 🔲 | FR-020 |
+| 4 | `prompt_manager.py` — Reference 유형별 필터링 | Backend | ⏭️ N/A | FR-020 |
 | 5 | `prompt_manager.py` — 대화 이력 압축 | Backend | ✅ | FR-020 |
 | 6 | `prompt_manager.py` — Anthropic Prompt Caching 적용 | Backend | ✅ | FR-020 |
 | 7 | 프로젝트 유형 자동 감지 API | Backend | ✅ | FR-002 |
 | 8 | 인터뷰 오케스트레이터 (시작 → 질문 → 답변 루프) | Backend | ✅ | FR-001 |
 | 9 | 세션 관리 — 이벤트 기반 저장 | Backend | ✅ | FR-011, ADR-003 |
 | 10 | 세션 일시정지/재개 API | Backend | ✅ | FR-011 |
-| 11 | 5분 무응답 자동 일시정지 로직 | Backend | 🔲 | FR-011 |
+| 11 | 5분 무응답 자동 일시정지 로직 | Frontend | ✅ | FR-011 |
 | 12 | 채팅 UI — 3컬럼 레이아웃 (왼쪽 레일 / 중앙 채팅 / 오른쪽 인사이트) | Frontend | ✅ | FR-001 |
 | 13 | 채팅 UI — 메시지 버블 (AI/사용자) + 흐린 이전 대화 + "모두 보기" | Frontend | ✅ | FR-001 |
 | 14 | 채팅 UI — 현재 질문 카드 (주제 태그, 중요도, 예시 답변 보기) | Frontend | ✅ | FR-001 |
@@ -242,9 +267,13 @@ Event-based saving triggers:
 | 21 | 오른쪽 패널 — 문서 미리보기 버튼 + 자동 저장 표시 | Frontend | ✅ | FR-011 |
 | 22 | 중앙 상단 바 — 빵부스러기 (STEP > 주제 > 질문 #) + 일시정지 버튼 | Frontend | ✅ | FR-011 |
 | 23 | 중앙 하단 — 통계 바 (진행 시간, 답변 수, 평균 답변 시간) | Frontend | ✅ | FR-010 |
-| 24 | 프로젝트 유형 감지 결과 확인/수정 UI | Frontend | 🔲 | FR-002 |
-| 25 | 일시정지 버튼 + `beforeunload` 세션 저장 | Frontend | 🔲 | FR-011 |
-| 26 | 이어하기 (프로젝트 목록에서 "진행 중" → 재개) | Frontend | 🔲 | FR-011 |
+| 24 | 프로젝트 유형 감지 결과 확인/수정 UI | Frontend | ✅ | FR-002 |
+| 25 | 일시정지 버튼 + `beforeunload` 세션 저장 | Frontend | ✅ | FR-011 |
+| 26 | 이어하기 (프로젝트 목록에서 "진행 중" → 재개) | Frontend | ✅ | FR-011 |
+| 27 | `/kickoff-suggest` — AI 제안 (STEP 11로 통합) | Backend | ✅ | FR-021 |
+| 28 | ~~제안 검토 UI~~ (채팅 UI로 대체, 별도 UI 불필요) | — | ✅ | FR-021 |
+
+> **V4 Phase 전환 플로우** (#29-39) → **Phase 5**로 분리됨
 
 ---
 
@@ -308,7 +337,25 @@ Event-based saving triggers:
 - 첫 응답 인사이트에서 프로젝트 유형 자동 감지 후 projects 테이블 업데이트
 - 토큰 추적: input+output 토큰을 `session.token_used`에 누적
 
-**흐름**: 사용자 아이디어 → 유형 감지 → 확인 → 기획 인터뷰 (공통 7 + 유형별 3 질문) → 설계 인터뷰(선택) → 완료
+**흐름**: 사용자 아이디어 → 유형 감지 → 확인 → 기획 인터뷰 (공통 7 + 유형별 3 질문) → `/kickoff-suggest` → Phase 5 (Phase 전환 & 검증)
+
+### 인터뷰 후: `/kickoff-suggest`
+
+**파일**: `backend/app/api/suggest.py`, `backend/skills/kickoff-suggest.md`
+
+10단계 인터뷰 완료 후 시스템이 자동으로 `/kickoff-suggest`를 실행:
+- 수집된 인터뷰 인사이트 전체를 입력으로 사용
+- Claude API를 호출하여 실행 가능한 제안 생성 (기능 아이디어, 기술 접근법, 리스크 완화)
+- 카테고리, 우선순위, 근거가 포함된 구조화된 제안 목록 반환
+- 전용 UI에서 사용자가 각 제안을 수락, 거부, 수정 가능
+- 수락된 제안은 저장되어 Phase 6 설계 스킬의 추가 컨텍스트로 전달
+
+**엔드포인트**:
+- `POST /api/suggest/generate` — 완료된 인터뷰 세션에서 제안 생성
+- `GET /api/suggest/{session_id}` — 세션의 제안 목록 조회
+- `PUT /api/suggest/{suggestion_id}` — 제안 상태 업데이트 (수락/거부/수정)
+
+> **V4 Phase 전환 플로우** — **Phase 5** 참조 (평가 → 완료 조건 → Phase 모달 → gap/checklist 분기)
 
 ### 인터뷰 스키마
 
@@ -398,3 +445,6 @@ Event-based saving triggers:
 | 2026-05-21 | 백엔드 완료 (#1-10 ✅): harness_loader, prompt_manager (STEP 분할, CLI 제거, 압축, 캐싱), claude_client, 인터뷰 API (6개 엔드포인트), 스키마 — curl로 E2E 테스트 완료 |
 | 2026-05-21 | 프론트엔드 UI 껍데기 완료 (#12-23 ✅): InterviewPage, LeftRail, ChatCenter, RightPanel, AiMark — 목데이터, 3컬럼 레이아웃 |
 | 2026-05-21 | 코드 정리: Badge 컴포넌트 추출 (5회 반복 → 공통 1개), lucide-react 도입 (인라인 SVG 17개 대체) |
+| 2026-05-22 | `/kickoff-suggest` 추가 (#27-28): 인터뷰 후 AI 제안 생성 + 검토 UI를 Phase 4 항목으로 추가 |
+| 2026-05-22 | #11 (5분 자동 일시정지, 프론트엔드), #24 (유형 확인/수정 UI), #25 (beforeunload 저장), #26 (일시정지 프로젝트 재개) 구현. #4는 N/A (유형별 Reference 미존재) |
+| 2026-05-22 | V4 Phase 전환 플로우 추가 (#29-39): 동적 스텝 시스템, kickoff-evaluate/done/gap/checklist 스킬 통합, 제안 카드, Phase 완료 모달, Gap 분기 UI. 설계 스킬 (How)은 Phase 5로 분리. "설계를 나중에" 기능은 V2로 연기 |

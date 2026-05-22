@@ -1,9 +1,9 @@
-# Phase 6 — Admin & Supporting Features `🔲 Not Started`
+# Phase 8 — Admin & Supporting Features `🔲 Not Started`
 
 > Build admin dashboard, announcements system, token usage logging, rate limiting, and structured logging.
 
 **Status**: 🔲 Not Started
-**Prerequisites**: Phase 5 completion (Document generation, result viewer)
+**Prerequisites**: Phase 7 completion (Document generation, result viewer)
 
 ---
 
@@ -118,12 +118,12 @@ Using `slowapi` middleware:
 ---
 ---
 
-# Phase 6 — Admin & 부가 기능 `🔲 미시작`
+# Phase 8 — Admin & 부가 기능 `🔲 미시작`
 
 > Admin 대시보드, 공지사항 시스템, 토큰 사용량 로깅, Rate Limiting, 구조화된 로깅 구현.
 
 **상태**: 🔲 미시작
-**선행 조건**: Phase 5 완료 (문서 생성, 결과 뷰어)
+**선행 조건**: Phase 7 완료 (문서 생성, 결과 뷰어)
 
 ---
 

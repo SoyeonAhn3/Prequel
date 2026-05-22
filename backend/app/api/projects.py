@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.config import settings
 from app.core.supabase import get_supabase
 from app.middleware.auth import get_current_user
-from app.schemas.project import ProjectCreate, ProjectOut
+from app.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 
 logger = structlog.get_logger()
 
@@ -33,7 +34,7 @@ async def create_project(
     body: ProjectCreate,
     user: dict = Depends(get_current_user),
 ):
-    if user["plan"] == "free" and user["free_used"] >= FREE_QUOTA_LIMIT:
+    if not settings.DEV_BYPASS_AUTH and user["plan"] == "free" and user["free_used"] >= FREE_QUOTA_LIMIT:
         raise HTTPException(
             status_code=403,
             detail="무료 플랜의 킥오프 횟수(2회)를 모두 사용했습니다. 유료 플랜으로 업그레이드하세요.",
@@ -49,7 +50,7 @@ async def create_project(
             "language": body.language,
             "status": "in_progress",
             "current_step": 0,
-            "total_steps": 10,
+            "total_steps": 11,
         })
         .execute()
     )
@@ -57,6 +58,38 @@ async def create_project(
     project = result.data[0]
     logger.info("project_created", project_id=project["id"], user_id=user["id"])
     return project
+
+
+@router.patch("/{project_id}", response_model=ProjectOut)
+async def update_project(
+    project_id: str,
+    body: ProjectUpdate,
+    user: dict = Depends(get_current_user),
+):
+    sb = get_supabase()
+    existing = (
+        sb.table("projects")
+        .select("id, user_id")
+        .eq("id", project_id)
+        .eq("user_id", user["id"])
+        .is_("deleted_at", "null")
+        .maybe_single()
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    result = (
+        sb.table("projects")
+        .update(updates)
+        .eq("id", project_id)
+        .execute()
+    )
+    return result.data[0]
 
 
 @router.delete("/{project_id}")

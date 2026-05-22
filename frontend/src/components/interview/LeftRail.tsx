@@ -40,7 +40,7 @@ export default function LeftRail({ project, steps, progress }: LeftRailProps) {
           {project.name}
         </div>
         <div className="flex gap-1.5 mt-2">
-          <Badge variant="accent">{project.type}</Badge>
+          {project.type && <Badge variant="accent">{project.type}</Badge>}
           <Badge variant="muted">{project.language}</Badge>
         </div>
       </div>

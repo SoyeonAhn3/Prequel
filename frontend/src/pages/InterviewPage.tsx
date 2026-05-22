@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
+import { useAuthContext } from '../contexts/AuthContext'
+import { apiFetch } from '../lib/api'
 import LeftRail from '../components/interview/LeftRail'
 import ChatCenter from '../components/interview/ChatCenter'
 import RightPanel from '../components/interview/RightPanel'
@@ -9,70 +12,390 @@ import type {
   CapturedInsight,
   ProgressInfo,
   InterviewStats,
+  InterviewApiResponse,
 } from '../components/interview/types'
+import type { Project } from '../hooks/useProjects'
 
-const MOCK_PROJECT = { name: '사내 도서 추천 봇', type: 'AI/ML', language: 'KO' }
-
-const MOCK_STEPS: InterviewStep[] = [
-  { title: '프로젝트 유형 감지', status: 'done', summary: 'AI/ML · 도서 추천' },
-  { title: '주요 사용자', status: 'done', summary: '사내 직원 ~150명' },
-  { title: '핵심 가치', status: 'done', summary: '독서 습관화, 부서 맞춤' },
-  { title: '데이터 소스', status: 'active', questionIndex: 3, questionTotal: 3 },
-  { title: '기술 스택', status: 'pending' },
-  { title: '성공 지표', status: 'pending' },
-  { title: '리스크', status: 'pending' },
-  { title: '설계 인터뷰', status: 'pending' },
-]
-
-const MOCK_MESSAGES: ChatMessage[] = [
-  { role: 'ai', text: '좋습니다. Slack 채널 또는 DM 중 어느 쪽을 우선하시나요?', time: '14:28' },
-  { role: 'user', text: '개인 DM 위주로요. 처음엔 부서별 인기 도서 기준으로 시작해도 괜찮습니다.', time: '14:31' },
-]
-
-const MOCK_QUESTION: CurrentQuestion = {
-  stepLabel: 'STEP 04',
-  stepTitle: '데이터 소스',
-  questionNumber: 3,
-  topics: ['데이터 출처', '측정 지표'],
-  importance: '중요도 높음',
-  text: '명확하네요. 그럼 데이터 소스는 사내 도서 DB가 될 것 같은데, 책 정보는 어디서 가져오시나요? 그리고 추천 결과의 정확도는 어떻게 측정하실 계획인지요?',
-  highlightText: '책 정보는 어디서 가져오시나요?',
-  exampleAnswers: [
-    { label: '책 정보', text: '사내 도서관 시스템 API, 외부 도서 메타데이터(교보문고/예스24)' },
-    { label: '정확도', text: '클릭률(CTR), 읽음 완료율, 사용자 만족도 설문' },
-    { label: '측정 주기', text: '주간 / 월간 대시보드' },
-  ],
-  avgTime: '평균 1분',
-  insightCount: '2개 인사이트 추출',
-  time: '14:34',
+function formatElapsed(ms: number): string {
+  const sec = Math.floor(ms / 1000)
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 }
 
-const MOCK_CAPTURED: CapturedInsight[] = [
-  { label: '주요 사용자', value: '사내 직원 ~150명', isNew: false, pending: false },
-  { label: '발송 채널', value: 'Slack DM', isNew: false, pending: false },
-  { label: '추천 기준', value: '부서별 인기 도서', isNew: true, pending: false },
-  { label: '데이터 소스', value: '답변 중', isNew: false, pending: true },
-]
-
-const MOCK_PROGRESS: ProgressInfo = {
-  phase: 1,
-  totalPhases: 3,
-  current: 3,
-  total: 10,
-  phaseLabel: '기획 인터뷰',
-  remainingTime: '약 8분',
+function formatMsgTime(iso: string | null): string {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+  } catch {
+    return ''
+  }
 }
 
-const MOCK_STATS: InterviewStats = {
-  elapsedTime: '12:04',
-  answerCount: 3,
-  avgAnswerTime: '1분 8초',
+function nowTimeStr(): string {
+  return new Date().toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+function transformResponse(res: InterviewApiResponse) {
+  const steps: InterviewStep[] = res.steps.map((s) => ({
+    title: s.title,
+    status: s.status as 'done' | 'active' | 'pending',
+    summary: s.summary ?? undefined,
+    questionIndex: s.question_index ?? undefined,
+    questionTotal: s.question_total ?? undefined,
+  }))
+
+  const allMsgs = res.messages
+  const history: ChatMessage[] = []
+  for (let i = 0; i < allMsgs.length; i++) {
+    if (i === allMsgs.length - 1 && allMsgs[i].role === 'ai') continue
+    history.push({
+      role: allMsgs[i].role as 'ai' | 'user',
+      text: allMsgs[i].text,
+      time: formatMsgTime(allMsgs[i].time),
+    })
+  }
+
+  const question: CurrentQuestion | null = res.question
+    ? {
+        stepLabel: `STEP ${String(res.current_step + 1).padStart(2, '0')}`,
+        stepTitle: res.step_title,
+        questionNumber: res.answer_count + 1,
+        topics: res.topics,
+        importance: res.importance ?? '',
+        text: res.question,
+        highlightText: '',
+        exampleAnswers: res.example_answers,
+        avgTime: '평균 1분',
+        insightCount: `${res.insights.filter((i) => i.is_new).length}개 인사이트 추출`,
+        time: nowTimeStr(),
+      }
+    : null
+
+  const insights: CapturedInsight[] = res.insights.map((i) => ({
+    label: i.label,
+    value: i.value,
+    isNew: i.is_new,
+    pending: i.pending,
+  }))
+
+  const progress: ProgressInfo = {
+    phase: res.phase,
+    totalPhases: res.total_phases,
+    current: res.current_step + 1,
+    total: res.total_steps,
+    phaseLabel: res.phase_label,
+    remainingTime: `약 ${Math.max(1, (res.total_steps - res.current_step - 1) * 2)}분`,
+  }
+
+  return { steps, messages: history, question, insights, progress, answerCount: res.answer_count }
 }
 
 export default function InterviewPage() {
+  const { projectId } = useParams<{ projectId: string }>()
+  const navigate = useNavigate()
+  const { user } = useAuthContext()
+
+  const [sessionId, setSessionId] = useState('')
+  const [pageStatus, setPageStatus] = useState<'loading' | 'active' | 'completed' | 'error'>(
+    'loading',
+  )
+  const [steps, setSteps] = useState<InterviewStep[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [question, setQuestion] = useState<CurrentQuestion | null>(null)
+  const [insights, setInsights] = useState<CapturedInsight[]>([])
+  const [progress, setProgress] = useState<ProgressInfo>({
+    phase: 1,
+    totalPhases: 3,
+    current: 0,
+    total: 10,
+    phaseLabel: '기획 인터뷰',
+    remainingTime: '계산 중...',
+  })
+  const [stats, setStats] = useState<InterviewStats>({
+    elapsedTime: '0:00',
+    answerCount: 0,
+    avgAnswerTime: '-',
+  })
+  const [project, setProject] = useState({ name: '', type: '', language: '' })
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  const [lastSavedLabel, setLastSavedLabel] = useState('방금 전')
+  const [showInactiveWarning, setShowInactiveWarning] = useState(false)
+  const [typeToConfirm, setTypeToConfirm] = useState<string | null>(null)
+
+  const startTimeRef = useRef(Date.now())
+  const timerRef = useRef<ReturnType<typeof setInterval>>()
+  const answerCountRef = useRef(0)
+  const lastActivityRef = useRef(Date.now())
+  const typeConfirmedRef = useRef(false)
+
+  useEffect(() => {
+    if (pageStatus !== 'active') return
+    timerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTimeRef.current
+      const count = answerCountRef.current
+      setStats((prev) => ({
+        ...prev,
+        elapsedTime: formatElapsed(elapsed),
+        avgAnswerTime: count > 0 ? formatElapsed(elapsed / count) : '-',
+      }))
+    }, 1000)
+    return () => clearInterval(timerRef.current)
+  }, [pageStatus])
+
+  const applyApiResponse = useCallback((res: InterviewApiResponse) => {
+    const data = transformResponse(res)
+    setSessionId(res.session_id)
+    setSteps(data.steps)
+    setMessages(data.messages)
+    setQuestion(data.question)
+    setInsights(data.insights)
+    setProgress(data.progress)
+    answerCountRef.current = data.answerCount
+    setStats((prev) => ({ ...prev, answerCount: data.answerCount }))
+    setPageStatus(res.status === 'completed' ? 'completed' : 'active')
+
+    const typeInsight = res.insights.find((i) => i.label.includes('유형'))
+    if (typeInsight) {
+      setProject((prev) => ({ ...prev, type: typeInsight.value }))
+      if (!typeConfirmedRef.current) {
+        setTypeToConfirm(typeInsight.value)
+      }
+    }
+    setLastSavedAt(new Date())
+    setLastSavedLabel('방금 전')
+  }, [])
+
+  // Auto-save: update "saved N분 전" label every 10s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!lastSavedAt) return
+      const diff = Math.floor((Date.now() - lastSavedAt.getTime()) / 1000)
+      if (diff < 60) setLastSavedLabel('방금 전')
+      else setLastSavedLabel(`${Math.floor(diff / 60)}분 전`)
+    }, 10_000)
+    return () => clearInterval(interval)
+  }, [lastSavedAt])
+
+  // Auto-save: pause & resume every 60s to persist session state
+  useEffect(() => {
+    if (pageStatus !== 'active' || !sessionId) return
+    const interval = setInterval(async () => {
+      try {
+        await apiFetch('/interview/pause', {
+          method: 'POST',
+          body: JSON.stringify({ session_id: sessionId }),
+        })
+        const res = await apiFetch<InterviewApiResponse>('/interview/resume', {
+          method: 'POST',
+          body: JSON.stringify({ session_id: sessionId }),
+        })
+        applyApiResponse(res)
+      } catch { /* silent */ }
+    }, 60_000)
+    return () => clearInterval(interval)
+  }, [pageStatus, sessionId, applyApiResponse])
+
+  // #25: beforeunload session save
+  useEffect(() => {
+    if (pageStatus !== 'active' || !sessionId) return
+    const handleBeforeUnload = () => {
+      fetch('/api/interview/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+        keepalive: true,
+      })
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [pageStatus, sessionId])
+
+  // #11: 5-min inactivity auto-pause
+  useEffect(() => {
+    if (pageStatus !== 'active') return
+    const resetActivity = () => {
+      lastActivityRef.current = Date.now()
+      setShowInactiveWarning(false)
+    }
+    window.addEventListener('mousemove', resetActivity)
+    window.addEventListener('keydown', resetActivity)
+    const check = setInterval(() => {
+      const idle = Date.now() - lastActivityRef.current
+      if (idle >= 5 * 60 * 1000) {
+        handlePause()
+      } else if (idle >= 4 * 60 * 1000) {
+        setShowInactiveWarning(true)
+      }
+    }, 30_000)
+    return () => {
+      window.removeEventListener('mousemove', resetActivity)
+      window.removeEventListener('keydown', resetActivity)
+      clearInterval(check)
+    }
+  }, [pageStatus, handlePause])
+
+  useEffect(() => {
+    if (!projectId) return
+
+    async function init() {
+      try {
+        const projects = await apiFetch<Project[]>('/projects')
+        const proj = projects.find((p) => p.id === projectId)
+        if (proj)
+          setProject({ name: proj.name, type: proj.project_type ?? '', language: proj.language })
+
+        const { session } = await apiFetch<{
+          session: { id: string; status: string; current_question: number } | null
+        }>(`/interview/session/${projectId}`)
+
+        if (session) {
+          if (session.status === 'completed') {
+            answerCountRef.current = session.current_question
+            setStats((prev) => ({ ...prev, answerCount: session.current_question }))
+            setPageStatus('completed')
+            return
+          }
+          if (session.status === 'active') {
+            await apiFetch('/interview/pause', {
+              method: 'POST',
+              body: JSON.stringify({ session_id: session.id }),
+            })
+          }
+          const res = await apiFetch<InterviewApiResponse>('/interview/resume', {
+            method: 'POST',
+            body: JSON.stringify({ session_id: session.id }),
+          })
+          applyApiResponse(res)
+        } else {
+          const res = await apiFetch<InterviewApiResponse>('/interview/start', {
+            method: 'POST',
+            body: JSON.stringify({ project_id: projectId }),
+          })
+          applyApiResponse(res)
+        }
+
+        startTimeRef.current = Date.now()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '인터뷰를 시작할 수 없습니다')
+        setPageStatus('error')
+      }
+    }
+
+    init()
+  }, [projectId, applyApiResponse])
+
+  const handleSend = useCallback(
+    async (text: string) => {
+      if (!text.trim() || !sessionId || sending) return
+      setSending(true)
+      setError(null)
+
+      try {
+        const res = await apiFetch<InterviewApiResponse>('/interview/answer', {
+          method: 'POST',
+          body: JSON.stringify({ session_id: sessionId, answer: text.trim() }),
+        })
+        applyApiResponse(res)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '답변 전송에 실패했습니다')
+      } finally {
+        setSending(false)
+      }
+    },
+    [sessionId, sending, applyApiResponse],
+  )
+
+  const handlePause = useCallback(async () => {
+    if (!sessionId) return
+    try {
+      await apiFetch('/interview/pause', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sessionId }),
+      })
+      navigate('/projects')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '일시정지에 실패했습니다')
+    }
+  }, [sessionId, navigate])
+
+  const handleTypeConfirm = useCallback(async (confirmedType: string) => {
+    typeConfirmedRef.current = true
+    setTypeToConfirm(null)
+    setProject((prev) => ({ ...prev, type: confirmedType }))
+    if (projectId) {
+      try {
+        await apiFetch(`/projects/${projectId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ project_type: confirmedType }),
+        })
+      } catch { /* non-critical */ }
+    }
+  }, [projectId])
+
+  const userInitial = user?.display_name?.[0] ?? user?.email?.[0] ?? '나'
+
+  if (pageStatus === 'loading') {
+    return (
+      <div className="h-screen flex items-center justify-center bg-bg">
+        <div className="text-center">
+          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
+            <span className="text-white text-sm font-bold">P</span>
+          </div>
+          <p className="text-sm text-text-muted">인터뷰를 준비하고 있습니다...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (pageStatus === 'error') {
+    return (
+      <div className="h-screen flex items-center justify-center bg-bg">
+        <div className="text-center max-w-sm">
+          <p className="text-sm text-red mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/projects')}
+            className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg cursor-pointer border-none"
+          >
+            프로젝트 목록으로
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (pageStatus === 'completed') {
+    return (
+      <div className="h-screen flex items-center justify-center bg-bg">
+        <div className="text-center max-w-sm">
+          <div className="w-14 h-14 rounded-full bg-green flex items-center justify-center mx-auto mb-4">
+            <span className="text-white text-xl font-bold">&#10003;</span>
+          </div>
+          <h2 className="text-lg font-bold text-text mb-2">인터뷰가 완료되었습니다</h2>
+          <p className="text-sm text-text-muted mb-6">
+            총 {stats.answerCount}개 질문에 답변하셨습니다.
+          </p>
+          <button
+            onClick={() => navigate('/projects')}
+            className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg cursor-pointer border-none"
+          >
+            프로젝트 목록으로
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-screen flex flex-col bg-bg">
-      {/* Minimal top bar */}
       <header className="h-12 bg-surface border-b border-border flex items-center px-4 shrink-0">
         <Link to="/projects" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
@@ -81,14 +404,69 @@ export default function InterviewPage() {
           <span className="text-sm font-semibold text-text">Prequel</span>
         </Link>
         <div className="flex-1" />
-        <span className="text-xs text-text-muted">{MOCK_PROJECT.name}</span>
+        <span className="text-xs text-text-muted">{project.name}</span>
       </header>
 
-      {/* 3-column layout */}
+      {error && (
+        <div className="px-4 py-2 bg-red/10 text-red text-xs text-center border-b border-red/20">
+          {error}
+          <button
+            onClick={() => setError(null)}
+            className="ml-2 underline cursor-pointer bg-transparent border-none text-red text-xs"
+          >
+            닫기
+          </button>
+        </div>
+      )}
+
+      {showInactiveWarning && (
+        <div className="px-4 py-2 bg-amber/10 text-amber text-xs text-center border-b border-amber/20">
+          1분 후 무응답 시 자동으로 일시정지됩니다
+          <button
+            onClick={() => {
+              lastActivityRef.current = Date.now()
+              setShowInactiveWarning(false)
+            }}
+            className="ml-2 underline cursor-pointer bg-transparent border-none text-amber text-xs font-semibold"
+          >
+            계속하기
+          </button>
+        </div>
+      )}
+
+      {typeToConfirm && (
+        <div className="px-4 py-2.5 bg-accent-soft text-accent-deep text-xs text-center border-b border-accent/20 flex items-center justify-center gap-3">
+          <span>감지된 프로젝트 유형: <strong className="font-semibold">{typeToConfirm}</strong></span>
+          <button
+            onClick={() => handleTypeConfirm(typeToConfirm)}
+            className="px-3 py-1 bg-accent text-white text-xs font-semibold rounded-md cursor-pointer border-none"
+          >
+            확인
+          </button>
+          <button
+            onClick={() => {
+              const newType = prompt('프로젝트 유형을 입력하세요:', typeToConfirm)
+              if (newType && newType.trim()) handleTypeConfirm(newType.trim())
+            }}
+            className="px-3 py-1 bg-surface text-accent text-xs font-semibold rounded-md cursor-pointer border border-accent"
+          >
+            수정
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 flex min-h-0">
-        <LeftRail project={MOCK_PROJECT} steps={MOCK_STEPS} progress={MOCK_PROGRESS} />
-        <ChatCenter messages={MOCK_MESSAGES} currentQuestion={MOCK_QUESTION} stats={MOCK_STATS} />
-        <RightPanel captured={MOCK_CAPTURED} />
+        <LeftRail project={project} steps={steps} progress={progress} />
+        <ChatCenter
+          messages={messages}
+          currentQuestion={question}
+          stats={stats}
+          onSend={handleSend}
+          onPause={handlePause}
+          sending={sending}
+          userInitial={userInitial}
+        />
+        <RightPanel captured={insights} totalExpected={progress.total} lastSavedLabel={lastSavedLabel} />
       </div>
     </div>
   )

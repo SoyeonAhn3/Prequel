@@ -1,9 +1,9 @@
-# Phase 7 — i18n, Integration Testing & Deployment `🔲 Not Started`
+# Phase 9 — i18n, Integration Testing & Deployment `🔲 Not Started`
 
 > Apply multilingual support, build the landing page, conduct E2E testing, and deploy to production.
 
 **Status**: 🔲 Not Started
-**Prerequisites**: Phase 6 completion (Admin features, rate limiting, logging)
+**Prerequisites**: Phase 8 completion (Admin features, rate limiting, logging)
 
 ---
 
@@ -126,12 +126,12 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 ---
 ---
 
-# Phase 7 — 다국어, 통합 테스트 & 배포 `🔲 미시작`
+# Phase 9 — 다국어, 통합 테스트 & 배포 `🔲 미시작`
 
 > 다국어 지원 적용, 랜딩 페이지 구축, E2E 테스트 수행, 프로덕션 배포.
 
 **상태**: 🔲 미시작
-**선행 조건**: Phase 6 완료 (Admin 기능, Rate Limiting, 로깅)
+**선행 조건**: Phase 8 완료 (Admin 기능, Rate Limiting, 로깅)
 
 ---
 

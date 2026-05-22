@@ -33,21 +33,48 @@ TOTAL_STEPS = len(INTERVIEW_STEPS)
 
 
 def _parse_ai_response(text: str) -> dict:
+    fallback = {
+        "message": text,
+        "insights": [],
+        "step_complete": False,
+        "topics": [],
+        "importance": None,
+        "example_answers": [],
+    }
+    cleaned = text.strip()
+
+    # Try direct JSON parse first
     try:
-        cleaned = text.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("\n", 1)[1]
-            cleaned = cleaned.rsplit("```", 1)[0]
-        return json.loads(cleaned)
-    except (json.JSONDecodeError, IndexError):
-        return {
-            "message": text,
-            "insights": [],
-            "step_complete": False,
-            "topics": [],
-            "importance": None,
-            "example_answers": [],
-        }
+        if cleaned.startswith("{"):
+            return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # Extract JSON from ```json ... ``` code block
+    import re
+    m = re.search(r"```(?:json)?\s*\n?(\{.*?\})\s*\n?```", cleaned, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # Extract any JSON object in the text
+    brace_start = cleaned.find("{")
+    if brace_start != -1:
+        depth = 0
+        for i in range(brace_start, len(cleaned)):
+            if cleaned[i] == "{":
+                depth += 1
+            elif cleaned[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(cleaned[brace_start : i + 1])
+                    except json.JSONDecodeError:
+                        break
+
+    return fallback
 
 
 def _build_steps_list(current_step: int, session_insights: list[dict]) -> list[StepItem]:
@@ -159,9 +186,12 @@ async def start_interview(
         .execute()
     )
     if existing.data:
-        raise HTTPException(
-            status_code=409,
-            detail="Active session already exists. Use resume instead.",
+        session = existing.data[0]
+        if session["status"] == "active":
+            sb.table("interview_sessions").update({"status": "paused"}).eq("id", session["id"]).execute()
+        return await resume_interview(
+            body=InterviewResumeRequest(session_id=session["id"]),
+            user=user,
         )
 
     system_prompt = build_system_prompt(
@@ -182,7 +212,16 @@ async def start_interview(
     now = datetime.now(timezone.utc).isoformat()
     messages = [
         first_message,
-        {"role": "assistant", "content": parsed["message"], "time": now},
+        {
+            "role": "assistant",
+            "content": parsed["message"],
+            "time": now,
+            "_meta": {
+                "topics": parsed.get("topics", []),
+                "importance": parsed.get("importance"),
+                "example_answers": parsed.get("example_answers", []),
+            },
+        },
     ]
 
     insights = []
@@ -269,7 +308,16 @@ async def submit_answer(
     ai_text, usage = chat(system=system_prompt, messages=api_messages)
     parsed = _parse_ai_response(ai_text)
 
-    messages.append({"role": "assistant", "content": parsed["message"], "time": now})
+    messages.append({
+        "role": "assistant",
+        "content": parsed["message"],
+        "time": now,
+        "_meta": {
+            "topics": parsed.get("topics", []),
+            "importance": parsed.get("importance"),
+            "example_answers": parsed.get("example_answers", []),
+        },
+    })
 
     new_insights = []
     for ins in parsed.get("insights", []):
@@ -377,9 +425,11 @@ async def resume_interview(
 
     messages = session.get("messages") or []
     last_ai = None
+    last_meta: dict = {}
     for msg in reversed(messages):
         if msg["role"] == "assistant":
             last_ai = msg["content"]
+            last_meta = msg.get("_meta", {})
             break
 
     session["_insights"] = []
@@ -388,9 +438,9 @@ async def resume_interview(
     return _build_response(
         session=session,
         question=last_ai,
-        topics=[],
-        importance=None,
-        example_answers=[],
+        topics=last_meta.get("topics", []),
+        importance=last_meta.get("importance"),
+        example_answers=last_meta.get("example_answers", []),
         session_insights=[],
     )
 

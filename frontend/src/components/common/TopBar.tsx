@@ -23,9 +23,12 @@ export default function TopBar() {
     navigate('/login')
   }
 
-  const quotaLabel = user?.plan === 'free'
-    ? `${user.free_used}/2 free`
-    : user?.plan
+  const devBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+  const quotaLabel = devBypass
+    ? 'dev mode'
+    : user?.plan === 'free'
+      ? `${user.free_used}/2 free`
+      : user?.plan
 
   const initials = user?.display_name
     ? user.display_name.charAt(0).toUpperCase()
