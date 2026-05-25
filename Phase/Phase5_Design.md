@@ -1,23 +1,23 @@
-# Phase 6 — Design (How) `🔲 Not Started`
+# Phase 5 — Design (How) `🔲 Not Started`
 
-> Post-interview design phase: requirements → architecture → data model → AI workflow, using a wizard-style shell UI designed for beginners.
+> Post-kickoff design phase: requirements → architecture → data model → AI workflow, using a wizard-style shell UI designed for beginners.
 
 **Status**: 🔲 Not Started
-**Prerequisites**: Phase 5 completion (Phase transition & validation flow)
+**Prerequisites**: Phase 4 completion (Kickoff + user chose to proceed with design)
 
 ---
 
 ## Overview
 
-After Phase 5 completes (evaluation + completion criteria + phase transition modal), the user chooses to enter the Design phase. Phase 6 transforms collected interview insights into structured design artifacts through 4 sequential design steps.
+After Phase 4 kickoff completes and the user chooses to proceed with design, Phase 5 transforms collected interview insights into structured design artifacts through 4 sequential design steps.
 
 **Pipeline order**: `/design-requirements` → `/design-architecture` → `/design-data-model` → `/design-ai-workflow`
 
-Each design skill takes interview insights + accepted suggestions as input and produces structured output. The pipeline feeds forward — requirements inform architecture, architecture informs data model.
+Each design skill takes interview insights + accepted suggestions as input and produces structured output. The pipeline feeds forward — requirements inform architecture, architecture informs data model. Each design skill is loaded via `load_skill()` from `harness_loader.py` (ADR-006).
 
 **Design UI** is a dedicated wizard-style shell (not chat-based), designed for **"people who don't know much about design/architecture"** — leaning on examples, visual choices, and plain Korean explanations. Reference: `ui-reference/screen-design-shell.jsx`
 
-> **Note**: Gap analysis (`/kickoff-gap`) and dev checklist (`/kickoff-checklist`) are handled in Phase 5's V4 flow when the user declines Design. "Design later" feature (return to Design after skipping) is deferred to **V2**.
+> **Note**: After design completes, Phase 6 (Evaluation & Finalization) runs evaluate → done → gap → checklist. "Design later" feature is deferred to **V2**.
 
 ---
 
@@ -137,7 +137,7 @@ The Design UI is a dedicated wizard-style shell, separate from the interview cha
 | Design skill ordering | Requirements → Architecture → Data Model → AI Workflow | Each builds on the previous; requirements inform architecture, architecture informs data model |
 | Design UI approach | Wizard-style shell (not chat-based) | Designed for beginners — visual choices, templates, plain Korean explanations |
 | AI Workflow automation | No user review UI | AI/ML pipeline design is technical and benefits from uninterrupted AI reasoning |
-| Skill files | Copy from `AI-Project-Kickoff-Harness/.claude/skills/` | Existing skill definitions reused, added as dynamic steps |
+| Skill files | Copy from harness to `backend/skills/`, loaded via `load_skill()` | Existing skill definitions reused with token optimization (ADR-006) |
 
 ---
 
@@ -158,31 +158,33 @@ The Design UI is a dedicated wizard-style shell, separate from the interview cha
 
 | Date | Description |
 |---|---|
-| 2026-05-22 | Initial creation — extracted from Phase 5 (Design & Doc Generation) |
+| 2026-05-22 | Initial creation — extracted from old Phase 5 (Design & Doc Generation) |
+| 2026-05-25 | Updated: gap/checklist now mandatory (not conditional), added load_skill() references (ADR-006) |
+| 2026-05-25 | Phase 6 → Phase 5 renumbered. Prerequisites updated to Phase 4 kickoff completion. Gap/checklist note updated to reference Phase 6 |
 
 ---
 ---
 
-# Phase 6 — 설계 (How) `🔲 미시작`
+# Phase 5 — 설계 (How) `🔲 미시작`
 
-> 인터뷰 후 설계 단계: 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우, 초보자를 위한 wizard 형태 쉘 UI.
+> 킥오프 후 설계 단계: 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우, 초보자를 위한 wizard 형태 쉘 UI.
 
 **상태**: 🔲 미시작
-**선행 조건**: Phase 5 완료 (Phase 전환 & 검증 플로우)
+**선행 조건**: Phase 4 완료 (킥오프 + 설계 진행 선택)
 
 ---
 
 ## 개요
 
-Phase 5 완료 (평가 + 완료 조건 + Phase 전환 모달) 후, 설계 단계 진행을 선택하면 Phase 6에 진입한다. 수집된 인터뷰 인사이트를 4단계 순차 설계를 통해 구조화된 설계 산출물로 변환한다.
+Phase 4 킥오프 완료 후 설계 진행을 선택하면 Phase 5에 진입한다. 수집된 인터뷰 인사이트를 4단계 순차 설계를 통해 구조화된 설계 산출물로 변환한다.
 
 **파이프라인 순서**: `/design-requirements` → `/design-architecture` → `/design-data-model` → `/design-ai-workflow`
 
-각 설계 스킬은 인터뷰 인사이트 + 수락된 제안을 입력으로 받아 구조화된 출력을 생성한다. 파이프라인은 순차적으로 연결 — 요구사항이 아키텍처를, 아키텍처가 데이터 모델을 결정한다.
+각 설계 스킬은 인터뷰 인사이트 + 수락된 제안을 입력으로 받아 구조화된 출력을 생성한다. 파이프라인은 순차적으로 연결 — 요구사항이 아키텍처를, 아키텍처가 데이터 모델을 결정한다. 각 설계 스킬은 `harness_loader.py`의 `load_skill()`로 로드 (ADR-006).
 
 **설계 UI**는 인터뷰 채팅 UI와 별도의 wizard 형태 전용 쉘이다. **"설계/아키텍처를 잘 모르는 사용자"** 를 위해 예시, 시각적 선택지, 쉬운 한국어 설명으로 구성. 레퍼런스: `ui-reference/screen-design-shell.jsx`
 
-> **참고**: 갭 분석 (`/kickoff-gap`)과 개발 체크리스트 (`/kickoff-checklist`)는 Phase 5의 V4 플로우에서 처리 (설계를 거부할 경우). "설계를 나중에 하고 싶을 때" 기능은 **V2**로 연기.
+> **참고**: 설계 완료 후 Phase 6(평가 & 마무리)에서 evaluate → done → gap → checklist 실행. "설계를 나중에" 기능은 **V2**로 연기.
 
 ---
 
@@ -302,7 +304,7 @@ Phase 5 완료 (평가 + 완료 조건 + Phase 전환 모달) 후, 설계 단계
 | 설계 스킬 순서 | 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우 | 각 단계가 이전 단계를 기반으로 구축; 요구사항이 아키텍처를, 아키텍처가 데이터 모델을 결정 |
 | 설계 UI 방식 | Wizard 형태 전용 쉘 (채팅 아님) | 초보자 대상 — 시각적 선택지, 템플릿, 쉬운 한국어 설명 |
 | AI 워크플로우 자동화 | 사용자 검토 UI 없음 | AI/ML 파이프라인 설계는 기술적이며 연속적인 AI 추론이 유리 |
-| 스킬 파일 | `AI-Project-Kickoff-Harness/.claude/skills/`에서 복사 | 기존 스킬 정의를 재활용, 동적 스텝으로 추가 |
+| 스킬 파일 | 하네스에서 `backend/skills/`로 복사, `load_skill()`로 로드 | 기존 스킬 정의를 재활용, 토큰 최적화 적용 (ADR-006) |
 
 ---
 
@@ -323,4 +325,6 @@ Phase 5 완료 (평가 + 완료 조건 + Phase 전환 모달) 후, 설계 단계
 
 | 날짜 | 내용 |
 |---|---|
-| 2026-05-22 | 최초 작성 — Phase 5 (설계 & 문서 생성)에서 분리 |
+| 2026-05-22 | 최초 작성 — 구 Phase 5 (설계 & 문서 생성)에서 분리 |
+| 2026-05-25 | 업데이트: gap/checklist 필수화 반영, load_skill() 참조 추가 (ADR-006) |
+| 2026-05-25 | Phase 6 → Phase 5 번호 변경. 선행조건을 Phase 4 킥오프 완료로 수정, gap/checklist Note를 Phase 6 참조로 변경 |

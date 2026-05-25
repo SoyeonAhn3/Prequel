@@ -43,10 +43,11 @@ This is the most critical phase of the entire project. It implements the heart o
 | 24 | Project type detection result confirm/edit UI | Frontend | ✅ | FR-002 |
 | 25 | Pause button + `beforeunload` session save | Frontend | ✅ | FR-011 |
 | 26 | Resume from project list ("In Progress" → resume) | Frontend | ✅ | FR-011 |
-| 27 | `/kickoff-suggest` — AI 제안 (STEP 11로 통합) | Backend | ✅ | FR-021 |
+| 27 | `/kickoff-suggest` — 스킬 기반 AI 제안 (현재 하드코딩, `load_skill()` 전환 필요) | Backend | 🔲 | FR-021 |
 | 28 | ~~제안 검토 UI~~ (채팅 UI로 대체, 별도 UI 불필요) | — | ✅ | FR-021 |
+| 29 | Design decision UI (displayed after suggest completes) | Frontend | 🔲 | FR-001 |
 
-> **V4 Phase Transition Flow** (#29-39) → **Phase 5**로 분리됨
+> **V4 Phase Transition Flow** (#29-39) → **Phase 6**으로 분리됨
 
 ---
 
@@ -110,25 +111,24 @@ Singleton Anthropic client wrapper:
 - Auto-detects project type from first response insights and updates projects table
 - Token tracking: accumulates input+output tokens in `session.token_used`
 
-**Flow**: User idea → type detection → confirmation → planning interview (common 7 + type-specific 3 questions) → `/kickoff-suggest` → Phase 5 (phase transition & validation)
+**Flow**: User idea → type detection → confirmation → planning interview (common 7 + type-specific 3 questions) → `/kickoff-suggest` → design decision → Phase 5 (Design) or Phase 6 (Evaluation & Finalization)
 
 ### Post-Interview: `/kickoff-suggest`
 
-**Files**: `backend/app/api/suggest.py`, `backend/skills/kickoff-suggest.md`
+**Skill file**: `backend/skills/kickoff-suggest.md` (copy from harness)
+**API file**: `backend/app/api/suggest.py` (to be created)
 
-After the 10-step interview completes, the system automatically triggers `/kickoff-suggest`:
-- Takes all collected interview insights as input
+After the 10-step interview completes, the system triggers `/kickoff-suggest` as STEP 11:
+- Loads skill via `load_skill("kickoff-suggest")` from `harness_loader.py`
+- Takes all collected interview insights as input context
 - Calls Claude API to generate actionable suggestions (feature ideas, technical approaches, risk mitigations)
 - Returns structured suggestion list with category, priority, and rationale
-- User reviews suggestions in a dedicated UI: accept, reject, or edit each item
-- Accepted suggestions are stored and carried forward into Phase 6 design skills as additional context
+- User reviews suggestions in chat UI: accept, reject, or request alternatives
+- Accepted suggestions are stored and carried forward to Phase 5 design and Phase 6 evaluation as additional context
 
-**Endpoints**:
-- `POST /api/suggest/generate` — generate suggestions from completed interview session
-- `GET /api/suggest/{session_id}` — retrieve suggestions for a session
-- `PUT /api/suggest/{suggestion_id}` — update suggestion status (accept/reject/edit)
+> **Current state**: STEP 11 prompt is hardcoded in `prompt_manager.py` (lines 132-148). Needs refactoring to use `load_skill("kickoff-suggest")`.
 
-> **V4 Phase Transition Flow** — See **Phase 5** for full specification (evaluate → done → phase modal → gap/checklist branch)
+> **After suggest** → User chooses to proceed to Phase 5 (Design) or skip to Phase 6 (Evaluation & Finalization)
 
 ### Interview Schemas
 
@@ -205,7 +205,7 @@ Event-based saving triggers:
 - [ ] 5-minute inactivity triggers auto-pause
 - [ ] Progress bar accurately shows current step / total steps
 - [ ] Quick action chips ("recommend", "skip") function correctly
-- [ ] API cost per kickoff ≤ $1 (prompt optimization effective)
+- [ ] `/kickoff-suggest` generates suggestions using `load_skill()` (not hardcoded)
 
 ---
 
@@ -220,7 +220,9 @@ Event-based saving triggers:
 | 2026-05-21 | Code cleanup: Badge component extracted (5 repetitions → 1 common component), lucide-react adopted (17 inline SVGs replaced) |
 | 2026-05-22 | Added `/kickoff-suggest` (#27-28): post-interview AI suggestion generation + review UI as Phase 4 deliverables |
 | 2026-05-22 | Implemented #11 (5-min auto-pause, frontend), #24 (type confirm/edit UI), #25 (beforeunload save), #26 (paused project resume). #4 marked N/A (no type-specific references yet) |
-| 2026-05-22 | Added V4 Phase Transition Flow (#29-39): dynamic step system, kickoff-evaluate/done/gap/checklist skill integration, proposal card, phase complete modal, gap branch UI. Design skills (How) deferred to Phase 5. "Design later" feature deferred to V2 |
+| 2026-05-22 | Added V4 Phase Transition Flow (#29-39): dynamic step system, kickoff-evaluate/done/gap/checklist skill integration, proposal card, phase complete modal, gap branch UI. Design skills (How) moved to Phase 5. "Design later" feature deferred to V2 |
+| 2026-05-25 | Restructured: #27 kickoff-suggest reverted to 🔲 (hardcoded → load_skill), removed API cost criteria, updated suggest section with harness integration (ADR-006) |
+| 2026-05-25 | Phase references updated: Design = Phase 5, Evaluation = Phase 6. Added design decision deliverable (#29) |
 
 ---
 ---
@@ -270,10 +272,11 @@ Event-based saving triggers:
 | 24 | 프로젝트 유형 감지 결과 확인/수정 UI | Frontend | ✅ | FR-002 |
 | 25 | 일시정지 버튼 + `beforeunload` 세션 저장 | Frontend | ✅ | FR-011 |
 | 26 | 이어하기 (프로젝트 목록에서 "진행 중" → 재개) | Frontend | ✅ | FR-011 |
-| 27 | `/kickoff-suggest` — AI 제안 (STEP 11로 통합) | Backend | ✅ | FR-021 |
+| 27 | `/kickoff-suggest` — 스킬 기반 AI 제안 (현재 하드코딩, `load_skill()` 전환 필요) | Backend | 🔲 | FR-021 |
 | 28 | ~~제안 검토 UI~~ (채팅 UI로 대체, 별도 UI 불필요) | — | ✅ | FR-021 |
+| 29 | 설계 진행 여부 선택 UI (suggest 완료 후 표시) | Frontend | 🔲 | FR-001 |
 
-> **V4 Phase 전환 플로우** (#29-39) → **Phase 5**로 분리됨
+> **V4 Phase 전환 플로우** (#29-39) → **Phase 6**으로 분리됨
 
 ---
 
@@ -337,25 +340,24 @@ Event-based saving triggers:
 - 첫 응답 인사이트에서 프로젝트 유형 자동 감지 후 projects 테이블 업데이트
 - 토큰 추적: input+output 토큰을 `session.token_used`에 누적
 
-**흐름**: 사용자 아이디어 → 유형 감지 → 확인 → 기획 인터뷰 (공통 7 + 유형별 3 질문) → `/kickoff-suggest` → Phase 5 (Phase 전환 & 검증)
+**흐름**: 사용자 아이디어 → 유형 감지 → 확인 → 기획 인터뷰 (공통 7 + 유형별 3 질문) → `/kickoff-suggest` → 설계 진행 여부 선택 → Phase 5(설계) 또는 Phase 6(평가 & 마무리)
 
 ### 인터뷰 후: `/kickoff-suggest`
 
-**파일**: `backend/app/api/suggest.py`, `backend/skills/kickoff-suggest.md`
+**스킬 파일**: `backend/skills/kickoff-suggest.md` (하네스에서 복사)
+**API 파일**: `backend/app/api/suggest.py` (신규 생성 예정)
 
-10단계 인터뷰 완료 후 시스템이 자동으로 `/kickoff-suggest`를 실행:
-- 수집된 인터뷰 인사이트 전체를 입력으로 사용
+10단계 인터뷰 완료 후 시스템이 STEP 11로 `/kickoff-suggest`를 실행:
+- `harness_loader.py`의 `load_skill("kickoff-suggest")`로 스킬 로드
+- 수집된 인터뷰 인사이트 전체를 입력 컨텍스트로 사용
 - Claude API를 호출하여 실행 가능한 제안 생성 (기능 아이디어, 기술 접근법, 리스크 완화)
 - 카테고리, 우선순위, 근거가 포함된 구조화된 제안 목록 반환
-- 전용 UI에서 사용자가 각 제안을 수락, 거부, 수정 가능
-- 수락된 제안은 저장되어 Phase 6 설계 스킬의 추가 컨텍스트로 전달
+- 채팅 UI에서 사용자가 각 제안을 수락, 거부, 대안 요청 가능
+- 수락된 제안은 저장되어 Phase 5 설계 및 Phase 6 평가의 추가 컨텍스트로 전달
 
-**엔드포인트**:
-- `POST /api/suggest/generate` — 완료된 인터뷰 세션에서 제안 생성
-- `GET /api/suggest/{session_id}` — 세션의 제안 목록 조회
-- `PUT /api/suggest/{suggestion_id}` — 제안 상태 업데이트 (수락/거부/수정)
+> **현재 상태**: STEP 11 프롬프트가 `prompt_manager.py` (132-148행)에 하드코딩됨. `load_skill("kickoff-suggest")` 사용으로 리팩토링 필요.
 
-> **V4 Phase 전환 플로우** — **Phase 5** 참조 (평가 → 완료 조건 → Phase 모달 → gap/checklist 분기)
+> **suggest 이후** → 설계 진행 여부 선택. 설계 선택 시 Phase 5(설계), 건너뛰기 시 Phase 6(평가 & 마무리)
 
 ### 인터뷰 스키마
 
@@ -432,7 +434,7 @@ Event-based saving triggers:
 - [ ] 5분 무응답 시 자동 일시정지 트리거
 - [ ] 프로그레스바가 현재 스텝 / 전체 스텝을 정확히 표시
 - [ ] 퀵 액션 칩 ("추천해줘", "건너뛰기") 정상 동작
-- [ ] 킥오프 1회당 API 비용 ≤ $1 (프롬프트 최적화 유효)
+- [ ] `/kickoff-suggest`가 `load_skill()` 사용하여 제안 생성 (하드코딩 아님)
 
 ---
 
@@ -447,4 +449,6 @@ Event-based saving triggers:
 | 2026-05-21 | 코드 정리: Badge 컴포넌트 추출 (5회 반복 → 공통 1개), lucide-react 도입 (인라인 SVG 17개 대체) |
 | 2026-05-22 | `/kickoff-suggest` 추가 (#27-28): 인터뷰 후 AI 제안 생성 + 검토 UI를 Phase 4 항목으로 추가 |
 | 2026-05-22 | #11 (5분 자동 일시정지, 프론트엔드), #24 (유형 확인/수정 UI), #25 (beforeunload 저장), #26 (일시정지 프로젝트 재개) 구현. #4는 N/A (유형별 Reference 미존재) |
-| 2026-05-22 | V4 Phase 전환 플로우 추가 (#29-39): 동적 스텝 시스템, kickoff-evaluate/done/gap/checklist 스킬 통합, 제안 카드, Phase 완료 모달, Gap 분기 UI. 설계 스킬 (How)은 Phase 5로 분리. "설계를 나중에" 기능은 V2로 연기 |
+| 2026-05-22 | V4 Phase 전환 플로우 추가 (#29-39): 동적 스텝 시스템, kickoff-evaluate/done/gap/checklist 스킬 통합, 제안 카드, Phase 완료 모달, Gap 분기 UI. 설계 스킬 (How)은 Phase 5로 이동. "설계를 나중에" 기능은 V2로 연기 |
+| 2026-05-25 | 재구조화: #27 kickoff-suggest 🔲로 변경 (하드코딩 → load_skill 전환), API 비용 기준 삭제, suggest 섹션 하네스 통합 반영 (ADR-006) |
+| 2026-05-25 | Phase 참조 업데이트: 설계 = Phase 5, 평가 = Phase 6. 설계 진행 여부 선택 deliverable (#29) 추가 |

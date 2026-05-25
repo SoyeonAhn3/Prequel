@@ -3,7 +3,7 @@
 > Generate the final kickoff document from all pipeline outputs, render Mermaid diagrams, and provide Markdown export with a section-based result viewer.
 
 **Status**: 🔲 Not Started
-**Prerequisites**: Phase 6 completion (Design skills) OR Phase 5 gap/checklist flow (if Design was skipped)
+**Prerequisites**: Phase 6 completion (Evaluation & Finalization)
 
 ---
 
@@ -11,10 +11,12 @@
 
 Phase 7 is the final production step of the pipeline. The document engine takes all accumulated outputs — interview insights, evaluation, completion criteria, design artifacts (if applicable), gap resolutions, and dev checklist — and generates a comprehensive Markdown kickoff document with Mermaid diagrams. The result viewer displays the document as section-based cards, and users can download the Markdown file.
 
+**Flow**: Phase 6 checklist completes → document auto-generated → result viewer displayed → user downloads Markdown via button
+
 **Pipeline input sources**:
 - Phase 4: Interview insights, AI suggestions
-- Phase 5: Evaluation, completion criteria, gap resolutions (if applicable), dev checklist (if applicable)
-- Phase 6: Requirements, architecture, data model, AI workflow (if Design was chosen)
+- Phase 5: Requirements, architecture, data model, AI workflow (if Design was chosen)
+- Phase 6: Evaluation, completion criteria, gap resolutions, dev checklist
 
 ---
 
@@ -102,6 +104,7 @@ Phase 7 is the final production step of the pipeline. The document engine takes 
 | Date | Description |
 |---|---|
 | 2026-05-22 | Initial creation — extracted from Phase 5 (Design & Doc Generation) |
+| 2026-05-25 | Prerequisites unified to Phase 6 (Evaluation & Finalization). Pipeline input sources reordered (Phase 5 = Design, Phase 6 = Eval). Added checklist → result viewer → download flow |
 
 ---
 ---
@@ -111,7 +114,7 @@ Phase 7 is the final production step of the pipeline. The document engine takes 
 > 전체 파이프라인 출력에서 최종 킥오프 문서 생성, Mermaid 다이어그램 렌더링, Markdown 내보내기 + 섹션별 결과 뷰어.
 
 **상태**: 🔲 미시작
-**선행 조건**: Phase 6 완료 (설계 스킬) 또는 Phase 5 갭/체크리스트 플로우 (설계를 건너뛴 경우)
+**선행 조건**: Phase 6 완료 (평가 & 마무리)
 
 ---
 
@@ -119,10 +122,12 @@ Phase 7 is the final production step of the pipeline. The document engine takes 
 
 Phase 7은 파이프라인의 최종 생산 단계이다. 문서 엔진이 축적된 모든 출력 — 인터뷰 인사이트, 평가, 완료 조건, 설계 산출물 (해당 시), 갭 해결, 개발 체크리스트 — 을 종합하여 Mermaid 다이어그램이 포함된 종합 Markdown 킥오프 문서를 생성한다. 결과 뷰어가 문서를 섹션별 카드로 표시하고, 사용자가 Markdown 파일을 다운로드할 수 있다.
 
+**흐름**: Phase 6 checklist 완료 → 문서 자동 생성 → 결과 뷰어 표시 → 사용자가 다운로드 버튼으로 Markdown 내보내기
+
 **파이프라인 입력 소스**:
 - Phase 4: 인터뷰 인사이트, AI 제안
-- Phase 5: 평가, 완료 조건, 갭 해결 (해당 시), 개발 체크리스트 (해당 시)
-- Phase 6: 요구사항, 아키텍처, 데이터 모델, AI 워크플로우 (설계를 선택한 경우)
+- Phase 5: 요구사항, 아키텍처, 데이터 모델, AI 워크플로우 (설계를 선택한 경우)
+- Phase 6: 평가, 완료 조건, 갭 해결, 개발 체크리스트
 
 ---
 
@@ -210,3 +215,4 @@ Phase 7은 파이프라인의 최종 생산 단계이다. 문서 엔진이 축�
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-22 | 최초 작성 — Phase 5 (설계 & 문서 생성)에서 분리 |
+| 2026-05-25 | 선행조건을 Phase 6(평가 & 마무리)으로 단일화. 파이프라인 입력 소스 순서 변경 (Phase 5 = 설계, Phase 6 = 평가). checklist → 결과 뷰어 → 다운로드 흐름 추가 |
