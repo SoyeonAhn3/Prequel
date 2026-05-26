@@ -1,22 +1,40 @@
-# Phase 7 — Document Generation & Export `🔲 Not Started`
+# Phase 7 — Document Preview & Generation `🔲 Not Started`
 
-> Generate the final kickoff document from all pipeline outputs, render Mermaid diagrams, and provide Markdown export with a section-based result viewer.
+> Progressive live document preview that builds up as the pipeline proceeds: first available after AI suggest, updated after design and evaluation.
 
 **Status**: 🔲 Not Started
-**Prerequisites**: Phase 6 completion (Evaluation & Finalization)
+**Prerequisites**: Phase 4 completion (AI suggest step), Phase 5/6 for updates
 
 ---
 
 ## Overview
 
-Phase 7 is the final production step of the pipeline. The document engine takes all accumulated outputs — interview insights, evaluation, completion criteria, design artifacts (if applicable), gap resolutions, and dev checklist — and generates a comprehensive Markdown kickoff document with Mermaid diagrams. The result viewer displays the document as section-based cards, and users can download the Markdown file.
+Phase 7 implements the **live document preview** — a read-only viewer that progressively builds the kickoff document as the user advances through the pipeline. Unlike a single-shot generation at the end, the document is generated and updated at 3 key checkpoints.
 
-**Flow**: Phase 6 checklist completes → document auto-generated → result viewer displayed → user downloads Markdown via button
+**Design reference**: `ui-reference/screen-document-preview.jsx`
 
-**Pipeline input sources**:
-- Phase 4: Interview insights, AI suggestions
-- Phase 5: Requirements, architecture, data model, AI workflow (if Design was chosen)
-- Phase 6: Evaluation, completion criteria, gap resolutions, dev checklist
+**Document generation checkpoints**:
+
+```
+Phase 4 AI suggest 완료 → doc v1 생성 (인터뷰 + 제안)
+                           → 미리보기 활성화 (RightPanel "문서 미리보기" 버튼)
+
+Phase 5 설계 완료 → doc v2 업데이트 (+ 요구사항/아키텍처/데이터 모델/AI 워크플로우)
+
+Phase 6 평가&마무리 완료 → doc v3 최종 (+ 평가/완료조건/갭/체크리스트)
+```
+
+**Design skip path**:
+```
+Phase 4 AI suggest 완료 → doc v1
+Phase 6 평가&마무리 완료 → doc v2 최종 (설계 섹션 없음)
+```
+
+**Key rules**:
+- AI 제안 완료 전에 미리보기 클릭 시 → "AI 제안 단계 이후에 미리보기가 가능합니다" 안내
+- 문서는 읽기 전용 (인라인 편집은 V2)
+- MD 다운로드만 지원 (PDF 다운로드 X)
+- 공유 기능 없음 (V2)
 
 ---
 
@@ -24,54 +42,112 @@ Phase 7 is the final production step of the pipeline. The document engine takes 
 
 | # | Task | Area | Status | Related FR |
 |---|---|---|---|---|
-| 1 | `doc_engine.py` — all results → Markdown kickoff doc | Backend | 🔲 | FR-003 |
-| 2 | Mermaid architecture diagram code generation | Backend | 🔲 | FR-005 |
-| 3 | Export API (Markdown download) | Backend | 🔲 | FR-004 |
-| 4 | Project status transition to `completed` | Backend | 🔲 | FR-013 |
-| 5 | Result viewer — section-based card UI | Frontend | 🔲 | FR-003, FR-004 |
-| 6 | Mermaid.js SVG rendering | Frontend | 🔲 | FR-005 |
-| 7 | Markdown download button | Frontend | 🔲 | FR-004 |
-| 8 | Share button (disabled, v2) | Frontend | 🔲 | — |
+| **Backend** | | | | |
+| 1 | `doc_engine.py` — 점진적 문서 생성 (v1/v2/v3 단계별) | Backend | 🔲 | FR-003 |
+| 2 | `POST /api/projects/{id}/generate-doc` — 단계별 문서 생성 트리거 | Backend | ✅ | FR-003 |
+| 3 | `GET /api/projects/{id}/export/markdown` — MD 파일 다운로드 API | Backend | 🔲 | FR-004 |
+| 4 | Phase 4 suggest 완료 시 doc v1 자동 생성 트리거 | Backend | 🔲 | FR-003 |
+| 5 | Phase 5 설계 완료 시 doc v2 자동 업데이트 트리거 | Backend | 🔲 | FR-003 |
+| 6 | Phase 6 체크리스트 완료 시 doc v3 최종 생성 + status `completed` 전환 | Backend | 🔲 | FR-003, FR-013 |
+| **Frontend** | | | | |
+| 7 | DocumentPreviewPage — 2컬럼 레이아웃 (TOC 사이드바 + 문서 본문) | Frontend | 🔲 | FR-003 |
+| 8 | TOC 사이드바 — 프로젝트 메타, 문서 완성도, 섹션 목차 (완료/작성 중/미작성) | Frontend | 🔲 | FR-003 |
+| 9 | 문서 본문 — 섹션별 카드 렌더링 (Markdown) | Frontend | 🔲 | FR-003 |
+| 10 | 상단 액션바 — "DOCUMENT PREVIEW" 헤더 + MD 다운로드 버튼 | Frontend | 🔲 | FR-004 |
+| 11 | 미리보기 비활성 상태 — AI 제안 전 안내 메시지 | Frontend | 🔲 | FR-003 |
+| 12 | RightPanel "문서 미리보기" 버튼 → DocumentPreviewPage 연결 | Frontend | 🔲 | FR-003 |
+| 13 | Mermaid.js SVG 렌더링 (아키텍처/ERD 다이어그램) | Frontend | 🔲 | FR-005 |
 
 ---
 
 ## Implementation Details
 
-### Document Generation Engine
+### Document Generation Engine (Progressive)
 
-**File**: `backend/app/core/doc_engine.py`
+**File**: `backend/app/core/doc_engine.py` (이미 생성됨)
 
-- Runs LAST, after all prior phases are complete
-- Takes full pipeline output: interview insights, suggestions, evaluation, completion criteria, requirements, architecture, data model, AI workflow
-- Calls Claude API with document generation prompt
-- Outputs structured Markdown with sections: Profile, Evaluation, Definition of Done, Requirements, Architecture, Data Model, AI Workflow (if applicable), Edge Cases
-- Stores generated document in `projects.kickoff_doc`
-- Adapts sections based on which pipeline steps were completed (with/without Design phase)
+3단계 점진적 생성. 각 단계에서 `generate_kickoff_document()`를 호출하되, 입력 소스가 다르다:
 
-### Mermaid Diagram Generation
+| Version | Trigger | Input Sources | Sections |
+|---|---|---|---|
+| v1 | Phase 4 AI suggest 완료 | 인터뷰 인사이트 + 채택된 제안 | 프로필, 대상 사용자, 핵심 기능, 기술 스택, 데이터 소스, 성공 지표, 리스크, AI 제안 |
+| v2 | Phase 5 설계 완료 | v1 + 요구사항/아키텍처/데이터 모델/AI 워크플로우 | v1 + 기능 정의, 시스템 구조, 데이터 구조, AI 흐름 |
+| v3 | Phase 6 체크리스트 완료 | v2 + 평가/완료조건/갭/체크리스트 | v2 + 정직한 평가, 완료 조건, 다음 단계 |
 
-- Included as part of the document generation Claude API call
-- Also incorporates Mermaid code generated during architecture and data model design steps (Phase 6)
-- Extracted and stored separately in `projects.mermaid_code`
-- Validated for Mermaid syntax before storage
+- `projects.kickoff_doc`에 최신 문서를 덮어쓰기 저장
+- `projects.doc_version`으로 현재 문서 버전 추적 (1/2/3)
+- 설계 건너뛰기 시: v1 → v2(최종), v2에서 설계 섹션 제외
+
+### Document Sections (screen-document-preview.jsx 기준)
+
+| # | Section | Phase Source | Status Example |
+|---|---|---|---|
+| 01 | 프로젝트 프로필 | Phase 4 (v1) | complete |
+| 02 | 기능 정의 | Phase 5 (v2) 또는 Phase 4 간략 | complete / empty |
+| 03 | 시스템 구조 | Phase 5 (v2) | complete / empty |
+| 04 | 데이터 구조 | Phase 5 (v2) | in-progress / empty |
+| 05 | AI 흐름 | Phase 5 (v2) | empty (설계 건너뛰기 시) |
+| 06 | 정직한 평가 | Phase 6 (v3) | complete / empty |
+| 07 | 완료 조건 | Phase 6 (v3) | complete / empty |
+
+각 섹션은 3가지 상태를 가진다:
+- `complete` — 해당 Phase 완료, 내용 채워짐
+- `in-progress` — 해당 Phase 진행 중
+- `empty` — 아직 해당 Phase 미진행
 
 ### Export API
 
 **File**: `backend/app/api/export.py`
 
-- `GET /api/projects/{id}/export/markdown` — returns Markdown file as streaming download
-- Sets proper `Content-Disposition` header for file download
-- MVP-1: Markdown only. PDF export planned for v2.
+- `GET /api/projects/{id}/export/markdown` — MD 파일 스트리밍 다운로드
+- `Content-Disposition: attachment; filename="{project_name}_kickoff.md"`
+- `projects.kickoff_doc`이 없으면 404
+- PDF 내보내기 없음 (V2)
 
-### Result Viewer
+### Document Preview Page
 
-**Files**: `frontend/src/pages/ResultPage.tsx`, `frontend/src/components/viewer/`
+**File**: `frontend/src/pages/DocumentPreviewPage.tsx`
 
-- Left sidebar: TOC with section navigation (~10 sections)
-- Header: project name, type tag, status, date, download buttons
-- Section cards: Profile, Requirements, Architecture, Data Model, AI Workflow, Edge Cases, Gap Resolutions, Checklist, Evaluation, DoD
-- Mermaid.js integration for SVG diagram rendering in browser
-- Share button displayed as disabled with "(v2)" label
+**Route**: `/projects/:projectId/document`
+
+2컬럼 레이아웃 (screen-document-preview.jsx 기반):
+
+**왼쪽 사이드바** (280px):
+- PROJECT 라벨 + 프로젝트명 + 유형/언어 태그
+- 문서 완성도 카드 (N% + 프로그레스바 + "N / M 섹션 완료")
+- CONTENTS 목차: 섹션별 번호, 제목, 상태 도트 (완료=green / 작성 중=accent / 미작성=gray), Phase 라벨 (P1/P2)
+- "인터뷰로 돌아가기" 버튼
+
+**메인 영역** (flex):
+- 상단 액션바: "DOCUMENT PREVIEW" + "킥오프 문서 미리보기" 헤더, "실시간 업데이트" 표시, Markdown 다운로드 버튼
+- 문서 헤더: "KICKOFF DOCUMENT · vN DRAFT · 날짜", 프로젝트명 (h1), 한줄 설명, 유형/상태 태그
+- 섹션별 카드 (DocSection 컴포넌트): 번호 + 제목 + 상태 배지, Markdown 렌더링 (기존 `<Markdown>` 컴포넌트 재활용)
+- complete 섹션: 내용 렌더링
+- in-progress 섹션: 스피너 + "작성 중" 안내 + "이어 작성" 버튼
+- empty 섹션: dashed border + "아직 작성되지 않았어요" + 안내 텍스트
+- 하단 푸터: "Last updated · N분 전"
+
+### Preview Availability Logic
+
+**RightPanel "문서 미리보기" 버튼 동작**:
+
+```
+if (project.doc_version >= 1) {
+  → navigate(`/projects/${projectId}/document`)
+} else {
+  → toast("AI 제안 단계 이후에 미리보기가 가능합니다")
+}
+```
+
+### Auto-trigger Integration
+
+각 Phase 완료 시 doc 자동 생성 트리거 위치:
+
+| Trigger Point | Where | Action |
+|---|---|---|
+| AI suggest step_complete | `interview.py` answer handler | `generate_kickoff_document(version=1)` |
+| Design Phase 5 완료 | `design.py` ai-workflow complete | `generate_kickoff_document(version=2)` |
+| Phase 6 checklist 완료 | `finalize.py` checklist complete | `generate_kickoff_document(version=3)` + status → `completed` |
 
 ---
 
@@ -79,23 +155,26 @@ Phase 7 is the final production step of the pipeline. The document engine takes 
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Document generation | Single Claude API call with full pipeline context | Better coherence than per-section generation; richer input than interview-only |
-| Mermaid validation | Server-side syntax check before storage | Prevent rendering failures on frontend |
-| Result viewer | Read-only in MVP-1 (ADR-005) | Inline editing deferred to MVP-2 to limit scope |
-| Export format | Markdown only in MVP-1 | PDF (WeasyPrint) adds deployment complexity |
-| Adaptive sections | Include/exclude based on completed steps | Users who skip Design still get a valid document |
+| Document generation | Progressive (v1→v2→v3), not single-shot | 사용자가 중간 결과를 확인하며 다음 단계 진행 여부 판단 가능 |
+| Document storage | `kickoff_doc` 단일 컬럼 덮어쓰기 | 버전 히스토리는 V2. 현재는 최신 문서만 유지 |
+| Export format | MD only | PDF는 배포 복잡성 추가 (WeasyPrint 의존). V2 고려 |
+| Share feature | 없음 | V2에서 링크 공유 + 권한 관리와 함께 추가 |
+| Preview access | AI 제안 완료 후 활성화 | 그 전에는 문서화할 충분한 인사이트가 없음 |
+| Section status | complete / in-progress / empty 3상태 | 사용자가 어디까지 진행했고 뭐가 남았는지 한눈에 파악 |
+| Mermaid rendering | 브라우저 Mermaid.js | 서버 불필요, 오픈소스, 텍스트→SVG 변환 |
 
 ---
 
 ## Completion Criteria
 
-- [ ] Kickoff document generated incorporating all pipeline outputs (interview + evaluation + design if applicable)
-- [ ] Document displays as section-based card UI in result viewer
-- [ ] Mermaid diagram renders as SVG in browser
-- [ ] Markdown download produces valid `.md` file
-- [ ] Share button visible but disabled with v2 indicator
-- [ ] Project status changes to `completed` after document generation
-- [ ] Document adapts correctly when Design phase was skipped (gap/checklist path)
+- [ ] AI 제안 완료 시 문서 v1 자동 생성, 미리보기 활성화
+- [ ] 설계 완료 시 문서 v2 업데이트 (설계 섹션 추가)
+- [ ] 평가&마무리 완료 시 문서 v3 최종 생성 + 프로젝트 status `completed`
+- [ ] 설계 건너뛰기 시 v1 → v2(최종)으로 정상 적응
+- [ ] AI 제안 전 미리보기 클릭 시 안내 메시지 표시
+- [ ] 문서 미리보기 페이지: TOC + 섹션 카드 + 상태 표시 정상 렌더링
+- [ ] Markdown 다운로드 버튼 → 유효한 `.md` 파일 다운로드
+- [ ] Mermaid 다이어그램이 설계 섹션에서 SVG로 렌더링
 
 ---
 
@@ -104,30 +183,49 @@ Phase 7 is the final production step of the pipeline. The document engine takes 
 | Date | Description |
 |---|---|
 | 2026-05-22 | Initial creation — extracted from Phase 5 (Design & Doc Generation) |
-| 2026-05-25 | Prerequisites unified to Phase 6 (Evaluation & Finalization). Pipeline input sources reordered (Phase 5 = Design, Phase 6 = Eval). Added checklist → result viewer → download flow |
+| 2026-05-25 | Prerequisites unified to Phase 6. Pipeline input sources reordered |
+| 2026-05-26 | Full restructure: single-shot → progressive generation (v1/v2/v3). PDF export removed (V2). Share feature removed (V2). Preview activates after AI suggest, not after all phases. UI based on screen-document-preview.jsx |
 
 ---
 ---
 
-# Phase 7 — 문서 생성 & 내보내기 `🔲 미시작`
+# Phase 7 — 문서 미리보기 & 생성 `🔲 미시작`
 
-> 전체 파이프라인 출력에서 최종 킥오프 문서 생성, Mermaid 다이어그램 렌더링, Markdown 내보내기 + 섹션별 결과 뷰어.
+> 파이프라인 진행에 따라 점진적으로 갱신되는 라이브 문서 미리보기: AI 제안 이후 활성화, 설계/평가 완료 시 업데이트.
 
 **상태**: 🔲 미시작
-**선행 조건**: Phase 6 완료 (평가 & 마무리)
+**선행 조건**: Phase 4 완료 (AI 제안 스텝), Phase 5/6은 업데이트용
 
 ---
 
 ## 개요
 
-Phase 7은 파이프라인의 최종 생산 단계이다. 문서 엔진이 축적된 모든 출력 — 인터뷰 인사이트, 평가, 완료 조건, 설계 산출물 (해당 시), 갭 해결, 개발 체크리스트 — 을 종합하여 Mermaid 다이어그램이 포함된 종합 Markdown 킥오프 문서를 생성한다. 결과 뷰어가 문서를 섹션별 카드로 표시하고, 사용자가 Markdown 파일을 다운로드할 수 있다.
+Phase 7은 **라이브 문서 미리보기**를 구현한다 — 사용자가 파이프라인을 진행하면서 킥오프 문서가 점진적으로 채워지는 읽기 전용 뷰어. 마지막에 한번 생성하는 방식이 아니라, 3개 핵심 체크포인트에서 문서를 생성/업데이트한다.
 
-**흐름**: Phase 6 checklist 완료 → 문서 자동 생성 → 결과 뷰어 표시 → 사용자가 다운로드 버튼으로 Markdown 내보내기
+**디자인 레퍼런스**: `ui-reference/screen-document-preview.jsx`
 
-**파이프라인 입력 소스**:
-- Phase 4: 인터뷰 인사이트, AI 제안
-- Phase 5: 요구사항, 아키텍처, 데이터 모델, AI 워크플로우 (설계를 선택한 경우)
-- Phase 6: 평가, 완료 조건, 갭 해결, 개발 체크리스트
+**문서 생성 체크포인트**:
+
+```
+Phase 4 AI 제안 완료 → doc v1 생성 (인터뷰 + 제안)
+                        → 미리보기 활성화 (RightPanel "문서 미리보기" 버튼)
+
+Phase 5 설계 완료 → doc v2 업데이트 (+ 요구사항/아키텍처/데이터 모델/AI 워크플로우)
+
+Phase 6 평가&마무리 완료 → doc v3 최종 (+ 평가/완료조건/갭/체크리스트)
+```
+
+**설계 건너뛰기 경로**:
+```
+Phase 4 AI 제안 완료 → doc v1
+Phase 6 평가&마무리 완료 → doc v2 최종 (설계 섹션 없음)
+```
+
+**핵심 규칙**:
+- AI 제안 완료 전에 미리보기 클릭 시 → "AI 제안 단계 이후에 미리보기가 가능합니다" 안내
+- 문서는 읽기 전용 (인라인 편집은 V2)
+- MD 다운로드만 지원 (PDF 다운로드 X)
+- 공유 기능 없음 (V2)
 
 ---
 
@@ -135,54 +233,112 @@ Phase 7은 파이프라인의 최종 생산 단계이다. 문서 엔진이 축�
 
 | # | 작업 | 영역 | 상태 | 관련 FR |
 |---|---|---|---|---|
-| 1 | `doc_engine.py` — 전체 결과 → Markdown 킥오프 문서 | Backend | 🔲 | FR-003 |
-| 2 | Mermaid 아키텍처 다이어그램 코드 자동 생성 | Backend | 🔲 | FR-005 |
-| 3 | 내보내기 API (Markdown 다운로드) | Backend | 🔲 | FR-004 |
-| 4 | 프로젝트 status를 `completed`로 전환 | Backend | 🔲 | FR-013 |
-| 5 | 결과 뷰어 — 섹션별 카드 UI | Frontend | 🔲 | FR-003, FR-004 |
-| 6 | Mermaid.js SVG 렌더링 | Frontend | 🔲 | FR-005 |
-| 7 | Markdown 다운로드 버튼 | Frontend | 🔲 | FR-004 |
-| 8 | 공유 버튼 (비활성, v2) | Frontend | 🔲 | — |
+| **백엔드** | | | | |
+| 1 | `doc_engine.py` — 점진적 문서 생성 (v1/v2/v3 단계별) | Backend | 🔲 | FR-003 |
+| 2 | `POST /api/projects/{id}/generate-doc` — 단계별 문서 생성 트리거 | Backend | ✅ | FR-003 |
+| 3 | `GET /api/projects/{id}/export/markdown` — MD 파일 다운로드 API | Backend | 🔲 | FR-004 |
+| 4 | Phase 4 suggest 완료 시 doc v1 자동 생성 트리거 | Backend | 🔲 | FR-003 |
+| 5 | Phase 5 설계 완료 시 doc v2 자동 업데이트 트리거 | Backend | 🔲 | FR-003 |
+| 6 | Phase 6 체크리스트 완료 시 doc v3 최종 생성 + status `completed` 전환 | Backend | 🔲 | FR-003, FR-013 |
+| **프론트엔드** | | | | |
+| 7 | DocumentPreviewPage — 2컬럼 레이아웃 (TOC 사이드바 + 문서 본문) | Frontend | 🔲 | FR-003 |
+| 8 | TOC 사이드바 — 프로젝트 메타, 문서 완성도, 섹션 목차 (완료/작성 중/미작성) | Frontend | 🔲 | FR-003 |
+| 9 | 문서 본문 — 섹션별 카드 렌더링 (Markdown) | Frontend | 🔲 | FR-003 |
+| 10 | 상단 액션바 — "DOCUMENT PREVIEW" 헤더 + MD 다운로드 버튼 | Frontend | 🔲 | FR-004 |
+| 11 | 미리보기 비활성 상태 — AI 제안 전 안내 메시지 | Frontend | 🔲 | FR-003 |
+| 12 | RightPanel "문서 미리보기" 버튼 → DocumentPreviewPage 연결 | Frontend | 🔲 | FR-003 |
+| 13 | Mermaid.js SVG 렌더링 (아키텍처/ERD 다이어그램) | Frontend | 🔲 | FR-005 |
 
 ---
 
 ## 구현 상세
 
-### 문서 생성 엔진
+### 문서 생성 엔진 (점진적)
 
-**파일**: `backend/app/core/doc_engine.py`
+**파일**: `backend/app/core/doc_engine.py` (이미 생성됨)
 
-- 모든 이전 Phase 완료 후 **맨 마지막**에 실행
-- 전체 파이프라인 출력을 입력으로 사용: 인터뷰 인사이트, 제안, 평가, 완료 조건, 요구사항, 아키텍처, 데이터 모델, AI 워크플로우
-- 문서 생성 프롬프트로 Claude API 호출
-- 구조화된 Markdown 출력: 프로필, 평가, 완료조건, 요구사항, 아키텍처, 데이터 모델, AI 워크플로우 (해당 시), 엣지케이스
-- 생성된 문서를 `projects.kickoff_doc`에 저장
-- 완료된 파이프라인 단계에 따라 섹션을 적응적으로 포함/제외 (설계 Phase 유무)
+3단계 점진적 생성. 각 단계에서 `generate_kickoff_document()`를 호출하되, 입력 소스가 다르다:
 
-### Mermaid 다이어그램 생성
+| 버전 | 트리거 | 입력 소스 | 섹션 |
+|---|---|---|---|
+| v1 | Phase 4 AI 제안 완료 | 인터뷰 인사이트 + 채택된 제안 | 프로필, 대상 사용자, 핵심 기능, 기술 스택, 데이터 소스, 성공 지표, 리스크, AI 제안 |
+| v2 | Phase 5 설계 완료 | v1 + 요구사항/아키텍처/데이터 모델/AI 워크플로우 | v1 + 기능 정의, 시스템 구조, 데이터 구조, AI 흐름 |
+| v3 | Phase 6 체크리스트 완료 | v2 + 평가/완료조건/갭/체크리스트 | v2 + 정직한 평가, 완료 조건, 다음 단계 |
 
-- 문서 생성 Claude API 호출의 일부로 포함
-- 아키텍처 및 데이터 모델 설계 단계 (Phase 6)에서 생성된 Mermaid 코드도 통합
-- 별도 추출하여 `projects.mermaid_code`에 저장
-- 저장 전 Mermaid 문법 검증
+- `projects.kickoff_doc`에 최신 문서를 덮어쓰기 저장
+- `projects.doc_version`으로 현재 문서 버전 추적 (1/2/3)
+- 설계 건너뛰기 시: v1 → v2(최종), v2에서 설계 섹션 제외
+
+### 문서 섹션 (screen-document-preview.jsx 기준)
+
+| # | 섹션 | Phase 소스 | 상태 예시 |
+|---|---|---|---|
+| 01 | 프로젝트 프로필 | Phase 4 (v1) | complete |
+| 02 | 기능 정의 | Phase 5 (v2) 또는 Phase 4 간략 | complete / empty |
+| 03 | 시스템 구조 | Phase 5 (v2) | complete / empty |
+| 04 | 데이터 구조 | Phase 5 (v2) | in-progress / empty |
+| 05 | AI 흐름 | Phase 5 (v2) | empty (설계 건너뛰기 시) |
+| 06 | 정직한 평가 | Phase 6 (v3) | complete / empty |
+| 07 | 완료 조건 | Phase 6 (v3) | complete / empty |
+
+각 섹션은 3가지 상태를 가진다:
+- `complete` — 해당 Phase 완료, 내용 채워짐
+- `in-progress` — 해당 Phase 진행 중
+- `empty` — 아직 해당 Phase 미진행
 
 ### 내보내기 API
 
 **파일**: `backend/app/api/export.py`
 
-- `GET /api/projects/{id}/export/markdown` — Markdown 파일을 스트리밍 다운로드로 반환
-- 파일 다운로드를 위한 `Content-Disposition` 헤더 설정
-- MVP-1: Markdown만. PDF 내보내기는 v2 예정.
+- `GET /api/projects/{id}/export/markdown` — MD 파일 스트리밍 다운로드
+- `Content-Disposition: attachment; filename="{project_name}_kickoff.md"`
+- `projects.kickoff_doc`이 없으면 404
+- PDF 내보내기 없음 (V2)
 
-### 결과 뷰어
+### 문서 미리보기 페이지
 
-**파일**: `frontend/src/pages/ResultPage.tsx`, `frontend/src/components/viewer/`
+**파일**: `frontend/src/pages/DocumentPreviewPage.tsx`
 
-- 왼쪽 사이드바: 섹션 네비게이션이 있는 TOC (~10개 섹션)
-- 헤더: 프로젝트명, 유형 태그, 상태, 날짜, 다운로드 버튼
-- 섹션 카드: 프로필, 요구사항, 아키텍처, 데이터 모델, AI 워크플로우, 엣지케이스, 갭 해결, 체크리스트, 평가, 완료조건
-- 브라우저에서 SVG 다이어그램 렌더링을 위한 Mermaid.js 통합
-- 공유 버튼은 "(v2)" 라벨과 함께 비활성 상태로 표시
+**라우트**: `/projects/:projectId/document`
+
+2컬럼 레이아웃 (screen-document-preview.jsx 기반):
+
+**왼쪽 사이드바** (280px):
+- PROJECT 라벨 + 프로젝트명 + 유형/언어 태그
+- 문서 완성도 카드 (N% + 프로그레스바 + "N / M 섹션 완료")
+- CONTENTS 목차: 섹션별 번호, 제목, 상태 도트 (완료=green / 작성 중=accent / 미작성=gray), Phase 라벨 (P1/P2)
+- "인터뷰로 돌아가기" 버튼
+
+**메인 영역** (flex):
+- 상단 액션바: "DOCUMENT PREVIEW" + "킥오프 문서 미리보기" 헤더, "실시간 업데이트" 표시, Markdown 다운로드 버튼
+- 문서 헤더: "KICKOFF DOCUMENT · vN DRAFT · 날짜", 프로젝트명 (h1), 한줄 설명, 유형/상태 태그
+- 섹션별 카드 (DocSection 컴포넌트): 번호 + 제목 + 상태 배지, Markdown 렌더링 (기존 `<Markdown>` 컴포넌트 재활용)
+- complete 섹션: 내용 렌더링
+- in-progress 섹션: 스피너 + "작성 중" 안내 + "이어 작성" 버튼
+- empty 섹션: dashed border + "아직 작성되지 않았어요" + 안내 텍스트
+- 하단 푸터: "Last updated · N분 전"
+
+### 미리보기 활성화 로직
+
+**RightPanel "문서 미리보기" 버튼 동작**:
+
+```
+if (project.doc_version >= 1) {
+  → navigate(`/projects/${projectId}/document`)
+} else {
+  → toast("AI 제안 단계 이후에 미리보기가 가능합니다")
+}
+```
+
+### 자동 트리거 연동
+
+각 Phase 완료 시 문서 자동 생성 트리거 위치:
+
+| 트리거 시점 | 위치 | 동작 |
+|---|---|---|
+| AI suggest step_complete | `interview.py` answer handler | `generate_kickoff_document(version=1)` |
+| 설계 Phase 5 완료 | `design.py` ai-workflow complete | `generate_kickoff_document(version=2)` |
+| Phase 6 checklist 완료 | `finalize.py` checklist complete | `generate_kickoff_document(version=3)` + status → `completed` |
 
 ---
 
@@ -190,23 +346,26 @@ Phase 7은 파이프라인의 최종 생산 단계이다. 문서 엔진이 축�
 
 | 결정 | 선택 | 근거 |
 |---|---|---|
-| 문서 생성 방식 | 전체 파이프라인 컨텍스트를 포함한 단일 Claude API 호출 | 섹션별 생성보다 일관성이 높음; 인터뷰만보다 풍부한 입력 |
-| Mermaid 검증 | 저장 전 서버 측 문법 검사 | 프론트엔드 렌더링 실패 방지 |
-| 결과 뷰어 | MVP-1에서는 읽기 전용 (ADR-005) | 인라인 편집은 MVP-2로 범위 제한 |
-| 내보내기 형식 | MVP-1에서는 Markdown만 | PDF(WeasyPrint)는 배포 복잡성 추가 |
-| 적응형 섹션 | 완료된 단계에 따라 포함/제외 | 설계를 건너뛴 사용자도 유효한 문서 생성 |
+| 문서 생성 방식 | 점진적 (v1→v2→v3), 단발 생성 아님 | 사용자가 중간 결과를 확인하며 다음 단계 진행 여부 판단 가능 |
+| 문서 저장 | `kickoff_doc` 단일 컬럼 덮어쓰기 | 버전 히스토리는 V2. 현재는 최신 문서만 유지 |
+| 내보내기 형식 | MD만 | PDF는 배포 복잡성 추가 (WeasyPrint 의존). V2 고려 |
+| 공유 기능 | 없음 | V2에서 링크 공유 + 권한 관리와 함께 추가 |
+| 미리보기 접근 | AI 제안 완료 후 활성화 | 그 전에는 문서화할 충분한 인사이트가 없음 |
+| 섹션 상태 | complete / in-progress / empty 3상태 | 사용자가 어디까지 진행했고 뭐가 남았는지 한눈에 파악 |
+| Mermaid 렌더링 | 브라우저 Mermaid.js | 서버 불필요, 오픈소스, 텍스트→SVG 변환 |
 
 ---
 
 ## 완료 기준
 
-- [ ] 전체 파이프라인 출력 (인터뷰 + 평가 + 해당 시 설계)을 반영한 킥오프 문서 생성
-- [ ] 결과 뷰어에서 문서가 섹션별 카드 UI로 표시
-- [ ] Mermaid 다이어그램이 브라우저에서 SVG로 렌더링
-- [ ] Markdown 다운로드가 유효한 `.md` 파일 생성
-- [ ] 공유 버튼이 v2 표시와 함께 보이되 비활성
-- [ ] 문서 생성 후 프로젝트 상태가 `completed`로 변경
-- [ ] 설계 Phase를 건너뛴 경우 (갭/체크리스트 경로) 문서가 정상적으로 적응
+- [ ] AI 제안 완료 시 문서 v1 자동 생성, 미리보기 활성화
+- [ ] 설계 완료 시 문서 v2 업데이트 (설계 섹션 추가)
+- [ ] 평가&마무리 완료 시 문서 v3 최종 생성 + 프로젝트 status `completed`
+- [ ] 설계 건너뛰기 시 v1 → v2(최종)으로 정상 적응
+- [ ] AI 제안 전 미리보기 클릭 시 안내 메시지 표시
+- [ ] 문서 미리보기 페이지: TOC + 섹션 카드 + 상태 표시 정상 렌더링
+- [ ] Markdown 다운로드 버튼 → 유효한 `.md` 파일 다운로드
+- [ ] Mermaid 다이어그램이 설계 섹션에서 SVG로 렌더링
 
 ---
 
@@ -215,4 +374,5 @@ Phase 7은 파이프라인의 최종 생산 단계이다. 문서 엔진이 축�
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-22 | 최초 작성 — Phase 5 (설계 & 문서 생성)에서 분리 |
-| 2026-05-25 | 선행조건을 Phase 6(평가 & 마무리)으로 단일화. 파이프라인 입력 소스 순서 변경 (Phase 5 = 설계, Phase 6 = 평가). checklist → 결과 뷰어 → 다운로드 흐름 추가 |
+| 2026-05-25 | 선행조건을 Phase 6으로 단일화. 파이프라인 입력 소스 순서 변경 |
+| 2026-05-26 | 전면 재구조화: 단발 생성 → 점진적 생성 (v1/v2/v3). PDF 내보내기 삭제 (V2). 공유 기능 삭제 (V2). AI 제안 이후 미리보기 활성화. screen-document-preview.jsx 기반 UI 설계 반영 |

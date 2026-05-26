@@ -75,7 +75,15 @@ def build_system_prompt(
         skill_text = ""
 
     step_number = step_index + 1
-    step_content = extract_step(skill_text, step_number)
+
+    if INTERVIEW_STEPS[step_index]["topic"] == "suggestions":
+        try:
+            step_content = load_skill("kickoff-suggest")
+        except FileNotFoundError:
+            step_content = ""
+    else:
+        step_content = extract_step(skill_text, step_number)
+
     step_content = remove_cli_directives(step_content)
 
     lang_instruction = "한국어로 대화합니다." if language == "ko" else "Communicate in English."
@@ -127,23 +135,6 @@ def build_system_prompt(
         blocks.append({
             "type": "text",
             "text": f"\n현재 단계 지시사항:\n{step_content}",
-        })
-
-    if step_number == len(INTERVIEW_STEPS):
-        blocks.append({
-            "type": "text",
-            "text": (
-                "\n현재 단계 지시사항:\n"
-                "## STEP 11 — AI 제안\n"
-                "지금까지 수집된 모든 정보를 바탕으로 프로젝트에 도움이 될 제안을 합니다.\n\n"
-                "아래 카테고리별로 2~3개씩 실행 가능한 제안을 마크다운으로 작성하세요:\n"
-                "1. **기능 아이디어** — 사용자가 언급하지 않았지만 유용할 수 있는 기능\n"
-                "2. **기술적 접근** — 아키텍처, 기술 스택, 데이터 처리 관련 제안\n"
-                "3. **리스크 대응** — 식별된 리스크에 대한 구체적 완화 방안\n\n"
-                "각 제안에는 **제안 내용**, **기대 효과**, **우선순위(높음/중간/낮음)**를 포함하세요.\n"
-                "사용자가 제안을 검토하고 피드백하면 반영하세요.\n"
-                "사용자가 만족하면 step_complete: true를 반환하세요.\n"
-            ),
         })
 
     return blocks

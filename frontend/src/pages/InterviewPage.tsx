@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
+import { PenTool, FastForward } from 'lucide-react'
 import { useAuthContext } from '../contexts/AuthContext'
 import { apiFetch } from '../lib/api'
 import LeftRail from '../components/interview/LeftRail'
@@ -130,6 +131,7 @@ export default function InterviewPage() {
   const [lastSavedLabel, setLastSavedLabel] = useState('방금 전')
   const [showInactiveWarning, setShowInactiveWarning] = useState(false)
   const [typeToConfirm, setTypeToConfirm] = useState<string | null>(null)
+  const [decidingDesign, setDecidingDesign] = useState(false)
 
   const startTimeRef = useRef(Date.now())
   const timerRef = useRef<ReturnType<typeof setInterval>>()
@@ -219,6 +221,19 @@ export default function InterviewPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [pageStatus, sessionId])
 
+  const handlePause = useCallback(async () => {
+    if (!sessionId) return
+    try {
+      await apiFetch('/interview/pause', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sessionId }),
+      })
+      navigate('/projects')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '일시정지에 실패했습니다')
+    }
+  }, [sessionId, navigate])
+
   // #11: 5-min inactivity auto-pause
   useEffect(() => {
     if (pageStatus !== 'active') return
@@ -250,38 +265,30 @@ export default function InterviewPage() {
       try {
         const projects = await apiFetch<Project[]>('/projects')
         const proj = projects.find((p) => p.id === projectId)
-        if (proj)
+        if (proj) {
           setProject({ name: proj.name, type: proj.project_type ?? '', language: proj.language })
+          if (proj.status === 'designing' || proj.status === 'evaluating') {
+            navigate('/projects')
+            return
+          }
+        }
 
         const { session } = await apiFetch<{
           session: { id: string; status: string; current_question: number } | null
         }>(`/interview/session/${projectId}`)
 
-        if (session) {
-          if (session.status === 'completed') {
-            answerCountRef.current = session.current_question
-            setStats((prev) => ({ ...prev, answerCount: session.current_question }))
-            setPageStatus('completed')
-            return
-          }
-          if (session.status === 'active') {
-            await apiFetch('/interview/pause', {
-              method: 'POST',
-              body: JSON.stringify({ session_id: session.id }),
-            })
-          }
-          const res = await apiFetch<InterviewApiResponse>('/interview/resume', {
-            method: 'POST',
-            body: JSON.stringify({ session_id: session.id }),
-          })
-          applyApiResponse(res)
-        } else {
-          const res = await apiFetch<InterviewApiResponse>('/interview/start', {
-            method: 'POST',
-            body: JSON.stringify({ project_id: projectId }),
-          })
-          applyApiResponse(res)
+        if (session?.status === 'completed') {
+          answerCountRef.current = session.current_question
+          setStats((prev) => ({ ...prev, answerCount: session.current_question }))
+          setPageStatus('completed')
+          return
         }
+
+        const res = await apiFetch<InterviewApiResponse>('/interview/start', {
+          method: 'POST',
+          body: JSON.stringify({ project_id: projectId }),
+        })
+        applyApiResponse(res)
 
         startTimeRef.current = Date.now()
       } catch (e) {
@@ -314,18 +321,24 @@ export default function InterviewPage() {
     [sessionId, sending, applyApiResponse],
   )
 
-  const handlePause = useCallback(async () => {
-    if (!sessionId) return
+  const handleDesignDecision = useCallback(async (decision: 'design' | 'skip') => {
+    if (!projectId || decidingDesign) return
+    setDecidingDesign(true)
     try {
-      await apiFetch('/interview/pause', {
+      await apiFetch(`/projects/${projectId}/design-decision`, {
         method: 'POST',
-        body: JSON.stringify({ session_id: sessionId }),
+        body: JSON.stringify({ decision }),
       })
-      navigate('/projects')
+      if (decision === 'design') {
+        navigate(`/projects/${projectId}/design`)
+      } else {
+        navigate('/projects')
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : '일시정지에 실패했습니다')
+      setError(e instanceof Error ? e.message : '선택 저장에 실패했습니다')
+      setDecidingDesign(false)
     }
-  }, [sessionId, navigate])
+  }, [projectId, decidingDesign, navigate])
 
   const handleTypeConfirm = useCallback(async (confirmedType: string) => {
     typeConfirmedRef.current = true
@@ -375,20 +388,57 @@ export default function InterviewPage() {
   if (pageStatus === 'completed') {
     return (
       <div className="h-screen flex items-center justify-center bg-bg">
-        <div className="text-center max-w-sm">
-          <div className="w-14 h-14 rounded-full bg-green flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl font-bold">&#10003;</span>
+        <div className="max-w-xl w-full px-6">
+          <div className="text-center mb-8">
+            <div className="w-14 h-14 rounded-full bg-green flex items-center justify-center mx-auto mb-4">
+              <span className="text-white text-xl font-bold">&#10003;</span>
+            </div>
+            <h2 className="text-lg font-bold text-text mb-2">인터뷰가 완료되었습니다</h2>
+            <p className="text-sm text-text-muted">
+              총 {stats.answerCount}개 질문에 답변하셨습니다. 다음 단계를 선택해주세요.
+            </p>
           </div>
-          <h2 className="text-lg font-bold text-text mb-2">인터뷰가 완료되었습니다</h2>
-          <p className="text-sm text-text-muted mb-6">
-            총 {stats.answerCount}개 질문에 답변하셨습니다.
-          </p>
-          <button
-            onClick={() => navigate('/projects')}
-            className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg cursor-pointer border-none"
-          >
-            프로젝트 목록으로
-          </button>
+
+          <div className="flex gap-4 mb-6">
+            <button
+              onClick={() => handleDesignDecision('design')}
+              disabled={decidingDesign}
+              className="flex-1 p-5 bg-surface border-2 border-accent/30 rounded-xl text-left hover:border-accent hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+            >
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
+                <PenTool className="w-5 h-5 text-accent" />
+              </div>
+              <h3 className="text-sm font-bold text-text mb-1.5">설계 진행</h3>
+              <p className="text-xs text-text-muted leading-relaxed">
+                요구사항, 아키텍처, 데이터 모델, AI 워크플로우를 단계별로 설계합니다.
+              </p>
+              <div className="mt-3 text-[11px] text-accent font-semibold">추천 — 복잡한 프로젝트</div>
+            </button>
+
+            <button
+              onClick={() => handleDesignDecision('skip')}
+              disabled={decidingDesign}
+              className="flex-1 p-5 bg-surface border-2 border-border rounded-xl text-left hover:border-text-muted hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+            >
+              <div className="w-10 h-10 rounded-lg bg-text-muted/10 flex items-center justify-center mb-3">
+                <FastForward className="w-5 h-5 text-text-muted" />
+              </div>
+              <h3 className="text-sm font-bold text-text mb-1.5">건너뛰기</h3>
+              <p className="text-xs text-text-muted leading-relaxed">
+                설계를 건너뛰고 바로 평가 및 킥오프 문서 생성으로 진행합니다.
+              </p>
+              <div className="mt-3 text-[11px] text-text-muted font-semibold">빠른 진행 — 단순한 프로젝트</div>
+            </button>
+          </div>
+
+          <div className="text-center">
+            <button
+              onClick={() => navigate('/projects')}
+              className="text-xs text-text-muted hover:text-text underline cursor-pointer bg-transparent border-none"
+            >
+              나중에 결정하기
+            </button>
+          </div>
         </div>
       </div>
     )

@@ -1,132 +1,277 @@
-# Phase 5 — Design (How) `🔲 Not Started`
+# Phase 5 — Design (How) `In Progress`
 
-> Post-kickoff design phase: requirements → architecture → data model → AI workflow, using a wizard-style shell UI designed for beginners.
+> Post-kickoff design phase: 9-screen guided flow — welcome → requirements → architecture → data model → AI workflow → completion, with step transitions between each. Wizard-style shell UI designed for beginners.
 
-**Status**: 🔲 Not Started
+**Status**: In Progress (Backend ✅, Frontend rewriting)
 **Prerequisites**: Phase 4 completion (Kickoff + user chose to proceed with design)
+**Design reference**: `ui-reference/design-phase-flow-standalone.jsx` (9 screens, standalone)
 
 ---
 
 ## Overview
 
-After Phase 4 kickoff completes and the user chooses to proceed with design, Phase 5 transforms collected interview insights into structured design artifacts through 4 sequential design steps.
+After Phase 4 kickoff completes and the user chooses to proceed with design, Phase 5 transforms collected interview insights into structured design artifacts through a **9-screen guided flow**.
+
+### Screen flow (9 screens)
+
+```
+00 · Welcome → 01-A · Requirements → 01→02 Transition
+→ 02-A · Architecture → 02→03 Transition
+→ 03-A · Data Model → 03→04 Transition
+→ 04-A · AI Workflow → 05 · Complete
+```
 
 **Pipeline order**: `/design-requirements` → `/design-architecture` → `/design-data-model` → `/design-ai-workflow`
 
-Each design skill takes interview insights + accepted suggestions as input and produces structured output. The pipeline feeds forward — requirements inform architecture, architecture informs data model. Each design skill is loaded via `load_skill()` from `harness_loader.py` (ADR-006).
+Each design skill takes interview insights + prior step outputs as input and produces structured output. The pipeline feeds forward — requirements inform architecture, architecture informs data model. Each design skill is loaded via `load_skill()` from `harness_loader.py` (ADR-006).
 
-**Design UI** is a dedicated wizard-style shell (not chat-based), designed for **"people who don't know much about design/architecture"** — leaning on examples, visual choices, and plain Korean explanations. Reference: `ui-reference/screen-design-shell.jsx`
+**Design UI** is a 9-screen guided wizard (not chat-based), designed for **"people who don't know much about design/architecture"** — featuring AI question bubbles, clickable suggestion lists, template choosers, visual pipeline diagrams, and plain Korean explanations. Uses the shared `Frame` + `TopBar` for consistent app navigation.
 
 > **Note**: After design completes, Phase 6 (Evaluation & Finalization) runs evaluate → done → gap → checklist. "Design later" feature is deferred to **V2**.
+
+> **Scope exclusion**: AI model selection (Sonnet/Haiku/Opus picker) and cost estimation are deferred to V2.
 
 ---
 
 ## Deliverables
 
-| # | Task | Area | Status | Related FR |
-|---|---|---|---|---|
-| 1 | `/design-requirements` — functional/non-functional requirements generation | Backend | 🔲 | FR-022 |
-| 2 | Requirements review UI (priority matrix, accept/edit) | Frontend | 🔲 | FR-022 |
-| 3 | `/design-architecture` — system architecture design | Backend | 🔲 | FR-023 |
-| 4 | Architecture review UI (component diagram, tech stack) | Frontend | 🔲 | FR-023 |
-| 5 | `/design-data-model` — data model & schema design | Backend | 🔲 | FR-024 |
-| 6 | Data model review UI (ERD, field descriptions) | Frontend | 🔲 | FR-024 |
-| 7 | `/design-ai-workflow` — AI/ML pipeline design (AI-only, no user interaction) | Backend | 🔲 | FR-025 |
-| 8 | Design Shell UI — 3-column wizard layout with beginner-friendly primitives | Frontend | 🔲 | — |
+### Backend (✅ Complete — no changes needed)
+
+| # | Task | Status | Related FR |
+|---|---|---|---|
+| B1 | `/design-requirements` — functional/non-functional requirements generation | ✅ | FR-022 |
+| B2 | `/design-architecture` — system architecture design | ✅ | FR-023 |
+| B3 | `/design-data-model` — data model & schema design | ✅ | FR-024 |
+| B4 | `/design-ai-workflow` — AI/ML pipeline design | ✅ | FR-025 |
+| B5 | `design_sessions` DB table + migration (006) | ✅ | — |
+| B6 | Truncated JSON auto-repair (`_repair_truncated_json`) | ✅ | — |
+| B7 | Project status routing (`designing` status support) | ✅ | — |
+
+### Frontend (Rewriting — match `design-phase-flow-standalone.jsx`)
+
+| # | Task | Status |
+|---|---|---|
+| F1 | Shared `Frame` + `TopBar` component (56px nav bar, tabs, user avatar, credits) | |
+| F2 | Shared `Btn` component (primary/secondary/ghost/soft/danger × sm/md/lg) | |
+| F3 | `AiQuestion` component — AI question bubble (AiMarkD + accent border + hint) | |
+| F4 | `AiSuggestionList` component — clickable suggestion cards with + button | |
+| F5 | `StepTransition` component — step complete/summary/next preview full-page | |
+| F6 | `ScreenDesignWelcome` — welcome page (4-step preview cards, CTA) | |
+| F7 | `ScreenDesignStep1Start` — requirements (AiQuestion + empty state + suggestions + direct input) | |
+| F8 | `ScreenDesignStep2Start` — architecture (TemplateCard selection + SVG diagram + component explanations) | |
+| F9 | `ScreenDesignStep3Start` — data model (3-col entity grid + relationship cards + validation rules) | |
+| F10 | `ScreenDesignStep4Start` — AI workflow (INPUT→AI→OUTPUT pipeline + fallback strategy) | |
+| F11 | `ScreenDesignComplete` — completion page (stats + summary + export buttons + Phase 3 CTA) | |
+| F12 | `ArchHelperPanel` — right 300px panel (guide + glossary) | |
+| F13 | `DataHelperPanel` — right 300px panel (Excel analogy + type explanations) | |
+| F14 | `AiHelperPanel` — right 300px panel (3-question guide + fallback tips) | |
+| F15 | `DesignStepFooter` update — step-specific primary labels ("시스템 구조로 →" etc.) | |
+| F16 | `DesignShell` update — integrate Frame wrapper + right helper panel slot | |
+| F17 | `AiSuggestionList` dynamic data binding — connect to backend recommendation based on interview context | |
+| F18 | `ArchitectureStep` dynamic SVG generation — render diagram from `session.architecture.components[]` | |
+| F19 | `AiWorkflowStep` dynamic IO pipeline — parse `session.ai_workflow` for INPUT/OUTPUT lists | |
+| F20 | `StepTransition` dynamic summaries — extract summary from each step's session data | |
+| F21 | `DataModelStep` dynamic validation rules — derive integrity rules from `session.data_model` analysis | |
+
+---
+
+## 9-Screen Specification
+
+### Screen 00 · `ScreenDesignWelcome` (진입)
+
+Full-page welcome, centered content (maxWidth 760px).
+
+- "PHASE 2 of 3 · 시작" pill badge
+- Title: "이제 **설계 단계**를 시작할게요"
+- Subtitle: "네 가지 질문에 답하시면 됩니다"
+- 2×2 grid: 4 step preview cards (icon 40px + step number + name + question + ~5분)
+- "완료하면 얻는 것" green info box (check icon + description)
+- Primary CTA: "네, 설계를 시작할게요" (accent + shadow)
+- Ghost CTA: "나중에 결정할게요"
+
+### Screen 01-A · `ScreenDesignStep1Start` (기능 정의)
+
+DesignShell with activeStep="requirements", no helper panel.
+
+- `DesignStepHeader`: "이 도구가 할 수 있는 일을 정의해볼까요?", currentQ=1, totalQ=5
+- `AiQuestion`: "사용자가 이 도구를 사용하면서 **꼭 할 수 있어야 하는 일**이 무엇인가요?" + hint
+- Empty state card: "아직 추가된 기능이 없어요" (features icon + dashed border)
+- `AiSuggestionList`: AI-generated suggestions with clickable + buttons for individual addition
+- Direct input area: text input with "Enter로 추가" hint + "+ 추가" Btn
+- Footer: "다음 질문 →"
+
+### Screen 01→02 · `StepTransition` (기능→시스템)
+
+Full-page transition (maxWidth 680px, centered).
+
+- Green check icon (56px) + "STEP 01 COMPLETE"
+- "기능 정의 완료!" title
+- Summary card: bullet list of what was defined + "편집" link
+- Next preview: accentSoft card with "다음 · STEP 02" + "시스템 구조" + preview text
+- Buttons: "이전 단계 다시 보기" (secondary) + "시스템 구조 시작하기" (primary)
+
+### Screen 02-A · `ScreenDesignStep2Start` (시스템 구조)
+
+DesignShell with activeStep="architecture", helperPanel={ArchHelperPanel}.
+
+- `DesignStepHeader`: "이 도구의 부품들을 골라볼까요?", currentQ=3, totalQ=5
+- `Explainer`: "시스템 구조 = 아키텍처 (Architecture)"
+- "추천 조합 골라보기" — 3-column `TemplateCard` grid (간단/확장/실시간)
+- "선택한 조합 미리보기" — **custom SVG architecture diagram** (color-coded boxes + arrows)
+  - Blue (accentSoft) = user-facing, Green (greenSoft) = storage, Amber (amberSoft) = AI
+  - Color legend at bottom
+- "각 부품을 왜 골랐나요?" — component explanation cards (emoji + name + reason + "자동 선택됨" badge)
+- Footer: "데이터 구조로 →"
+
+### Screen 02→03 · `StepTransition` (시스템→데이터)
+
+Same pattern as 01→02 with architecture summary.
+
+### Screen 03-A · `ScreenDesignStep3Start` (데이터 구조)
+
+DesignShell with activeStep="data-model", helperPanel={DataHelperPanel}.
+
+- `DesignStepHeader`: "저장해야 할 정보를 정리해볼까요?", currentQ=4, totalQ=5
+- `Explainer`: "데이터 구조 = 데이터 모델 (Data Model)"
+- "저장할 정보 그룹 (테이블)" — **3-column entity card grid**:
+  - Header: emoji icon + table name + field count badge
+  - Field list: name + type mono badge + status color (필수=red, 자동=green, 선택=subtle)
+  - "+ 항목 추가" dashed button per table
+- "그룹 간 연결 관계" — relationship cards:
+  - from → arrow SVG → to + description + cardinality badge (1:N)
+- "+ 새 정보 그룹 추가" full-width dashed button
+- "정합성 규칙 (자동 검증)" — check/warning items with "해결하기 →" for unresolved
+- Footer: "AI 흐름으로 →"
+
+### Screen 03→04 · `StepTransition` (데이터→AI)
+
+Same pattern with data model summary.
+
+### Screen 04-A · `ScreenDesignStep4Start` (AI 흐름)
+
+DesignShell with activeStep="ai-workflow", helperPanel={AiHelperPanel}.
+
+- `DesignStepHeader`: "AI가 무엇을 받고 무엇을 만들지 정해볼까요?", currentQ=5, totalQ=5
+- `Explainer`: "AI 흐름 = AI Workflow"
+- "AI의 입출력 흐름" — **5-column visual pipeline**:
+  - INPUT card (accentSoft) → arrow → AI Claude card (gradient, model name + task badge) → arrow → OUTPUT card (greenSoft)
+- "실패하면 어떻게 할까요? (폴백 전략)" — fallback rule cards:
+  - Icon (timeout/error/cost) + condition + action + status ("정의됨" badge or "채우기 →" button)
+- Footer: "다음 →"
+
+> **Scope exclusion**: model selection TemplateCards (Sonnet/Haiku/Opus) and "예상 월 비용" cost estimation bar are deferred to V2.
+
+### Screen 05 · `ScreenDesignComplete` (완료)
+
+Full-page completion, centered content (maxWidth 760px).
+
+- Emoji bob animation (🎉✨🎯🚀)
+- "PHASE 2 COMPLETE" badge + "설계 단계 완료!" title
+- Stats card: 100% + 4/4 steps + "설계 문서 v1.0 생성 완료" + time + item count
+- 4-row summary table: step icon + name + stats + "완료" badge
+- 3 export buttons: Markdown 다운로드, PDF 다운로드, 공유 링크
+- Phase 3 CTA: gradient card "구현 단계로 넘어갈까요?" + "시작하기"
+
+---
+
+## Shared Components
+
+### `Frame` + `TopBar`
+
+Shared app chrome used across all pages.
+
+- TopBar (56px): Logo + nav tabs (내 프로젝트, 템플릿, 공지사항, 가이드) + credits pill + language + user avatar
+- Frame wraps TopBar + content area (flex column, full height)
+
+### `Btn`
+
+Shared button with 5 kinds × 3 sizes:
+
+| Kind | Background | Text | Border |
+|------|-----------|------|--------|
+| primary | accent | white | accent |
+| secondary | surface | text | borderStrong |
+| ghost | transparent | text | transparent |
+| soft | accentSoft | accent | transparent |
+| danger | surface | red | borderStrong |
+
+Sizes: sm (h30, 12.5px), md (h36, 13.5px), lg (h46, 15px)
+
+### `AiQuestion`
+
+AI question bubble: AiMarkD (36px) + accent-bordered card (14px radius, shadow) containing:
+- "AI가 묻는 질문" mono label with accent dot
+- Question text (15.5px, semibold)
+- Optional hint (accentSoft box with bulb icon)
+
+### `AiSuggestionList`
+
+Suggestion panel: surface card with border, containing:
+- "AI 추천 — 클릭으로 추가" mono header with bulb icon
+- Button list: each item = dashed circle "+" + text + "추가" label
+
+### `StepTransition`
+
+Full-page step completion screen:
+- Green gradient check icon (56px)
+- "STEP {N} COMPLETE" mono label
+- "{step name} 완료!" title
+- Summary card with bullet points + "편집" link
+- Next step preview (accentSoft card with icon + step info)
+- "이전 단계 다시 보기" + "{next step} 시작하기" buttons
+
+### Helper Panels (300px right column)
+
+| Panel | Key Content |
+|-------|------------|
+| `ArchHelperPanel` | "이 단계 가이드" + ExampleBox + 용어사전 (프론트엔드/백엔드/DB/API) |
+| `DataHelperPanel` | "엑셀로 비유하면?" + EXCEL 비유 diagram + 타입 설명 chips + 팁 |
+| `AiHelperPanel` | 3-question numbered guide (입력/출력/폴백) + JSON 예시 ExampleBox + 비용 알림 (amber) |
 
 ---
 
 ## Implementation Details
 
-### Design Skills
+### Backend (✅ Complete — preserved from v1)
 
-#### `/design-requirements`
+**Files**: `backend/app/api/design.py`, `backend/skills/design-*.md`, `backend/app/schemas/design.py`
 
-**Files**: `backend/app/api/design.py`, `backend/skills/design-requirements.md`
+- 11 endpoints: session CRUD + 4 generate + 3 GET + 3 PUT
+- 4 skill files loaded via `load_skill()` with prompt caching
+- `_repair_truncated_json()` for Claude token limit truncation recovery
+- `design_sessions` table (JSONB columns for requirements/architecture/data_model)
+- `max_tokens=8192` for generation calls
 
-- Takes interview insights + accepted suggestions as input
-- Calls Claude API to generate functional and non-functional requirements
-- Outputs structured requirements with priority (Must/Should/Could), category, and acceptance criteria
-- User reviews requirements in a priority matrix UI: accept, edit priority, or add custom requirements
+### Frontend (Rewriting)
 
-**Endpoints**:
-- `POST /api/design/requirements/generate` — generate requirements from session data
-- `GET /api/design/requirements/{session_id}` — retrieve requirements
-- `PUT /api/design/requirements/{req_id}` — update requirement (priority, text, status)
+**Reusable from v1** (no changes needed):
+- `DesignLeftRail.tsx` — 264px left rail with step cards ✅
+- `DesignStepHeader.tsx` — breadcrumb + title ✅
+- `Explainer.tsx` — "이게 뭐예요?" card ✅
+- `ExampleBox.tsx` — green example card ✅
+- `TemplateCard.tsx` — selectable template card ✅
+- `DesignIcon.tsx` — 8 SVG icons ✅
+- `types.ts` — step definitions + types ✅
 
-#### `/design-architecture`
+**To modify**:
+- `DesignPage.tsx` — add screen state machine (welcome → step → transition → complete), integrate Frame, add right panel slot
+- `DesignStepFooter.tsx` — use Btn component, step-specific labels
 
-**Files**: `backend/app/api/design.py`, `backend/skills/design-architecture.md`
-
-- Takes requirements + interview context as input
-- Generates system architecture: component breakdown, technology recommendations, integration points
-- Produces Mermaid component diagram code
-- User reviews architecture in visual UI: approve components, adjust tech stack choices
-
-**Endpoints**:
-- `POST /api/design/architecture/generate` — generate architecture from requirements
-- `GET /api/design/architecture/{session_id}` — retrieve architecture design
-- `PUT /api/design/architecture/{session_id}` — update architecture decisions
-
-#### `/design-data-model`
-
-**Files**: `backend/app/api/design.py`, `backend/skills/design-data-model.md`
-
-- Takes requirements + architecture as input
-- Generates data model: entities, relationships, field definitions, indexes
-- Produces Mermaid ERD code
-- User reviews in ERD UI: validate entities, adjust field types, add constraints
-
-**Endpoints**:
-- `POST /api/design/data-model/generate` — generate data model
-- `GET /api/design/data-model/{session_id}` — retrieve data model
-- `PUT /api/design/data-model/{session_id}` — update data model
-
-#### `/design-ai-workflow` (AI-only)
-
-**Files**: `backend/app/api/design.py`, `backend/skills/design-ai-workflow.md`
-
-- Runs automatically without user interaction
-- Takes all prior design outputs (requirements, architecture, data model) as input
-- Generates AI/ML workflow design: model selection, training pipeline, inference flow, evaluation metrics
-- Stored as part of session data; included in final document generation (Phase 7)
-- Only applicable when project type involves AI/ML; skipped otherwise
-
-**Endpoint**:
-- `POST /api/design/ai-workflow/generate` — auto-generate AI workflow (no review UI)
-
-### Design Shell UI
-
-**Design reference**: `ui-reference/screen-design-shell.jsx`
-
-The Design UI is a dedicated wizard-style shell, separate from the interview chat UI. It is designed for **"people who don't know much about design/architecture"** — leaning on examples, visual choices, and plain Korean.
-
-**Layout** (3-column):
-- **Left rail** (264px): Phase navigator — "설계 단계" header, project meta, phase progress (Phase 2 of 3), 4 design step cards (기능 정의 / 시스템 구조 / 데이터 구조 / AI 흐름) with icons and done/active/pending states, help link
-- **Main content** (flex): Step header (step number, name, title, subtitle, question progress) → step-specific content → footer (← 이전 / 건너뛰기 / 다음 단계)
-- **Right helper panel** (300px, optional): Contextual help content per step
-
-**Beginner-friendly primitives**:
-- `Explainer` — "이게 뭐예요?" card with plain Korean explanation, technical term badge, and example
-- `TemplateCard` — visual template chooser (pick from presets, selectable with check mark)
-- `ExampleBox` — shows what a "good answer" looks like (green-tinted card)
-
-**Design steps**:
-| # | ID | Title | Subtitle |
-|---|---|---|---|
-| 01 | requirements | 기능 정의 | 무엇을 만들지 |
-| 02 | architecture | 시스템 구조 | 어떻게 연결할지 |
-| 03 | data-model | 데이터 구조 | 무엇을 저장할지 |
-| 04 | ai-workflow | AI 흐름 | AI를 어떻게 쓸지 |
-
-**Components** (from `screen-design-shell.jsx`):
-- `DesignShell` — 3-column layout shell (left rail + main + optional right helper)
-- `DesignStepHeader` — step header with number, name, title, subtitle, question progress
-- `DesignStepFooter` — footer with ← 이전 / 건너뛰기 / 다음 단계 buttons + auto-save indicator
-- `DesignIcon` — step-specific icons (features, arch, data, ai, help, bulb, eye, check)
-- `AiMarkD` — Design phase variant of AI mark badge
-
-**Navigation**: Back/Next buttons in footer, auto-save indicator, skip option. Each step has its own content area within the main column.
+**To create (new)**:
+- `Frame.tsx` + `TopBar.tsx` — shared app chrome (in `components/common/`)
+- `Btn.tsx` — shared button (in `components/common/`)
+- `AiQuestion.tsx` — AI question bubble
+- `AiSuggestionList.tsx` — clickable suggestion list
+- `StepTransition.tsx` — step complete/transition screen
+- `DesignWelcome.tsx` — welcome screen content
+- `DesignComplete.tsx` — completion screen content
+- `RequirementsStep.tsx` — **rewrite**: AiQuestion + empty state + suggestions + input
+- `ArchitectureStep.tsx` — **rewrite**: TemplateCard selection + SVG diagram + explanations
+- `DataModelStep.tsx` — **rewrite**: 3-col entity grid + relationships + validation
+- `AiWorkflowStep.tsx` — **rewrite**: pipeline visualization + fallback strategy
+- `ArchHelperPanel.tsx` — right panel for architecture
+- `DataHelperPanel.tsx` — right panel for data model
+- `AiHelperPanel.tsx` — right panel for AI workflow
 
 ---
 
@@ -134,23 +279,31 @@ The Design UI is a dedicated wizard-style shell, separate from the interview cha
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Design skill ordering | Requirements → Architecture → Data Model → AI Workflow | Each builds on the previous; requirements inform architecture, architecture informs data model |
-| Design UI approach | Wizard-style shell (not chat-based) | Designed for beginners — visual choices, templates, plain Korean explanations |
-| AI Workflow automation | No user review UI | AI/ML pipeline design is technical and benefits from uninterrupted AI reasoning |
-| Skill files | Copy from harness to `backend/skills/`, loaded via `load_skill()` | Existing skill definitions reused with token optimization (ADR-006) |
+| Design skill ordering | Requirements → Architecture → Data Model → AI Workflow | Each builds on the previous |
+| Design UI approach | 9-screen guided flow with transitions | Beginners need clear progress markers and celebration between steps |
+| Screen state machine | welcome → step → transition → step → ... → complete | Reference defines 9 distinct screens, not in-place step switching |
+| AI question pattern | `AiQuestion` bubble + `AiSuggestionList` | Users click to add rather than AI-generates-everything |
+| Architecture visualization | Custom SVG diagram (not Mermaid) | Color-coded boxes with legends are more beginner-friendly than Mermaid text |
+| Model selection | Deferred to V2 | Simplifies AI workflow step; Claude Sonnet used as default |
+| Cost estimation | Deferred to V2 | Requires usage tracking infrastructure not yet built |
+| Shared Frame | Wrap all pages in `Frame` + `TopBar` | Consistent navigation across the app |
 
 ---
 
 ## Completion Criteria
 
-- [ ] Requirements generated and user-reviewed after interview completion
-- [ ] Architecture design generated from requirements
-- [ ] Data model generated from architecture
-- [ ] AI workflow auto-generated (when applicable)
-- [ ] Design Shell UI renders with 3-column wizard layout
-- [ ] Beginner-friendly primitives (Explainer, TemplateCard, ExampleBox) functional
-- [ ] Step navigation (back/next/skip) works correctly
+- [ ] `Frame` + `TopBar` renders consistently across all pages
+- [ ] Welcome screen shows 4-step preview with CTA
+- [ ] Requirements step: AiQuestion + AiSuggestionList + direct input functional
+- [ ] Architecture step: TemplateCard selection + SVG diagram renders
+- [ ] Data Model step: 3-col entity grid + relationship visualization + validation rules
+- [ ] AI Workflow step: INPUT→AI→OUTPUT pipeline + fallback strategy cards
+- [ ] StepTransition screens show between each step with summary
+- [ ] Complete screen shows stats + summary + export buttons
+- [ ] Helper panels render for Architecture, Data Model, AI Workflow steps
+- [ ] All backend endpoints remain functional (no regression)
 - [ ] All design outputs stored in session data for Phase 7 consumption
+- [ ] All step UIs render dynamically from backend session data (no hardcoded placeholder data)
 
 ---
 
@@ -159,172 +312,331 @@ The Design UI is a dedicated wizard-style shell, separate from the interview cha
 | Date | Description |
 |---|---|
 | 2026-05-22 | Initial creation — extracted from old Phase 5 (Design & Doc Generation) |
-| 2026-05-25 | Updated: gap/checklist now mandatory (not conditional), added load_skill() references (ADR-006) |
-| 2026-05-25 | Phase 6 → Phase 5 renumbered. Prerequisites updated to Phase 4 kickoff completion. Gap/checklist note updated to reference Phase 6 |
+| 2026-05-25 | Updated: gap/checklist now mandatory, added load_skill() references (ADR-006) |
+| 2026-05-25 | Phase 6 → Phase 5 renumbered |
+| 2026-05-26 | v1 complete: Backend 11 endpoints + 4 skills + DB migration. Frontend 10 components (basic wizard). E2E tested |
+| 2026-05-26 | v2 rewrite: Frontend rewriting to match `design-phase-flow-standalone.jsx`. 9-screen flow (welcome + 4 steps + 3 transitions + complete). Added Frame/TopBar, AiQuestion, AiSuggestionList, StepTransition, 3 helper panels, step-specific content rewrite. Backend preserved. Model selection + cost estimation deferred to V2 |
+| 2026-05-26 | F17-F21 added: dynamic data binding tasks for AiSuggestionList, SVG diagram, IO pipeline, transition summaries, validation rules. Completion criteria updated to require no hardcoded placeholder data |
 
 ---
 ---
 
-# Phase 5 — 설계 (How) `🔲 미시작`
+# Phase 5 — 설계 (How) `진행 중`
 
-> 킥오프 후 설계 단계: 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우, 초보자를 위한 wizard 형태 쉘 UI.
+> 킥오프 후 설계 단계: 9개 화면 가이드 흐름 — 환영 → 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우 → 완료, 각 단계 사이에 전환 화면 포함. 초보자를 위한 wizard 형태 쉘 UI.
 
-**상태**: 🔲 미시작
+**상태**: 진행 중 (백엔드 ✅, 프론트엔드 재작성 중)
 **선행 조건**: Phase 4 완료 (킥오프 + 설계 진행 선택)
+**디자인 레퍼런스**: `ui-reference/design-phase-flow-standalone.jsx` (9개 화면, 독립형)
 
 ---
 
 ## 개요
 
-Phase 4 킥오프 완료 후 설계 진행을 선택하면 Phase 5에 진입한다. 수집된 인터뷰 인사이트를 4단계 순차 설계를 통해 구조화된 설계 산출물로 변환한다.
+Phase 4 킥오프 완료 후 설계 진행을 선택하면 Phase 5에 진입한다. 수집된 인터뷰 인사이트를 **9개 화면 가이드 흐름**을 통해 구조화된 설계 산출물로 변환한다.
+
+### 화면 흐름 (9개 화면)
+
+```
+00 · 환영 → 01-A · 기능 정의 → 01→02 전환
+→ 02-A · 시스템 구조 → 02→03 전환
+→ 03-A · 데이터 구조 → 03→04 전환
+→ 04-A · AI 흐름 → 05 · 완료
+```
 
 **파이프라인 순서**: `/design-requirements` → `/design-architecture` → `/design-data-model` → `/design-ai-workflow`
 
-각 설계 스킬은 인터뷰 인사이트 + 수락된 제안을 입력으로 받아 구조화된 출력을 생성한다. 파이프라인은 순차적으로 연결 — 요구사항이 아키텍처를, 아키텍처가 데이터 모델을 결정한다. 각 설계 스킬은 `harness_loader.py`의 `load_skill()`로 로드 (ADR-006).
+각 설계 스킬은 인터뷰 인사이트 + 이전 단계 출력을 입력으로 받아 구조화된 출력을 생성한다. 파이프라인은 순차적으로 연결 — 요구사항이 아키텍처를, 아키텍처가 데이터 모델을 결정한다. 각 설계 스킬은 `harness_loader.py`의 `load_skill()`로 로드 (ADR-006).
 
-**설계 UI**는 인터뷰 채팅 UI와 별도의 wizard 형태 전용 쉘이다. **"설계/아키텍처를 잘 모르는 사용자"** 를 위해 예시, 시각적 선택지, 쉬운 한국어 설명으로 구성. 레퍼런스: `ui-reference/screen-design-shell.jsx`
+**설계 UI**는 9개 화면 가이드형 wizard (채팅 아님)로, **"설계/아키텍처를 잘 모르는 사용자"** 를 위해 AI 질문 말풍선, 클릭형 추천 리스트, 템플릿 선택기, 시각적 파이프라인 다이어그램, 쉬운 한국어 설명으로 구성. 공유 `Frame` + `TopBar`로 일관된 앱 네비게이션 제공.
 
 > **참고**: 설계 완료 후 Phase 6(평가 & 마무리)에서 evaluate → done → gap → checklist 실행. "설계를 나중에" 기능은 **V2**로 연기.
+
+> **범위 제외**: AI 모델 선택 (Sonnet/Haiku/Opus 선택기) 및 비용 추정은 V2로 연기.
 
 ---
 
 ## 완료 예정 / 완료 항목
 
-| # | 작업 | 영역 | 상태 | 관련 FR |
-|---|---|---|---|---|
-| 1 | `/design-requirements` — 기능/비기능 요구사항 생성 | Backend | 🔲 | FR-022 |
-| 2 | 요구사항 검토 UI (우선순위 매트릭스, 수락/수정) | Frontend | 🔲 | FR-022 |
-| 3 | `/design-architecture` — 시스템 아키텍처 설계 | Backend | 🔲 | FR-023 |
-| 4 | 아키텍처 검토 UI (컴포넌트 다이어그램, 기술 스택) | Frontend | 🔲 | FR-023 |
-| 5 | `/design-data-model` — 데이터 모델 & 스키마 설계 | Backend | 🔲 | FR-024 |
-| 6 | 데이터 모델 검토 UI (ERD, 필드 설명) | Frontend | 🔲 | FR-024 |
-| 7 | `/design-ai-workflow` — AI/ML 파이프라인 설계 (AI 전용, 사용자 상호작용 없음) | Backend | 🔲 | FR-025 |
-| 8 | 설계 쉘 UI — 3컬럼 wizard 레이아웃 + 초보자 친화 프리미티브 | Frontend | 🔲 | — |
+### 백엔드 (✅ 완료 — 변경 없음)
+
+| # | 작업 | 상태 | 관련 FR |
+|---|---|---|---|
+| B1 | `/design-requirements` — 기능/비기능 요구사항 생성 | ✅ | FR-022 |
+| B2 | `/design-architecture` — 시스템 아키텍처 설계 | ✅ | FR-023 |
+| B3 | `/design-data-model` — 데이터 모델 & 스키마 설계 | ✅ | FR-024 |
+| B4 | `/design-ai-workflow` — AI/ML 파이프라인 설계 | ✅ | FR-025 |
+| B5 | `design_sessions` DB 테이블 + 마이그레이션 (006) | ✅ | — |
+| B6 | 잘린 JSON 자동 복구 (`_repair_truncated_json`) | ✅ | — |
+| B7 | 프로젝트 상태 라우팅 (`designing` 상태 지원) | ✅ | — |
+
+### 프론트엔드 (재작성 중 — `design-phase-flow-standalone.jsx` 기준)
+
+| # | 작업 | 상태 |
+|---|---|---|
+| F1 | 공유 `Frame` + `TopBar` 컴포넌트 (56px 네비, 탭, 유저 아바타, 크레딧) | |
+| F2 | 공유 `Btn` 컴포넌트 (primary/secondary/ghost/soft/danger × sm/md/lg) | |
+| F3 | `AiQuestion` 컴포넌트 — AI 질문 말풍선 (AiMarkD + accent 테두리 + 힌트) | |
+| F4 | `AiSuggestionList` 컴포넌트 — 클릭형 추천 카드 (+ 버튼으로 개별 추가) | |
+| F5 | `StepTransition` 컴포넌트 — 스텝 완료/요약/다음 미리보기 전체 화면 | |
+| F6 | `ScreenDesignWelcome` — 환영 페이지 (4단계 미리보기 카드, CTA) | |
+| F7 | `ScreenDesignStep1Start` — 기능 정의 (AiQuestion + 빈 상태 + 추천 + 직접 입력) | |
+| F8 | `ScreenDesignStep2Start` — 시스템 구조 (TemplateCard 선택 + SVG 다이어그램 + 부품 설명) | |
+| F9 | `ScreenDesignStep3Start` — 데이터 구조 (3컬럼 엔티티 그리드 + 관계 카드 + 정합성 규칙) | |
+| F10 | `ScreenDesignStep4Start` — AI 흐름 (INPUT→AI→OUTPUT 파이프라인 + 폴백 전략) | |
+| F11 | `ScreenDesignComplete` — 완료 페이지 (통계 + 요약 + 내보내기 + Phase 3 CTA) | |
+| F12 | `ArchHelperPanel` — 우측 300px 패널 (가이드 + 용어사전) | |
+| F13 | `DataHelperPanel` — 우측 300px 패널 (엑셀 비유 + 타입 설명) | |
+| F14 | `AiHelperPanel` — 우측 300px 패널 (3가지 질문 가이드 + 폴백 팁) | |
+| F15 | `DesignStepFooter` 업데이트 — 스텝별 primary 라벨 ("시스템 구조로 →" 등) | |
+| F16 | `DesignShell` 업데이트 — Frame 래퍼 통합 + 우측 헬퍼 패널 슬롯 | |
+| F17 | `AiSuggestionList` 동적 데이터 바인딩 — 인터뷰 컨텍스트 기반 백엔드 추천 API 연결 | |
+| F18 | `ArchitectureStep` SVG 동적 생성 — `session.architecture.components[]` 기반 다이어그램 렌더링 | |
+| F19 | `AiWorkflowStep` IO 파이프라인 동적 렌더 — `session.ai_workflow` 파싱하여 INPUT/OUTPUT 리스트 생성 | |
+| F20 | `StepTransition` 요약 동적 생성 — 각 단계 세션 데이터에서 실제 요약 추출 | |
+| F21 | `DataModelStep` 정합성 규칙 동적 생성 — `session.data_model` 분석 기반 검증 규칙 도출 | |
+
+---
+
+## 9개 화면 상세 명세
+
+### 화면 00 · `ScreenDesignWelcome` (진입)
+
+전체 화면 환영, 중앙 정렬 콘텐츠 (maxWidth 760px).
+
+- "PHASE 2 of 3 · 시작" 알약 배지
+- 제목: "이제 **설계 단계**를 시작할게요"
+- 부제: "네 가지 질문에 답하시면 됩니다"
+- 2×2 그리드: 4단계 미리보기 카드 (아이콘 40px + 스텝 번호 + 이름 + 질문 + ~5분)
+- "완료하면 얻는 것" 초록 info 박스 (체크 아이콘 + 설명)
+- 메인 CTA: "네, 설계를 시작할게요" (accent + 그림자)
+- 고스트 CTA: "나중에 결정할게요"
+
+### 화면 01-A · `ScreenDesignStep1Start` (기능 정의)
+
+DesignShell, activeStep="requirements", 헬퍼 패널 없음.
+
+- `DesignStepHeader`: "이 도구가 할 수 있는 일을 정의해볼까요?", currentQ=1, totalQ=5
+- `AiQuestion`: "사용자가 이 도구를 사용하면서 **꼭 할 수 있어야 하는 일**이 무엇인가요?" + 힌트
+- 빈 상태 카드: "아직 추가된 기능이 없어요" (features 아이콘 + 점선 테두리)
+- `AiSuggestionList`: AI 생성 추천 항목 (클릭형 + 버튼으로 개별 추가)
+- 직접 입력 영역: 텍스트 입력 + "Enter로 추가" 힌트 + "+ 추가" Btn
+- 푸터: "다음 질문 →"
+
+### 화면 01→02 · `StepTransition` (기능→시스템)
+
+전체 화면 전환 (maxWidth 680px, 중앙 정렬).
+
+- 초록 그라데이션 체크 아이콘 (56px) + "STEP 01 COMPLETE"
+- "기능 정의 완료!" 제목
+- 요약 카드: bullet list + "편집" 링크
+- 다음 미리보기: accentSoft 카드 + "다음 · STEP 02" + "시스템 구조" + 미리보기 텍스트
+- 버튼: "이전 단계 다시 보기" (secondary) + "시스템 구조 시작하기" (primary)
+
+### 화면 02-A · `ScreenDesignStep2Start` (시스템 구조)
+
+DesignShell, activeStep="architecture", helperPanel={ArchHelperPanel}.
+
+- `DesignStepHeader`: "이 도구의 부품들을 골라볼까요?", currentQ=3, totalQ=5
+- `Explainer`: "시스템 구조 = 아키텍처 (Architecture)"
+- "추천 조합 골라보기" — 3컬럼 `TemplateCard` 그리드 (간단/확장/실시간)
+- "선택한 조합 미리보기" — **커스텀 SVG 아키텍처 다이어그램** (색상 코딩 박스 + 화살표)
+  - 파란(accentSoft)=사용자 화면, 초록(greenSoft)=저장소, 노란(amberSoft)=AI
+  - 하단 색상 범례
+- "각 부품을 왜 골랐나요?" — 컴포넌트 설명 카드 (이모지 + 이름 + 이유 + "자동 선택됨" 배지)
+- 푸터: "데이터 구조로 →"
+
+### 화면 02→03 · `StepTransition` (시스템→데이터)
+
+01→02와 동일 패턴, 아키텍처 요약 포함.
+
+### 화면 03-A · `ScreenDesignStep3Start` (데이터 구조)
+
+DesignShell, activeStep="data-model", helperPanel={DataHelperPanel}.
+
+- `DesignStepHeader`: "저장해야 할 정보를 정리해볼까요?", currentQ=4, totalQ=5
+- `Explainer`: "데이터 구조 = 데이터 모델 (Data Model)"
+- "저장할 정보 그룹 (테이블)" — **3컬럼 엔티티 카드 그리드**:
+  - 헤더: 이모지 아이콘 + 테이블명 + 필드 수 배지
+  - 필드 리스트: 이름 + 타입 mono 배지 + 상태 색상 (필수=red, 자동=green, 선택=subtle)
+  - "+ 항목 추가" dashed 버튼 (테이블별)
+- "그룹 간 연결 관계" — 관계 카드:
+  - from → 화살표 SVG → to + 설명 + 카디널리티 배지 (1:N)
+- "+ 새 정보 그룹 추가" 전체 너비 dashed 버튼
+- "정합성 규칙 (자동 검증)" — 체크/경고 항목 + "해결하기 →"
+- 푸터: "AI 흐름으로 →"
+
+### 화면 03→04 · `StepTransition` (데이터→AI)
+
+동일 패턴, 데이터 모델 요약 포함.
+
+### 화면 04-A · `ScreenDesignStep4Start` (AI 흐름)
+
+DesignShell, activeStep="ai-workflow", helperPanel={AiHelperPanel}.
+
+- `DesignStepHeader`: "AI가 무엇을 받고 무엇을 만들지 정해볼까요?", currentQ=5, totalQ=5
+- `Explainer`: "AI 흐름 = AI Workflow"
+- "AI의 입출력 흐름" — **5컬럼 시각적 파이프라인**:
+  - INPUT 카드 (accentSoft) → 화살표 → AI Claude 카드 (그라데이션, 모델명+태스크 배지) → 화살표 → OUTPUT 카드 (greenSoft)
+- "실패하면 어떻게 할까요? (폴백 전략)" — 폴백 룰 카드:
+  - 아이콘 (타임아웃/에러/비용) + 조건 + 대응 + 상태 ("정의됨" 배지 또는 "채우기 →" 버튼)
+- 푸터: "다음 →"
+
+> **범위 제외**: 모델 선택 TemplateCard (Sonnet/Haiku/Opus) 및 "예상 월 비용" 바는 V2로 연기.
+
+### 화면 05 · `ScreenDesignComplete` (완료)
+
+전체 화면 완료, 중앙 정렬 콘텐츠 (maxWidth 760px).
+
+- 이모지 bob 애니메이션 (🎉✨🎯🚀)
+- "PHASE 2 COMPLETE" 배지 + "설계 단계 완료!" 제목
+- 통계 카드: 100% + 4/4 단계 + "설계 문서 v1.0 생성 완료" + 소요시간 + 항목 수
+- 4행 요약 테이블: 스텝 아이콘 + 이름 + stats + "완료" 배지
+- 3개 내보내기 버튼: Markdown 다운로드, PDF 다운로드, 공유 링크
+- Phase 3 CTA: 그라데이션 카드 "구현 단계로 넘어갈까요?" + "시작하기"
+
+---
+
+## 공유 컴포넌트
+
+### `Frame` + `TopBar`
+
+모든 페이지에서 사용하는 공유 앱 크롬.
+
+- TopBar (56px): 로고 + 네비 탭 (내 프로젝트, 템플릿, 공지사항, 가이드) + 크레딧 알약 + 언어 + 유저 아바타
+- Frame은 TopBar + 콘텐츠 영역을 감싸는 래퍼 (flex column, 전체 높이)
+
+### `Btn`
+
+5가지 종류 × 3가지 크기의 공유 버튼:
+
+| 종류 | 배경 | 텍스트 | 테두리 |
+|------|------|-------|--------|
+| primary | accent | 흰색 | accent |
+| secondary | surface | text | borderStrong |
+| ghost | 투명 | text | 투명 |
+| soft | accentSoft | accent | 투명 |
+| danger | surface | red | borderStrong |
+
+크기: sm (h30, 12.5px), md (h36, 13.5px), lg (h46, 15px)
+
+### `AiQuestion`
+
+AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그림자):
+- "AI가 묻는 질문" mono 라벨 + accent 점
+- 질문 텍스트 (15.5px, semibold)
+- 선택적 힌트 (accentSoft 박스 + bulb 아이콘)
+
+### `AiSuggestionList`
+
+추천 패널: surface 카드 + 테두리:
+- "AI 추천 — 클릭으로 추가" mono 헤더 + bulb 아이콘
+- 버튼 리스트: 항목별 = dashed "+" 원 + 텍스트 + "추가" 라벨
+
+### `StepTransition`
+
+전체 화면 스텝 완료 전환:
+- 초록 그라데이션 체크 아이콘 (56px)
+- "STEP {N} COMPLETE" mono 라벨
+- "{스텝명} 완료!" 제목
+- 요약 카드 (bullet list + "편집" 링크)
+- 다음 스텝 미리보기 (accentSoft 카드 + 아이콘 + 스텝 정보)
+- "이전 단계 다시 보기" + "{다음 스텝} 시작하기" 버튼
+
+### 헬퍼 패널 (300px 우측 컬럼)
+
+| 패널 | 주요 내용 |
+|------|---------|
+| `ArchHelperPanel` | "이 단계 가이드" + ExampleBox + 용어사전 (프론트엔드/백엔드/DB/API) |
+| `DataHelperPanel` | "엑셀로 비유하면?" + EXCEL 비유 다이어그램 + 타입 설명 칩 + 팁 |
+| `AiHelperPanel` | 3가지 질문 번호 가이드 (입력/출력/폴백) + JSON 예시 ExampleBox + 비용 알림 (amber) |
 
 ---
 
 ## 구현 상세
 
-### 설계 스킬
+### 백엔드 (✅ 완료 — v1에서 유지)
 
-#### `/design-requirements`
+**파일**: `backend/app/api/design.py`, `backend/skills/design-*.md`, `backend/app/schemas/design.py`
 
-**파일**: `backend/app/api/design.py`, `backend/skills/design-requirements.md`
+- 11개 엔드포인트: 세션 CRUD + 생성 4개 + 조회 3개 + 수정 3개
+- 4개 스킬 파일: `load_skill()`로 로드, Prompt Caching 적용
+- `_repair_truncated_json()`: Claude 토큰 한도 잘림 자동 복구
+- `design_sessions` 테이블 (requirements/architecture/data_model JSONB 컬럼)
+- 생성 호출 시 `max_tokens=8192`
 
-- 인터뷰 인사이트 + 수락된 제안을 입력으로 사용
-- Claude API를 호출하여 기능 및 비기능 요구사항 생성
-- 우선순위 (Must/Should/Could), 카테고리, 인수 기준이 포함된 구조화 요구사항 출력
-- 우선순위 매트릭스 UI에서 사용자가 검토: 수락, 우선순위 수정, 커스텀 요구사항 추가
+### 프론트엔드 (재작성 중)
 
-**엔드포인트**:
-- `POST /api/design/requirements/generate` — 세션 데이터에서 요구사항 생성
-- `GET /api/design/requirements/{session_id}` — 요구사항 조회
-- `PUT /api/design/requirements/{req_id}` — 요구사항 업데이트 (우선순위, 텍스트, 상태)
+**v1에서 재사용 (변경 없음)**:
+- `DesignLeftRail.tsx` — 264px 왼쪽 레일 + 스텝 카드 ✅
+- `DesignStepHeader.tsx` — 빵부스러기 + 제목 ✅
+- `Explainer.tsx` — "이게 뭐예요?" 카드 ✅
+- `ExampleBox.tsx` — 초록 예시 카드 ✅
+- `TemplateCard.tsx` — 선택 가능 템플릿 카드 ✅
+- `DesignIcon.tsx` — 8개 SVG 아이콘 ✅
+- `types.ts` — 스텝 정의 + 타입 ✅
 
-#### `/design-architecture`
+**수정 필요**:
+- `DesignPage.tsx` — 화면 상태 머신 추가 (welcome → step → transition → complete), Frame 통합, 우측 패널 슬롯
+- `DesignStepFooter.tsx` — Btn 컴포넌트 사용, 스텝별 라벨
 
-**파일**: `backend/app/api/design.py`, `backend/skills/design-architecture.md`
-
-- 요구사항 + 인터뷰 컨텍스트를 입력으로 사용
-- 시스템 아키텍처 생성: 컴포넌트 분해, 기술 추천, 통합 포인트
-- Mermaid 컴포넌트 다이어그램 코드 생성
-- 비주얼 UI에서 사용자 검토: 컴포넌트 승인, 기술 스택 조정
-
-**엔드포인트**:
-- `POST /api/design/architecture/generate` — 요구사항에서 아키텍처 생성
-- `GET /api/design/architecture/{session_id}` — 아키텍처 설계 조회
-- `PUT /api/design/architecture/{session_id}` — 아키텍처 결정 업데이트
-
-#### `/design-data-model`
-
-**파일**: `backend/app/api/design.py`, `backend/skills/design-data-model.md`
-
-- 요구사항 + 아키텍처를 입력으로 사용
-- 데이터 모델 생성: 엔티티, 관계, 필드 정의, 인덱스
-- Mermaid ERD 코드 생성
-- ERD UI에서 사용자 검토: 엔티티 확인, 필드 타입 조정, 제약조건 추가
-
-**엔드포인트**:
-- `POST /api/design/data-model/generate` — 데이터 모델 생성
-- `GET /api/design/data-model/{session_id}` — 데이터 모델 조회
-- `PUT /api/design/data-model/{session_id}` — 데이터 모델 업데이트
-
-#### `/design-ai-workflow` (AI 전용)
-
-**파일**: `backend/app/api/design.py`, `backend/skills/design-ai-workflow.md`
-
-- 사용자 상호작용 없이 자동 실행
-- 이전 설계 출력 전체 (요구사항, 아키텍처, 데이터 모델)를 입력으로 사용
-- AI/ML 워크플로우 설계 생성: 모델 선정, 학습 파이프라인, 추론 흐름, 평가 지표
-- 세션 데이터로 저장; Phase 7 최종 문서 생성에 포함
-- 프로젝트 유형이 AI/ML 관련일 때만 적용; 아닌 경우 건너뜀
-
-**엔드포인트**:
-- `POST /api/design/ai-workflow/generate` — AI 워크플로우 자동 생성 (검토 UI 없음)
-
-### 설계 쉘 UI
-
-**디자인 레퍼런스**: `ui-reference/screen-design-shell.jsx`
-
-설계 UI는 인터뷰 채팅 UI와 별도의 wizard 형태 전용 쉘이다. **"설계/아키텍처를 잘 모르는 사용자"** 를 위해 예시, 시각적 선택지, 쉬운 한국어로 구성.
-
-**레이아웃** (3컬럼):
-- **왼쪽 레일** (264px): Phase 네비게이터 — "설계 단계" 헤더, 프로젝트 메타, Phase 진행률 (Phase 2 of 3), 설계 4단계 카드 (기능 정의 / 시스템 구조 / 데이터 구조 / AI 흐름) + 아이콘 + done/active/pending 상태, 도움말 링크
-- **메인 콘텐츠** (flex): 스텝 헤더 (스텝 번호, 이름, 제목, 부제, 질문 진행률) → 스텝별 콘텐츠 → 푸터 (← 이전 / 건너뛰기 / 다음 단계)
-- **오른쪽 도우미 패널** (300px, 선택): 스텝별 맥락 도움말
-
-**초보자 친화 프리미티브**:
-- `Explainer` — "이게 뭐예요?" 카드 (쉬운 한국어 설명, 기술 용어 배지, 예시)
-- `TemplateCard` — 시각적 템플릿 선택기 (프리셋에서 선택, 체크 표시)
-- `ExampleBox` — "좋은 예시" 카드 (초록 톤)
-
-**설계 단계**:
-| # | ID | 제목 | 부제 |
-|---|---|---|---|
-| 01 | requirements | 기능 정의 | 무엇을 만들지 |
-| 02 | architecture | 시스템 구조 | 어떻게 연결할지 |
-| 03 | data-model | 데이터 구조 | 무엇을 저장할지 |
-| 04 | ai-workflow | AI 흐름 | AI를 어떻게 쓸지 |
-
-**컴포넌트** (`screen-design-shell.jsx` 기반):
-- `DesignShell` — 3컬럼 레이아웃 쉘 (왼쪽 레일 + 메인 + 선택적 오른쪽 도우미)
-- `DesignStepHeader` — 스텝 헤더 (번호, 이름, 제목, 부제, 질문 진행률)
-- `DesignStepFooter` — 푸터 (← 이전 / 건너뛰기 / 다음 단계 버튼 + 자동 저장 표시)
-- `DesignIcon` — 스텝별 아이콘 (features, arch, data, ai, help, bulb, eye, check)
-- `AiMarkD` — 설계 Phase 전용 AI 마크 배지
-
-**네비게이션**: 푸터에 이전/다음 버튼, 자동 저장 표시, 건너뛰기 옵션. 각 단계는 메인 영역에 자체 콘텐츠 보유.
+**신규 생성**:
+- `Frame.tsx` + `TopBar.tsx` — 공유 앱 크롬 (`components/common/`)
+- `Btn.tsx` — 공유 버튼 (`components/common/`)
+- `AiQuestion.tsx` — AI 질문 말풍선
+- `AiSuggestionList.tsx` — 클릭형 추천 리스트
+- `StepTransition.tsx` — 스텝 완료/전환 화면
+- `DesignWelcome.tsx` — 환영 화면 콘텐츠
+- `DesignComplete.tsx` — 완료 화면 콘텐츠
+- `RequirementsStep.tsx` — **재작성**: AiQuestion + 빈 상태 + 추천 + 입력
+- `ArchitectureStep.tsx` — **재작성**: TemplateCard 선택 + SVG 다이어그램 + 설명
+- `DataModelStep.tsx` — **재작성**: 3컬럼 엔티티 그리드 + 관계 + 검증
+- `AiWorkflowStep.tsx` — **재작성**: 파이프라인 시각화 + 폴백 전략
+- `ArchHelperPanel.tsx` — 아키텍처 우측 패널
+- `DataHelperPanel.tsx` — 데이터 모델 우측 패널
+- `AiHelperPanel.tsx` — AI 워크플로우 우측 패널
 
 ---
 
 ## 설계 결정 사항
 
 | 결정 | 선택 | 근거 |
-|---|---|---|
-| 설계 스킬 순서 | 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우 | 각 단계가 이전 단계를 기반으로 구축; 요구사항이 아키텍처를, 아키텍처가 데이터 모델을 결정 |
-| 설계 UI 방식 | Wizard 형태 전용 쉘 (채팅 아님) | 초보자 대상 — 시각적 선택지, 템플릿, 쉬운 한국어 설명 |
-| AI 워크플로우 자동화 | 사용자 검토 UI 없음 | AI/ML 파이프라인 설계는 기술적이며 연속적인 AI 추론이 유리 |
-| 스킬 파일 | 하네스에서 `backend/skills/`로 복사, `load_skill()`로 로드 | 기존 스킬 정의를 재활용, 토큰 최적화 적용 (ADR-006) |
+|------|------|------|
+| 설계 스킬 순서 | 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우 | 각 단계가 이전을 기반으로 구축 |
+| 설계 UI 방식 | 9개 화면 가이드 흐름 + 전환 화면 | 초보자에게 명확한 진행 표시와 단계 완료 축하가 필요 |
+| 화면 상태 머신 | welcome → step → transition → step → ... → complete | 레퍼런스가 9개 별개 화면 정의, in-place 스위칭 아님 |
+| AI 질문 패턴 | `AiQuestion` 말풍선 + `AiSuggestionList` | 전체 일괄 생성이 아닌 클릭으로 개별 추가 |
+| 아키텍처 시각화 | 커스텀 SVG 다이어그램 (Mermaid 아님) | 색상 코딩 박스 + 범례가 초보자에게 더 친화적 |
+| 모델 선택 | V2로 연기 | AI 워크플로우 단계 단순화; Claude Sonnet을 기본값으로 사용 |
+| 비용 추정 | V2로 연기 | 아직 구축되지 않은 사용량 추적 인프라 필요 |
+| 공유 Frame | 모든 페이지를 `Frame` + `TopBar`로 래핑 | 앱 전체의 일관된 네비게이션 |
 
 ---
 
 ## 완료 기준
 
-- [ ] 인터뷰 완료 후 요구사항 생성 및 사용자 검토 완료
-- [ ] 요구사항에서 아키텍처 설계 생성
-- [ ] 아키텍처에서 데이터 모델 생성
-- [ ] AI 워크플로우 자동 생성 (해당 시)
-- [ ] 설계 쉘 UI가 3컬럼 wizard 레이아웃으로 렌더링
-- [ ] 초보자 친화 프리미티브 (Explainer, TemplateCard, ExampleBox) 동작
-- [ ] 스텝 네비게이션 (이전/다음/건너뛰기) 정상 동작
+- [ ] `Frame` + `TopBar`가 모든 페이지에서 일관되게 렌더링
+- [ ] 환영 화면에 4단계 미리보기 + CTA 표시
+- [ ] 기능 정의 스텝: AiQuestion + AiSuggestionList + 직접 입력 동작
+- [ ] 시스템 구조 스텝: TemplateCard 선택 + SVG 다이어그램 렌더링
+- [ ] 데이터 구조 스텝: 3컬럼 엔티티 그리드 + 관계 시각화 + 정합성 규칙
+- [ ] AI 흐름 스텝: INPUT→AI→OUTPUT 파이프라인 + 폴백 전략 카드
+- [ ] StepTransition 화면이 각 단계 사이에 요약과 함께 표시
+- [ ] 완료 화면에 통계 + 요약 + 내보내기 버튼 표시
+- [ ] 아키텍처, 데이터 모델, AI 워크플로우 스텝에 헬퍼 패널 렌더링
+- [ ] 모든 백엔드 엔드포인트 정상 동작 유지 (회귀 없음)
 - [ ] 모든 설계 출력이 Phase 7 소비를 위해 세션 데이터에 저장
+- [ ] 모든 스텝 UI가 백엔드 세션 데이터 기반으로 동적 렌더링 (하드코딩된 플레이스홀더 데이터 없음)
 
 ---
 
 ## 변경 이력
 
 | 날짜 | 내용 |
-|---|---|
+|------|------|
 | 2026-05-22 | 최초 작성 — 구 Phase 5 (설계 & 문서 생성)에서 분리 |
-| 2026-05-25 | 업데이트: gap/checklist 필수화 반영, load_skill() 참조 추가 (ADR-006) |
-| 2026-05-25 | Phase 6 → Phase 5 번호 변경. 선행조건을 Phase 4 킥오프 완료로 수정, gap/checklist Note를 Phase 6 참조로 변경 |
+| 2026-05-25 | 업데이트: gap/checklist 필수화, load_skill() 참조 추가 (ADR-006) |
+| 2026-05-25 | Phase 6 → Phase 5 번호 변경 |
+| 2026-05-26 | v1 완료: 백엔드 11개 엔드포인트 + 스킬 4개 + DB 마이그레이션. 프론트엔드 10개 컴포넌트 (기본 wizard). E2E 테스트 완료 |
+| 2026-05-26 | v2 재작성: `design-phase-flow-standalone.jsx` 기준 프론트엔드 재작성. 9개 화면 흐름 (환영 + 스텝 4개 + 전환 3개 + 완료). Frame/TopBar, AiQuestion, AiSuggestionList, StepTransition, 헬퍼 패널 3개, 스텝별 콘텐츠 재작성 추가. 백엔드 유지. 모델 선택 + 비용 추정 V2로 연기 |
+| 2026-05-26 | F17-F21 추가: AiSuggestionList, SVG 다이어그램, IO 파이프라인, 전환 요약, 정합성 규칙의 동적 데이터 바인딩 작업. 완료 기준에 하드코딩 플레이스홀더 데이터 없음 조건 추가 |

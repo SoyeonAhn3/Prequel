@@ -1,10 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthContext } from '../../contexts/AuthContext'
+
+const NAV_TABS = [
+  { label: '내 프로젝트', path: '/projects' },
+  { label: '템플릿', path: '/templates' },
+  { label: '공지사항', path: '/notices' },
+  { label: '가이드', path: '/guide' },
+]
 
 export default function TopBar() {
   const { user, signOut } = useAuthContext()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -24,67 +32,107 @@ export default function TopBar() {
   }
 
   const devBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
-  const quotaLabel = devBypass
-    ? 'dev mode'
-    : user?.plan === 'free'
-      ? `${user.free_used}/2 free`
-      : user?.plan
+  const freeUsed = user?.free_used ?? 0
+  const freeLimit = 2
 
   const initials = user?.display_name
     ? user.display_name.charAt(0).toUpperCase()
     : user?.email?.charAt(0).toUpperCase() ?? '?'
 
-  return (
-    <header className="sticky top-0 z-50 bg-surface border-b border-border">
-      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        {/* Left: Logo + Nav */}
-        <div className="flex items-center gap-6">
-          <Link to="/projects" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-              <span className="text-white text-sm font-bold">P</span>
-            </div>
-            <span className="font-semibold text-text">Prequel</span>
-          </Link>
-          <nav className="hidden sm:flex items-center gap-4">
-            <Link to="/projects" className="text-sm text-text-muted hover:text-text transition-colors">
-              프로젝트
-            </Link>
-          </nav>
-        </div>
+  const activePath = location.pathname
 
-        {/* Right: Quota + Avatar */}
-        <div className="flex items-center gap-3">
-          {quotaLabel && (
-            <span className="text-xs text-text-muted bg-bg px-2 py-1 rounded-md">
-              {quotaLabel}
+  return (
+    <header
+      className="h-14 border-b border-border bg-surface flex items-center px-7 gap-7 shrink-0"
+    >
+      {/* Logo */}
+      <Link to="/projects" className="flex items-center gap-[9px] no-underline">
+        <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="5" fill="var(--color-accent)" />
+          <path
+            d="M8 9 L8 15.5 M8 9 C8 9, 11.5 9, 12.5 9 C14 9, 14.5 10.2, 14.5 11.2 C14.5 12.5, 13.5 13.2, 12 13.2 L8 13.2"
+            stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"
+          />
+          <circle cx="16" cy="15" r="1.4" fill="#fff" />
+        </svg>
+        <span className="font-semibold text-base text-text" style={{ letterSpacing: -0.2 }}>Prequel</span>
+      </Link>
+
+      {/* Nav tabs */}
+      <nav className="flex gap-1">
+        {NAV_TABS.map((t) => {
+          const isActive = activePath.startsWith(t.path)
+          return (
+            <Link
+              key={t.label}
+              to={t.path}
+              className={`text-[13.5px] px-3 py-[7px] rounded-[7px] no-underline transition-colors ${
+                isActive
+                  ? 'text-text font-semibold bg-surface-alt'
+                  : 'text-text-muted font-medium hover:text-text hover:bg-surface-alt/50'
+              }`}
+            >
+              {t.label}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="flex-1" />
+
+      {/* Right section */}
+      {user && (
+        <div className="flex items-center gap-3.5">
+          {/* Credits pill */}
+          {!devBypass && (
+            <div
+              className="flex items-center gap-[9px] py-[5px] pl-[11px] pr-[7px] bg-accent-soft rounded-full"
+              style={{ border: '1px solid color-mix(in srgb, var(--color-accent) 15%, transparent)' }}
+            >
+              <span className="text-[11.5px] font-semibold text-accent-deep" style={{ letterSpacing: -0.1 }}>
+                잔여
+              </span>
+              <span className="inline-flex items-baseline gap-0.5 px-[9px] py-[3px] bg-surface rounded-full font-mono">
+                <span className="text-[13px] font-bold text-accent" style={{ letterSpacing: -0.3 }}>
+                  {freeLimit - freeUsed}
+                </span>
+                <span className="text-[10.5px] text-text-subtle">/{freeLimit}</span>
+              </span>
+            </div>
+          )}
+          {devBypass && (
+            <span className="text-xs text-text-muted bg-surface-alt px-2 py-1 rounded-md font-mono">
+              dev mode
             </span>
           )}
 
+          {/* Language */}
+          <span className="text-[13px] text-text-muted">KO</span>
+
+          {/* Avatar */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="w-8 h-8 rounded-full overflow-hidden border border-border cursor-pointer"
+              className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center text-[13px] font-semibold cursor-pointer border-none"
             >
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
               ) : (
-                <div className="w-full h-full bg-accent flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">{initials}</span>
-                </div>
+                initials
               )}
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-xl shadow-lg py-1">
+              <div className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-xl shadow-lg py-1 z-50">
                 <div className="px-4 py-2 border-b border-border">
-                  <p className="text-sm font-medium text-text truncate">
-                    {user?.display_name || user?.email}
+                  <p className="text-sm font-medium text-text truncate m-0">
+                    {user.display_name || user.email}
                   </p>
-                  <p className="text-xs text-text-muted truncate">{user?.email}</p>
+                  <p className="text-xs text-text-muted truncate m-0 mt-0.5">{user.email}</p>
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-bg transition-colors cursor-pointer"
+                  className="w-full text-left px-4 py-2 text-sm text-red hover:bg-bg transition-colors cursor-pointer bg-transparent border-none"
                 >
                   로그아웃
                 </button>
@@ -92,7 +140,7 @@ export default function TopBar() {
             )}
           </div>
         </div>
-      </div>
+      )}
     </header>
   )
 }

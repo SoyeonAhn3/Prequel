@@ -9,7 +9,7 @@ _DEV_MOCK_USER: dict = {
     "display_name": "Dev User",
     "avatar_url": None,
     "role": "admin",
-    "free_used": 0,
+    "credits_used": 0,
     "plan": "free",
     "plan_expires_at": None,
     "agreed_terms_at": "2026-01-01T00:00:00+00:00",

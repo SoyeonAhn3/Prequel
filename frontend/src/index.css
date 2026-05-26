@@ -24,11 +24,19 @@
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
 }
 
+*,
+*::before,
+*::after {
+  font-family: inherit;
+}
+
 body {
   margin: 0;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {

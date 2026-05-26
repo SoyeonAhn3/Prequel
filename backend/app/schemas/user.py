@@ -8,7 +8,7 @@ class UserProfile(BaseModel):
     display_name: str | None = None
     avatar_url: str | None = None
     role: str = "user"
-    free_used: int = 0
+    credits_used: int = 0
     plan: str = "free"
     plan_expires_at: datetime | None = None
     agreed_terms_at: datetime | None = None

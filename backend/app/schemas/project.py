@@ -14,6 +14,10 @@ class ProjectUpdate(BaseModel):
     project_type: str | None = Field(default=None, max_length=100)
 
 
+class DesignDecisionRequest(BaseModel):
+    decision: str = Field(pattern="^(design|skip)$")
+
+
 class ProjectOut(BaseModel):
     id: str
     user_id: str

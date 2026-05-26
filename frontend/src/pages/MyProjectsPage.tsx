@@ -12,6 +12,8 @@ type FilterTab = 'all' | 'in_progress' | 'completed'
 
 const STATUS_MAP: Record<string, { label: string; variant: 'accent' | 'green' | 'amber' }> = {
   in_progress: { label: '진행 중', variant: 'accent' },
+  designing: { label: '설계 중', variant: 'accent' },
+  evaluating: { label: '평가 중', variant: 'amber' },
   completed: { label: '완료', variant: 'green' },
   paused: { label: '일시정지', variant: 'amber' },
 }
@@ -225,7 +227,13 @@ export default function MyProjectsPage() {
                 <div>
                   <div
                     className="font-semibold text-text hover:text-accent cursor-pointer transition-colors"
-                    onClick={() => navigate(`/projects/${project.id}/interview`)}
+                    onClick={() => {
+                      if (project.status === 'designing') {
+                        navigate(`/projects/${project.id}/design`)
+                      } else {
+                        navigate(`/projects/${project.id}/interview`)
+                      }
+                    }}
                   >
                     {project.name}
                   </div>
@@ -272,6 +280,17 @@ export default function MyProjectsPage() {
                           className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
                         >
                           이어하기
+                        </button>
+                      )}
+                      {project.status === 'designing' && (
+                        <button
+                          onClick={() => {
+                            setMenuOpenId(null)
+                            navigate(`/projects/${project.id}/design`)
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
+                        >
+                          설계 이어하기
                         </button>
                       )}
                       <button

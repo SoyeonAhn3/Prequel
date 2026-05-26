@@ -1,8 +1,8 @@
-# Phase 4 — AI Interview Pipeline `🚧 In Progress`
+# Phase 4 — AI Interview Pipeline `✅ Complete`
 
 > Build the core AI interview system: prompt manager, interview orchestrator, session management, and chat UI.
 
-**Status**: 🚧 In Progress
+**Status**: ✅ Complete
 **Prerequisites**: Phase 3 completion (Project CRUD, quota enforcement)
 
 ---
@@ -43,9 +43,9 @@ This is the most critical phase of the entire project. It implements the heart o
 | 24 | Project type detection result confirm/edit UI | Frontend | ✅ | FR-002 |
 | 25 | Pause button + `beforeunload` session save | Frontend | ✅ | FR-011 |
 | 26 | Resume from project list ("In Progress" → resume) | Frontend | ✅ | FR-011 |
-| 27 | `/kickoff-suggest` — 스킬 기반 AI 제안 (현재 하드코딩, `load_skill()` 전환 필요) | Backend | 🔲 | FR-021 |
-| 28 | ~~제안 검토 UI~~ (채팅 UI로 대체, 별도 UI 불필요) | — | ✅ | FR-021 |
-| 29 | Design decision UI (displayed after suggest completes) | Frontend | 🔲 | FR-001 |
+| 27 | `/kickoff-suggest` — skill-based AI suggestions (`load_skill()` conversion done) | Backend | ✅ | FR-021 |
+| 28 | ~~Suggestion review UI~~ (replaced by chat UI, no separate UI needed) | — | ✅ | FR-021 |
+| 29 | Design decision UI (proceed to design / skip selection cards) | Frontend + Backend | ✅ | FR-001 |
 
 > **V4 Phase Transition Flow** (#29-39) → **Phase 6**으로 분리됨
 
@@ -126,7 +126,7 @@ After the 10-step interview completes, the system triggers `/kickoff-suggest` as
 - User reviews suggestions in chat UI: accept, reject, or request alternatives
 - Accepted suggestions are stored and carried forward to Phase 5 design and Phase 6 evaluation as additional context
 
-> **Current state**: STEP 11 prompt is hardcoded in `prompt_manager.py` (lines 132-148). Needs refactoring to use `load_skill("kickoff-suggest")`.
+> **Current state**: ✅ Converted to `load_skill("kickoff-suggest")` — hardcoded STEP 11 removed.
 
 > **After suggest** → User chooses to proceed to Phase 5 (Design) or skip to Phase 6 (Evaluation & Finalization)
 
@@ -199,13 +199,13 @@ Event-based saving triggers:
 
 ## Completion Criteria
 
-- [ ] Idea input → type auto-detected and displayed for user confirmation
-- [ ] Full interview loop: question → answer → next question works E2E
-- [ ] Pause → browser close → reopen → resume from last question with no data loss
-- [ ] 5-minute inactivity triggers auto-pause
-- [ ] Progress bar accurately shows current step / total steps
-- [ ] Quick action chips ("recommend", "skip") function correctly
-- [ ] `/kickoff-suggest` generates suggestions using `load_skill()` (not hardcoded)
+- [x] Idea input → type auto-detected and displayed for user confirmation
+- [x] Full interview loop: question → answer → next question works E2E
+- [x] Pause → browser close → reopen → resume from last question with no data loss
+- [x] 5-minute inactivity triggers auto-pause
+- [x] Progress bar accurately shows current step / total steps
+- [x] Quick action chips ("recommend", "skip") function correctly
+- [x] `/kickoff-suggest` generates suggestions using `load_skill()` (not hardcoded)
 
 ---
 
@@ -223,15 +223,16 @@ Event-based saving triggers:
 | 2026-05-22 | Added V4 Phase Transition Flow (#29-39): dynamic step system, kickoff-evaluate/done/gap/checklist skill integration, proposal card, phase complete modal, gap branch UI. Design skills (How) moved to Phase 5. "Design later" feature deferred to V2 |
 | 2026-05-25 | Restructured: #27 kickoff-suggest reverted to 🔲 (hardcoded → load_skill), removed API cost criteria, updated suggest section with harness integration (ADR-006) |
 | 2026-05-25 | Phase references updated: Design = Phase 5, Evaluation = Phase 6. Added design decision deliverable (#29) |
+| 2026-05-26 | Phase 4 complete: #27 load_skill() conversion confirmed ✅, #29 design decision UI confirmed ✅. All 29 deliverables done. Billing changed to usage-based credits (credits_used). Test scenarios 28/28 Pass |
 
 ---
 ---
 
-# Phase 4 — AI 인터뷰 파이프라인 `🚧 진행 중`
+# Phase 4 — AI 인터뷰 파이프라인 `✅ 완료`
 
 > 핵심 AI 인터뷰 시스템 구축: 프롬프트 매니저, 인터뷰 오케스트레이터, 세션 관리, 채팅 UI.
 
-**상태**: 🚧 진행 중
+**상태**: ✅ 완료
 **선행 조건**: Phase 3 완료 (프로젝트 CRUD, 쿼터 적용)
 
 ---
@@ -272,9 +273,9 @@ Event-based saving triggers:
 | 24 | 프로젝트 유형 감지 결과 확인/수정 UI | Frontend | ✅ | FR-002 |
 | 25 | 일시정지 버튼 + `beforeunload` 세션 저장 | Frontend | ✅ | FR-011 |
 | 26 | 이어하기 (프로젝트 목록에서 "진행 중" → 재개) | Frontend | ✅ | FR-011 |
-| 27 | `/kickoff-suggest` — 스킬 기반 AI 제안 (현재 하드코딩, `load_skill()` 전환 필요) | Backend | 🔲 | FR-021 |
+| 27 | `/kickoff-suggest` — 스킬 기반 AI 제안 (`load_skill()` 전환 완료) | Backend | ✅ | FR-021 |
 | 28 | ~~제안 검토 UI~~ (채팅 UI로 대체, 별도 UI 불필요) | — | ✅ | FR-021 |
-| 29 | 설계 진행 여부 선택 UI (suggest 완료 후 표시) | Frontend | 🔲 | FR-001 |
+| 29 | 설계 진행 여부 선택 UI (suggest 완료 후 표시) | Frontend + Backend | ✅ | FR-001 |
 
 > **V4 Phase 전환 플로우** (#29-39) → **Phase 6**으로 분리됨
 
@@ -355,7 +356,7 @@ Event-based saving triggers:
 - 채팅 UI에서 사용자가 각 제안을 수락, 거부, 대안 요청 가능
 - 수락된 제안은 저장되어 Phase 5 설계 및 Phase 6 평가의 추가 컨텍스트로 전달
 
-> **현재 상태**: STEP 11 프롬프트가 `prompt_manager.py` (132-148행)에 하드코딩됨. `load_skill("kickoff-suggest")` 사용으로 리팩토링 필요.
+> **현재 상태**: ✅ `load_skill("kickoff-suggest")`로 전환 완료 — 하드코딩 제거됨.
 
 > **suggest 이후** → 설계 진행 여부 선택. 설계 선택 시 Phase 5(설계), 건너뛰기 시 Phase 6(평가 & 마무리)
 
@@ -428,13 +429,13 @@ Event-based saving triggers:
 
 ## 완료 기준
 
-- [ ] 아이디어 입력 → 유형 자동 감지 후 사용자 확인 화면 표시
-- [ ] 전체 인터뷰 루프: 질문 → 답변 → 다음 질문 E2E 동작
-- [ ] 일시정지 → 브라우저 종료 → 재접속 → 마지막 질문부터 데이터 유실 없이 재개
-- [ ] 5분 무응답 시 자동 일시정지 트리거
-- [ ] 프로그레스바가 현재 스텝 / 전체 스텝을 정확히 표시
-- [ ] 퀵 액션 칩 ("추천해줘", "건너뛰기") 정상 동작
-- [ ] `/kickoff-suggest`가 `load_skill()` 사용하여 제안 생성 (하드코딩 아님)
+- [x] 아이디어 입력 → 유형 자동 감지 후 사용자 확인 화면 표시
+- [x] 전체 인터뷰 루프: 질문 → 답변 → 다음 질문 E2E 동작
+- [x] 일시정지 → 브라우저 종료 → 재접속 → 마지막 질문부터 데이터 유실 없이 재개
+- [x] 5분 무응답 시 자동 일시정지 트리거
+- [x] 프로그레스바가 현재 스텝 / 전체 스텝을 정확히 표시
+- [x] 퀵 액션 칩 ("추천해줘", "건너뛰기") 정상 동작
+- [x] `/kickoff-suggest`가 `load_skill()` 사용하여 제안 생성 (하드코딩 아님)
 
 ---
 
@@ -452,3 +453,4 @@ Event-based saving triggers:
 | 2026-05-22 | V4 Phase 전환 플로우 추가 (#29-39): 동적 스텝 시스템, kickoff-evaluate/done/gap/checklist 스킬 통합, 제안 카드, Phase 완료 모달, Gap 분기 UI. 설계 스킬 (How)은 Phase 5로 이동. "설계를 나중에" 기능은 V2로 연기 |
 | 2026-05-25 | 재구조화: #27 kickoff-suggest 🔲로 변경 (하드코딩 → load_skill 전환), API 비용 기준 삭제, suggest 섹션 하네스 통합 반영 (ADR-006) |
 | 2026-05-25 | Phase 참조 업데이트: 설계 = Phase 5, 평가 = Phase 6. 설계 진행 여부 선택 deliverable (#29) 추가 |
+| 2026-05-26 | Phase 4 완료: #27 load_skill() 전환 확인 ✅, #29 설계 진행 여부 선택 UI 확인 ✅. 전체 29개 deliverable 완료. 과금 모델 횟수제(credits_used)로 변경. 테스트 시나리오 28/28 Pass |

@@ -20,8 +20,11 @@ Phase 5(설계) 완료 또는 Phase 4에서 설계 건너뛰기
   → STEP 2: /kickoff-done (완료 조건 정의)
   → STEP 3: /kickoff-gap (누락/모순 점검)
   → STEP 4: /kickoff-checklist (개발 착수 체크리스트)
-  → Phase 7 (문서 생성 → 결과 뷰어 → 다운로드)
+  → doc v3 최종 생성 + 크레딧 차감 + status → completed
+  → 문서 미리보기 업데이트 (Phase 7)
 ```
+
+> **참고**: 문서 미리보기는 Phase 4 AI 제안 완료 시(doc v1) 이미 활성화됨. Phase 6 완료 시 최종 버전(v3)으로 업데이트.
 
 **Skill integration**: Each step uses `load_skill()` from `harness_loader.py` (ADR-006). `prompt_manager.py` applies token optimizations (STEP splitting, CLI removal, conversation compression, Prompt Caching).
 
@@ -42,7 +45,7 @@ Phase 5(설계) 완료 또는 Phase 4에서 설계 건너뛰기
 | 5 | `/kickoff-done` API — completion criteria (DoD) | Backend | 🔲 | FR-029 |
 | 6 | `/kickoff-gap` API — gap analysis (chat-based) | Backend | 🔲 | FR-026 |
 | 7 | `/kickoff-checklist` API — dev readiness checklist (chat-based) | Backend | 🔲 | FR-027 |
-| 8 | Phase 7 auto-transition after checklist completes | Backend | 🔲 | FR-001 |
+| 8 | Checklist 완료 시 doc v3 자동 생성 + 크레딧 차감 + status `completed` | Backend | 🔲 | FR-001, FR-003, FR-012 |
 | **Frontend** | | | | |
 | 9 | Evaluation/finalization step chat UI (reuse ChatCenter) | Frontend | 🔲 | FR-001 |
 | 10 | Left rail stepper — show 4 steps dynamically | Frontend | 🔲 | FR-010 |
@@ -105,13 +108,15 @@ Chat-based dev readiness checklist:
 - First development steps
 - CI/CD setup recommendations
 
-### Phase 7 Transition
+### Checklist Completion & Doc v3
 
-After STEP 4 (checklist) completes, the system automatically transitions to Phase 7:
-- Project status changes to `generating`
-- `doc_engine.py` generates the final kickoff document
-- Result viewer displays the document as section-based cards
-- User downloads Markdown via download button
+After STEP 4 (checklist) completes:
+1. `doc_engine.py` generates **doc v3** (final) — adds evaluation, DoD, gap resolutions, checklist to existing doc
+2. `_increment_credits(user_id)` — 킥오프 완료 크레딧 1회 차감
+3. Project status → `completed`
+4. Document preview page (Phase 7) auto-updates to show final version
+
+> Note: doc v1 was already generated after Phase 4 AI suggest. doc v2 (if design was done) after Phase 5. Phase 6 produces the final v3.
 
 ### Skill Files (from AI-Project-Kickoff-Harness)
 
@@ -130,7 +135,7 @@ After STEP 4 (checklist) completes, the system automatically transitions to Phas
 |---|---|---|
 | Step flow | 4 steps mandatory, linear sequence | All are quality assurance steps — always run regardless of design choice |
 | Step management | FINALIZE_REGISTRY with independent step numbering | Clean separation from Phase 4 (kickoff) and Phase 5 (design) |
-| Phase 7 transition | Automatic after checklist completes | No user decision needed — always proceeds to document generation |
+| Checklist → doc v3 | Automatic after checklist completes | doc v3 최종 생성 + 크레딧 차감 + status completed. 별도 Phase 전환 아닌 doc 업데이트 |
 | Evaluation/gap/checklist UI | Reuse ChatCenter | Consistent UX, no new UI components |
 | Design later | Deferred to V2 | Adds complexity (project state tracking, re-entry flow) |
 
@@ -141,7 +146,7 @@ After STEP 4 (checklist) completes, the system automatically transitions to Phas
 - [ ] After design completes (or is skipped), evaluate step starts automatically
 - [ ] All 4 steps (evaluate → done → gap → checklist) run as chat-based interview
 - [ ] Each step uses `load_skill()` from harness_loader (not hardcoded)
-- [ ] Checklist completion triggers automatic Phase 7 transition
+- [ ] Checklist completion triggers doc v3 generation + credit deduction + status `completed`
 - [ ] Left rail stepper shows 4 steps (evaluate → done → gap → checklist)
 - [ ] Step progress updates correctly as evaluation/finalization proceeds
 
@@ -154,6 +159,7 @@ After STEP 4 (checklist) completes, the system automatically transitions to Phas
 | 2026-05-22 | Initial creation — extracted from Phase 4 V4 flow (#29-39) |
 | 2026-05-25 | Full restructure: gap/checklist made mandatory (was conditional), removed State A/B/C branching, linear flow, added explicit harness skill references (ADR-006) |
 | 2026-05-25 | Phase 5 → Phase 6 renumbered. Phase Complete Modal removed. Flow rewritten: runs after Phase 5 (Design) or directly after Phase 4 if design skipped. STEP 12-15 → 1-4. Checklist completion auto-transitions to Phase 7 |
+| 2026-05-26 | Phase 7 점진적 생성 반영: checklist 완료 → doc v3 생성 + 크레딧 차감 + status completed. "Phase 7 전환" → "doc 업데이트" 개념으로 변경. 과금 정책 반영 (횟수제 크레딧) |
 
 ---
 ---
@@ -180,8 +186,11 @@ Phase 5(설계) 완료 또는 Phase 4에서 설계 건너뛰기
   → STEP 2: /kickoff-done (완료 조건 정의)
   → STEP 3: /kickoff-gap (누락/모순 점검)
   → STEP 4: /kickoff-checklist (개발 착수 체크리스트)
-  → Phase 7 (문서 생성 → 결과 뷰어 → 다운로드)
+  → doc v3 최종 생성 + 크레딧 차감 + status → completed
+  → 문서 미리보기 업데이트 (Phase 7)
 ```
+
+> **참고**: 문서 미리보기는 Phase 4 AI 제안 완료 시(doc v1) 이미 활성화됨. Phase 6 완료 시 최종 버전(v3)으로 업데이트.
 
 **스킬 통합**: 각 스텝은 `harness_loader.py`의 `load_skill()`로 스킬 .md를 로드 (ADR-006). `prompt_manager.py`가 토큰 최적화 적용 (STEP 분할, CLI 제거, 대화 압축, Prompt Caching).
 
@@ -202,7 +211,7 @@ Phase 5(설계) 완료 또는 Phase 4에서 설계 건너뛰기
 | 5 | `/kickoff-done` API — 완료 조건 정의 (DoD) | Backend | 🔲 | FR-029 |
 | 6 | `/kickoff-gap` API — 누락/모순 점검 (채팅 기반) | Backend | 🔲 | FR-026 |
 | 7 | `/kickoff-checklist` API — 개발 착수 체크리스트 (채팅 기반) | Backend | 🔲 | FR-027 |
-| 8 | checklist 완료 시 Phase 7 자동 전환 | Backend | 🔲 | FR-001 |
+| 8 | Checklist 완료 시 doc v3 자동 생성 + 크레딧 차감 + status `completed` | Backend | 🔲 | FR-001, FR-003, FR-012 |
 | **프론트엔드** | | | | |
 | 9 | 평가/마무리 스텝 채팅 UI (ChatCenter 재활용) | Frontend | 🔲 | FR-001 |
 | 10 | 왼쪽 레일 스테퍼에 4개 스텝 동적 표시 | Frontend | 🔲 | FR-010 |
@@ -265,13 +274,15 @@ Phase 6은 자체 FINALIZE_REGISTRY에 4개 스텝을 사용한다. Phase 5(설�
 - 첫 개발 단계
 - CI/CD 설정 권장사항
 
-### Phase 7 전환
+### Checklist 완료 & doc v3
 
-STEP 4(checklist) 완료 후 시스템이 자동으로 Phase 7로 전환:
-- 프로젝트 상태가 `generating`으로 변경
-- `doc_engine.py`가 최종 킥오프 문서 생성
-- 결과 뷰어가 문서를 섹션별 카드로 표시
-- 사용자가 Markdown 다운로드 버튼으로 내보내기
+STEP 4(checklist) 완료 후:
+1. `doc_engine.py`가 **doc v3** (최종) 생성 — 평가, 완료조건, 갭 해결, 체크리스트를 기존 문서에 추가
+2. `_increment_credits(user_id)` — 킥오프 완료 크레딧 1회 차감
+3. 프로젝트 status → `completed`
+4. 문서 미리보기 페이지 (Phase 7)가 최종 버전으로 자동 갱신
+
+> 참고: doc v1은 Phase 4 AI 제안 완료 시, doc v2(설계 진행 시)는 Phase 5 완료 시 이미 생성됨. Phase 6은 최종 v3을 생성.
 
 ### 스킬 파일 (AI-Project-Kickoff-Harness에서)
 
@@ -290,7 +301,7 @@ STEP 4(checklist) 완료 후 시스템이 자동으로 Phase 7로 전환:
 |---|---|---|
 | 스텝 플로우 | 4개 스텝 필수, 순차 실행 | 모두 품질 보증 스텝 — 설계 여부와 무관하게 항상 실행 |
 | 스텝 관리 | FINALIZE_REGISTRY에 독립 스텝 번호 | Phase 4(킥오프), Phase 5(설계)와 명확한 분리 |
-| Phase 7 전환 | checklist 완료 후 자동 | 사용자 결정 불필요 — 항상 문서 생성으로 진행 |
+| Checklist → doc v3 | checklist 완료 후 자동 | doc v3 최종 생성 + 크레딧 차감 + status completed. 별도 Phase 전환 아닌 doc 업데이트 |
 | 평가/갭/체크리스트 UI | ChatCenter 재활용 | 일관된 UX, 새 UI 컴포넌트 불필요 |
 | 설계 나중에 | V2로 연기 | 복잡성 추가 (프로젝트 상태 추적, 재진입 흐름) |
 
@@ -301,7 +312,7 @@ STEP 4(checklist) 완료 후 시스템이 자동으로 Phase 7로 전환:
 - [ ] 설계 완료 후 (또는 건너뛰기 후) evaluate 스텝이 자동으로 시작
 - [ ] 4개 스텝 (evaluate → done → gap → checklist) 모두 채팅 기반 인터뷰로 동작
 - [ ] 각 스텝이 `load_skill()` 사용 (하드코딩 아님)
-- [ ] checklist 완료 시 Phase 7로 자동 전환
+- [ ] checklist 완료 시 doc v3 생성 + 크레딧 차감 + status `completed`
 - [ ] 왼쪽 레일 스테퍼가 4개 스텝 표시 (evaluate → done → gap → checklist)
 - [ ] 평가/마무리 진행에 따라 스텝 진행률 정확히 업데이트
 
@@ -314,3 +325,4 @@ STEP 4(checklist) 완료 후 시스템이 자동으로 Phase 7로 전환:
 | 2026-05-22 | 최초 작성 — Phase 4의 V4 플로우 (#29-39)에서 분리하여 독립 Phase로 생성 |
 | 2026-05-25 | 전면 재구조화: gap/checklist 필수화 (기존 조건부 → 필수), State A/B/C 분기 제거, 순차 실행 플로우, 하네스 스킬 참조 명시 (ADR-006) |
 | 2026-05-25 | Phase 5 → Phase 6 번호 변경. Phase Complete 모달 삭제. 플로우 재작성: Phase 5(설계) 완료 후 또는 설계 건너뛰기 시 실행. STEP 12-15 → 1-4. checklist 완료 후 Phase 7 자동 전환 |
+| 2026-05-26 | Phase 7 점진적 생성 반영: checklist 완료 → doc v3 생성 + 크레딧 차감 + status completed. "Phase 7 전환" → "doc 업데이트" 개념으로 변경. 과금 정책 반영 (횟수제 크레딧) |
