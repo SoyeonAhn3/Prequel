@@ -198,9 +198,9 @@ export default function MyProjectsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="bg-surface border border-border rounded-xl overflow-visible">
           {/* Table Header */}
-          <div className="grid grid-cols-[1.8fr_0.9fr_0.9fr_0.7fr_0.7fr_40px] px-5 py-2.5 text-[11.5px] text-text-subtle font-semibold bg-surface-alt border-b border-border uppercase tracking-wide">
+          <div className="grid grid-cols-[1.8fr_0.9fr_0.9fr_0.7fr_0.7fr_40px] px-5 py-2.5 text-[11.5px] text-text-subtle font-semibold bg-surface-alt border-b border-border uppercase tracking-wide rounded-t-xl">
             <div>프로젝트</div>
             <div>유형</div>
             <div>상태</div>

@@ -323,6 +323,8 @@ async def submit_answer(
     new_insights = []
     for ins in parsed.get("insights", []):
         new_insights.append({**ins, "step": current_step})
+    existing_labels = {ins["label"] for ins in new_insights}
+    all_insights = [i for i in all_insights if i["label"] not in existing_labels]
     all_insights.extend(new_insights)
 
     next_step = current_step
@@ -501,14 +503,24 @@ async def get_session_by_project(
     if not project.data:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    result = (
-        sb.table("interview_sessions")
-        .select("id, status, current_question, token_used, created_at, paused_at, _insights")
-        .eq("project_id", project_id)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
+    try:
+        result = (
+            sb.table("interview_sessions")
+            .select("id, status, current_question, token_used, created_at, paused_at, _insights")
+            .eq("project_id", project_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        result = (
+            sb.table("interview_sessions")
+            .select("id, status, current_question, token_used, created_at, paused_at")
+            .eq("project_id", project_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
     if not result.data:
         return {"session": None, "insights": []}
 
