@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Explainer from './Explainer'
 import DesignIcon from './DesignIcon'
 import type { DesignSession, DataEntity, DataModel } from './types'
@@ -44,6 +45,36 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
     onUpdateSession?.(updated)
   }
 
+  function addEntity(name: string) {
+    if (!session || !dataModel || !name.trim()) return
+    const newEntity: DataEntity = {
+      name: name.trim(),
+      description: '',
+      fields: [{ name: 'id', type: 'uuid', constraints: 'PK' }],
+    }
+    const updated = {
+      ...session,
+      data_model: {
+        ...dataModel,
+        entities: [...dataModel.entities, newEntity],
+      },
+    }
+    onUpdateSession?.(updated)
+  }
+
+  function addFieldToEntity(entityIdx: number, fieldName: string, fieldType: string) {
+    if (!session || !dataModel || !fieldName.trim()) return
+    const entities = dataModel.entities.map((e, i) => {
+      if (i !== entityIdx) return e
+      return { ...e, fields: [...e.fields, { name: fieldName.trim(), type: fieldType || 'text', constraints: '' }] }
+    })
+    const updated = {
+      ...session,
+      data_model: { ...dataModel, entities },
+    }
+    onUpdateSession?.(updated)
+  }
+
   if (!dataModel && !generating) {
     return (
       <div className="pb-7">
@@ -58,7 +89,7 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
           <button
             type="button"
             onClick={onGenerate}
-            className="px-6 py-3 bg-accent text-white text-sm font-semibold rounded-xl cursor-pointer border-none inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
+            className="px-7 py-3.5 bg-accent text-white text-[15.4px] font-semibold rounded-2xl cursor-pointer border-none inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
             AI로 데이터 구조 설계하기
           </button>
@@ -100,7 +131,7 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
       {/* Entity grid */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {entities.map((entity, i) => (
-          <EntityCard key={i} entity={entity} index={i} onDelete={() => removeEntity(i)} />
+          <EntityCard key={i} entity={entity} index={i} onDelete={() => removeEntity(i)} onAddField={(name, type) => addFieldToEntity(i, name, type)} />
         ))}
       </div>
 
@@ -117,8 +148,7 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
               return (
                 <div key={i} className="flex items-center gap-3 px-3.5 py-3 bg-surface border border-border rounded-[10px]">
                   <span className="text-[13px] font-semibold text-text">{parsed.from}</span>
-                  <span className="text-[11.5px] text-text-muted italic">{parsed.verb}</span>
-                  <svg width="20" height="12" viewBox="0 0 20 12" fill="none">
+                  <svg width="20" height="12" viewBox="0 0 20 12" fill="none" className="shrink-0">
                     <path d="M2 6 H18 M14 2 L18 6 L14 10" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                   </svg>
                   <span className="text-[13px] font-semibold text-text">{parsed.to}</span>
@@ -141,26 +171,15 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
         </>
       )}
 
-      {/* Add new group button */}
-      <button
-        type="button"
-        className="w-full mt-3 p-3.5 bg-surface text-text-muted border border-dashed border-border-strong rounded-[10px] cursor-pointer text-[13px] font-medium flex items-center justify-center gap-2"
-        style={{ fontFamily: 'inherit' }}
-      >
-        <DesignIcon kind="data" size={14} color="var(--color-text-muted)" />
-        + 새 정보 그룹 추가
-      </button>
+      {/* Add new group */}
+      <AddEntityForm onAdd={addEntity} />
 
       {/* 정합성 규칙 (자동 검증) */}
       <div className="text-[13px] font-bold text-text mt-6 mb-1.5">
         정합성 규칙 <span className="text-[11.5px] font-medium text-text-muted">(자동 검증)</span>
       </div>
       <div className="bg-surface border border-border rounded-[10px] overflow-hidden">
-        {[
-          { ok: true, t: '이메일은 중복될 수 없어요 (한 이메일 = 한 사용자)' },
-          { ok: true, t: '추천 기록은 반드시 사용자와 책 둘 다 있어야 해요' },
-          { ok: false, t: '책의 카테고리는 미리 정한 목록에서만 선택 — 목록 정의 필요' },
-        ].map((r, i) => (
+        {deriveValidationRules(dataModel!).map((r, i) => (
           <div key={i} className={`flex items-center gap-2.5 px-3.5 py-2.5 ${i > 0 ? 'border-t border-border' : ''}`}>
             <span
               className={`w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0 ${
@@ -178,7 +197,7 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
             </span>
             <span className="text-[12.5px] text-text flex-1">{r.t}</span>
             {!r.ok && (
-              <span className="text-[11px] text-accent font-semibold cursor-pointer">해결하기 →</span>
+              <span className="text-[11px] text-amber font-semibold">확인 필요</span>
             )}
           </div>
         ))}
@@ -190,19 +209,126 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
 function parseRelationship(rel: string) {
   const match = rel.match(/^(.+?)\s*→\s*(.+?):\s*(.+)$/)
   if (match) {
-    return { from: `👤 ${match[1]}`, verb: '에게', to: `✉️ ${match[2]}`, desc: match[3], cardinality: '1 : N' }
+    return { from: match[1].trim(), to: match[2].trim(), desc: match[3].trim(), cardinality: '1 : N' }
   }
-  const parts = rel.split(/\s+/)
-  if (parts.length >= 3) {
-    return { from: parts[0], verb: '→', to: parts[parts.length - 1], desc: rel, cardinality: '1 : N' }
+  const parts = rel.split(/\s+/).filter((p) => p !== '→')
+  if (parts.length >= 2) {
+    return { from: parts[0], to: parts[parts.length - 1], desc: rel.replace(/→/g, '').trim(), cardinality: '1 : N' }
   }
-  return { from: rel, verb: '', to: '', desc: '', cardinality: '' }
+  return { from: rel.replace(/→/g, '').trim(), to: '', desc: '', cardinality: '' }
+}
+
+function deriveValidationRules(dm: DataModel): { ok: boolean; t: string }[] {
+  const rules: { ok: boolean; t: string }[] = []
+  const entities = dm.entities ?? []
+  const rels = dm.relationships ?? []
+
+  for (const entity of entities) {
+    const uniqueFields = entity.fields.filter((f) =>
+      /unique|유니크|이메일|email/i.test(`${f.constraints} ${f.name} ${f.type}`)
+    )
+    for (const f of uniqueFields) {
+      rules.push({ ok: true, t: `${f.name}은(는) 중복될 수 없어요 (${entity.name} 내 유일 값)` })
+    }
+
+    const notNullFields = entity.fields.filter((f) =>
+      /필수|NOT_NULL|required/i.test(f.constraints)
+    )
+    if (notNullFields.length > 0) {
+      rules.push({
+        ok: true,
+        t: `${entity.name}의 필수 항목 ${notNullFields.length}개 (${notNullFields.slice(0, 3).map((f) => f.name).join(', ')}${notNullFields.length > 3 ? ' 외' : ''}) — 빈 값 불가`,
+      })
+    }
+  }
+
+  for (const rel of rels) {
+    const parsed = rel.match(/^(.+?)\s*→\s*(.+?):\s*(.+)$/)
+    if (parsed) {
+      rules.push({ ok: true, t: `${parsed[2]} 기록은 반드시 ${parsed[1]} 정보가 있어야 해요` })
+    }
+  }
+
+  const choiceFields = entities.flatMap((e) =>
+    e.fields.filter((f) => /선택지|enum|category|카테고리/i.test(`${f.type} ${f.name}`)).map((f) => ({ entity: e.name, field: f.name }))
+  )
+  for (const cf of choiceFields) {
+    rules.push({ ok: false, t: `${cf.entity}의 ${cf.field}는 미리 정한 목록에서만 선택 — 목록 정의 필요` })
+  }
+
+  if (rules.length === 0) {
+    rules.push({ ok: true, t: '기본 데이터 구조가 정의되었습니다' })
+  }
+
+  return rules
 }
 
 const ENTITY_ICONS = ['👤', '📚', '✉️', '📋', '🏷️', '📊']
 
-function EntityCard({ entity, index, onDelete }: { entity: DataEntity; index: number; onDelete?: () => void }) {
+function AddEntityForm({ onAdd }: { onAdd: (name: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full mt-3 p-3.5 bg-surface text-text-muted border border-dashed border-border-strong rounded-[10px] cursor-pointer text-[13px] font-medium flex items-center justify-center gap-2"
+        style={{ fontFamily: 'inherit' }}
+      >
+        <DesignIcon kind="data" size={14} color="var(--color-text-muted)" />
+        + 새 정보 그룹 추가
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-3 p-3.5 bg-surface border border-border-strong rounded-[10px] flex items-center gap-2">
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && name.trim()) { onAdd(name); setName(''); setOpen(false) }
+          if (e.key === 'Escape') { setName(''); setOpen(false) }
+        }}
+        placeholder="그룹 이름 (예: 분석결과)"
+        autoFocus
+        className="flex-1 text-[13px] text-text bg-transparent border-none outline-none placeholder:text-text-subtle"
+        style={{ fontFamily: 'inherit' }}
+      />
+      <button
+        type="button"
+        onClick={() => { if (name.trim()) { onAdd(name); setName(''); setOpen(false) } }}
+        className="px-3 py-1.5 bg-accent text-white text-[11.5px] font-semibold rounded-lg cursor-pointer border-none"
+      >
+        추가
+      </button>
+      <button
+        type="button"
+        onClick={() => { setName(''); setOpen(false) }}
+        className="text-[11px] text-text-subtle hover:text-red cursor-pointer bg-transparent border-none"
+      >
+        취소
+      </button>
+    </div>
+  )
+}
+
+function EntityCard({ entity, index, onDelete, onAddField }: { entity: DataEntity; index: number; onDelete?: () => void; onAddField?: (name: string, type: string) => void }) {
   const icon = ENTITY_ICONS[index % ENTITY_ICONS.length]
+  const [adding, setAdding] = useState(false)
+  const [fieldName, setFieldName] = useState('')
+  const [fieldType, setFieldType] = useState('text')
+
+  function handleAdd() {
+    if (!fieldName.trim()) return
+    onAddField?.(fieldName, fieldType)
+    setFieldName('')
+    setFieldType('text')
+    setAdding(false)
+  }
 
   return (
     <div className="bg-surface border border-border rounded-xl overflow-hidden">
@@ -238,16 +364,52 @@ function EntityCard({ entity, index, onDelete }: { entity: DataEntity; index: nu
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        className="w-[calc(100%-12px)] m-1.5 py-[7px] bg-transparent text-accent text-[11.5px] font-semibold rounded-md cursor-pointer"
-        style={{
-          fontFamily: 'inherit',
-          border: '1px dashed color-mix(in srgb, var(--color-accent) 25%, transparent)',
-        }}
-      >
-        + 항목 추가
-      </button>
+      {adding ? (
+        <div className="m-1.5 p-2 bg-surface-alt rounded-md flex flex-col gap-1.5">
+          <input
+            type="text"
+            value={fieldName}
+            onChange={(e) => setFieldName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAdd()
+              if (e.key === 'Escape') { setFieldName(''); setAdding(false) }
+            }}
+            placeholder="항목 이름"
+            autoFocus
+            className="w-full text-[11px] text-text bg-surface border border-border rounded px-2 py-1.5 outline-none"
+            style={{ fontFamily: 'inherit' }}
+          />
+          <div className="flex gap-1.5">
+            <select
+              value={fieldType}
+              onChange={(e) => setFieldType(e.target.value)}
+              className="flex-1 text-[10px] text-text-muted bg-surface border border-border rounded px-1.5 py-1 outline-none"
+              style={{ fontFamily: 'inherit' }}
+            >
+              <option value="text">text</option>
+              <option value="uuid">uuid</option>
+              <option value="integer">integer</option>
+              <option value="boolean">boolean</option>
+              <option value="timestamp">timestamp</option>
+              <option value="jsonb">jsonb</option>
+            </select>
+            <button type="button" onClick={handleAdd} className="px-2 py-1 bg-accent text-white text-[10px] font-semibold rounded cursor-pointer border-none">추가</button>
+            <button type="button" onClick={() => { setFieldName(''); setAdding(false) }} className="text-[10px] text-text-subtle cursor-pointer bg-transparent border-none">취소</button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="w-[calc(100%-12px)] m-1.5 py-[7px] bg-transparent text-accent text-[11.5px] font-semibold rounded-md cursor-pointer"
+          style={{
+            fontFamily: 'inherit',
+            border: '1px dashed color-mix(in srgb, var(--color-accent) 25%, transparent)',
+          }}
+        >
+          + 항목 추가
+        </button>
+      )}
     </div>
   )
 }

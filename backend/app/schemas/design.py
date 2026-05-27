@@ -3,14 +3,15 @@ from pydantic import BaseModel, Field
 
 class DesignGenerateRequest(BaseModel):
     project_id: str
+    template_index: int | None = None
 
 
 class RequirementItem(BaseModel):
-    id: str
-    category: str
-    text: str
-    priority: str = Field(pattern="^(must|should|could)$")
-    acceptance_criteria: str
+    id: str = ""
+    category: str = ""
+    text: str = ""
+    priority: str = "must"
+    acceptance_criteria: str = ""
     status: str = "pending"
 
 
@@ -21,36 +22,42 @@ class RequirementUpdateRequest(BaseModel):
 
 
 class ArchComponentItem(BaseModel):
-    name: str
-    description: str
-    technology: str
-    role: str
+    name: str = ""
+    description: str = ""
+    technology: str = ""
+    role: str = ""
 
 
 class ArchitectureData(BaseModel):
-    components: list[ArchComponentItem]
-    tech_stack: dict[str, str]
-    mermaid_code: str
-    integration_notes: str
+    components: list[ArchComponentItem] = []
+    tech_stack: dict[str, str] = {}
+    mermaid_code: str = ""
+    integration_notes: str = ""
 
 
 class DataFieldItem(BaseModel):
-    name: str
-    type: str
-    description: str
-    constraints: str
+    name: str = ""
+    type: str = ""
+    description: str = ""
+    constraints: str = ""
 
 
 class DataEntityItem(BaseModel):
-    name: str
-    description: str
-    fields: list[DataFieldItem]
+    name: str = ""
+    description: str = ""
+    fields: list[DataFieldItem] = []
 
 
 class DataModelData(BaseModel):
-    entities: list[DataEntityItem]
-    mermaid_code: str
-    relationships: list[str]
+    entities: list[DataEntityItem] = []
+    mermaid_code: str = ""
+    relationships: list[str] = []
+
+
+class ArchTemplateItem(BaseModel):
+    title: str = ""
+    badge: str = ""
+    desc: str = ""
 
 
 class DesignSessionOut(BaseModel):
@@ -61,4 +68,5 @@ class DesignSessionOut(BaseModel):
     architecture: ArchitectureData | None = None
     data_model: DataModelData | None = None
     ai_workflow: str | None = None
+    arch_templates: list[ArchTemplateItem] | None = None
     status: str = "in_progress"

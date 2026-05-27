@@ -1,7 +1,83 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import Explainer from './Explainer'
-import DesignIcon from './DesignIcon'
 import type { DesignSession } from './types'
+
+interface ParsedWorkflow {
+  inputs: string[]
+  outputs: string[]
+  model: string
+  modelVersion: string
+  task: string
+  fallbacks: { icon: string; bg: string; title: string; action: string }[]
+}
+
+function extractBullets(text: string, sectionPattern: RegExp, limit = 6): string[] {
+  const match = text.match(sectionPattern)
+  if (!match) return []
+  const afterMatch = text.slice(match.index! + match[0].length)
+  const nextSection = afterMatch.search(/\n#{1,3}\s/)
+  const section = nextSection > -1 ? afterMatch.slice(0, nextSection) : afterMatch
+  const bullets = section
+    .split('\n')
+    .map((l) => l.replace(/^[\s]*[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim())
+    .filter((l) => l.length > 0 && l.length < 120 && !l.startsWith('#'))
+    .slice(0, limit)
+  return bullets
+}
+
+function parseAiWorkflow(raw: string): ParsedWorkflow {
+  const defaults: ParsedWorkflow = {
+    inputs: ['사용자 요청 데이터', '컨텍스트 정보'],
+    outputs: ['AI 처리 결과', '구조화된 응답'],
+    model: 'Claude',
+    modelVersion: 'sonnet',
+    task: 'AI 처리',
+    fallbacks: [
+      { icon: '⏱', bg: 'bg-amber-soft', title: 'AI 응답 지연 시', action: '타임아웃 후 기본 응답 반환' },
+      { icon: '✕', bg: 'bg-red-soft', title: 'AI 응답 오류 시', action: '재시도 후 기본값 반환' },
+    ],
+  }
+
+  if (!raw || raw.trim().length < 20) return defaults
+
+  const inputs = extractBullets(raw, /#{1,3}\s*(추론\s*흐름|데이터\s*파이프라인|입력|input)/i)
+  const outputs = extractBullets(raw, /#{1,3}\s*(출력|output|응답|결과)/i)
+
+  let model = 'Claude'
+  let modelVersion = 'sonnet'
+  const modelMatch = raw.match(/(?:Claude|GPT|Gemini)[\s-]*(\S*)/i)
+  if (modelMatch) {
+    model = modelMatch[0].split(/[\s-]/)[0]
+    modelVersion = modelMatch[1] || 'sonnet'
+  }
+
+  let task = 'AI 처리'
+  const taskMatch = raw.match(/AI가?\s*(.*?(?:생성|추천|분석|분류|예측|요약|번역))/i)
+  if (taskMatch) task = taskMatch[1].trim().slice(0, 20)
+
+  const opSection = extractBullets(raw, /#{1,3}\s*(운영\s*고려|모니터링|폴백|fallback|장애|비용)/i, 5)
+  const fallbacks: ParsedWorkflow['fallbacks'] = []
+  const icons = ['⏱', '✕', '💰', '🔄', '📊']
+  const bgs = ['bg-amber-soft', 'bg-red-soft', 'bg-surface-alt', 'bg-accent-soft', 'bg-green-soft']
+  for (let i = 0; i < Math.min(opSection.length, 4); i++) {
+    const line = opSection[i]
+    const colonIdx = line.indexOf(':')
+    if (colonIdx > 0 && colonIdx < line.length - 1) {
+      fallbacks.push({ icon: icons[i % icons.length], bg: bgs[i % bgs.length], title: line.slice(0, colonIdx).trim(), action: line.slice(colonIdx + 1).trim() })
+    } else {
+      fallbacks.push({ icon: icons[i % icons.length], bg: bgs[i % bgs.length], title: line, action: '정의됨' })
+    }
+  }
+
+  return {
+    inputs: inputs.length > 0 ? inputs : defaults.inputs,
+    outputs: outputs.length > 0 ? outputs : defaults.outputs,
+    model,
+    modelVersion,
+    task,
+    fallbacks: fallbacks.length > 0 ? fallbacks : defaults.fallbacks,
+  }
+}
 
 interface AiWorkflowStepProps {
   session: DesignSession | null
@@ -19,6 +95,8 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
       onGenerate()
     }
   }, [isAiProject, aiWorkflow, generating, onGenerate])
+
+  const parsed = useMemo(() => parseAiWorkflow(aiWorkflow ?? ''), [aiWorkflow])
 
   if (!isAiProject) {
     return (
@@ -92,7 +170,9 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
               📥 입력 (INPUT)
             </div>
             <div className="text-xs text-accent-deep leading-[1.65]">
-              • 사용자 부서<br />• 지난 4주 인기 도서 Top 20<br />• 이미 추천된 책 목록<br />• 사용자 피드백 이력
+              {parsed.inputs.map((item, i) => (
+                <span key={i}>• {item}{i < parsed.inputs.length - 1 && <br />}</span>
+              ))}
             </div>
           </div>
 
@@ -112,9 +192,9 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
             }}
           >
             <div className="text-[10.5px] font-mono opacity-80 font-bold mb-2" style={{ letterSpacing: 0.4 }}>🤖 AI</div>
-            <div className="text-base font-bold mb-1" style={{ letterSpacing: -0.3 }}>Claude</div>
-            <div className="text-[11px] opacity-85 font-mono">sonnet-4.5</div>
-            <div className="mt-3 px-2.5 py-1.5 bg-white/15 rounded-full text-[10.5px] font-semibold inline-block">추천 생성</div>
+            <div className="text-base font-bold mb-1" style={{ letterSpacing: -0.3 }}>{parsed.model}</div>
+            <div className="text-[11px] opacity-85 font-mono">{parsed.modelVersion}</div>
+            <div className="mt-3 px-2.5 py-1.5 bg-white/15 rounded-full text-[10.5px] font-semibold inline-block">{parsed.task}</div>
           </div>
 
           {/* Arrow */}
@@ -133,7 +213,9 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
               📤 출력 (OUTPUT)
             </div>
             <div className="text-xs leading-[1.65]" style={{ color: '#2f5a44' }}>
-              • 책 제목<br />• 추천 이유 (2줄)<br />• 부서 인기 순위<br />• 표지 이미지 URL
+              {parsed.outputs.map((item, i) => (
+                <span key={i}>• {item}{i < parsed.outputs.length - 1 && <br />}</span>
+              ))}
             </div>
           </div>
         </div>
@@ -147,28 +229,18 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
         AI가 답을 못 주거나 느릴 때의 대처법이에요.
       </p>
       <div className="flex flex-col gap-2">
-        {[
-          { icon: '⏱', bg: 'bg-amber-soft', title: 'AI가 30초 안에 답을 못 주면', action: '캐시된 기본 응답을 대신 반환합니다', defined: true },
-          { icon: '✕', bg: 'bg-red-soft', title: 'AI 응답이 형식에 맞지 않으면', action: '한 번 더 요청 (재시도) 후, 기본값 반환', defined: true },
-          { icon: '💰', bg: 'bg-surface-alt', title: '월 API 비용 한도를 넘으면', action: 'AI에게 추천 받아 정의하기', defined: false },
-        ].map((rule, i) => (
+        {parsed.fallbacks.map((rule, i) => (
           <div key={i} className="flex gap-3 p-[12px_14px] bg-surface border border-border rounded-[10px] items-start">
             <div className={`w-[30px] h-[30px] rounded-lg ${rule.bg} flex items-center justify-center text-sm shrink-0 font-bold`}>
               {rule.icon}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold text-text">{rule.title}</div>
-              <div className={`text-xs mt-[3px] leading-relaxed ${rule.defined ? 'text-text-muted' : 'text-text-subtle italic'}`}>
+              <div className="text-xs mt-[3px] leading-relaxed text-text-muted">
                 → {rule.action}
               </div>
             </div>
-            {rule.defined ? (
-              <span className="text-[11px] font-semibold text-green px-2 py-[3px] bg-green-soft rounded">정의됨</span>
-            ) : (
-              <button className="text-[11px] font-semibold text-accent px-2 py-[3px] bg-accent-soft border-none rounded cursor-pointer" style={{ fontFamily: 'inherit' }}>
-                채우기 →
-              </button>
-            )}
+            <span className="text-[11px] font-semibold text-green px-2 py-[3px] bg-green-soft rounded">정의됨</span>
           </div>
         ))}
       </div>

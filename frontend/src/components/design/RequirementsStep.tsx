@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AiQuestion from './AiQuestion'
 import AiSuggestionList from './AiSuggestionList'
 import DesignIcon from './DesignIcon'
 import Btn from '../common/Btn'
+import { apiFetch } from '../../lib/api'
 import type { DesignSession, Requirement } from './types'
 
 interface RequirementsStepProps {
   session: DesignSession | null
   generating: boolean
   onGenerate: () => void
+  projectId: string
 }
 
 const PRIORITY_STYLE: Record<string, { label: string; cls: string }> = {
@@ -17,10 +19,36 @@ const PRIORITY_STYLE: Record<string, { label: string; cls: string }> = {
   could: { label: 'Could', cls: 'text-text-muted bg-surface-alt' },
 }
 
-export default function RequirementsStep({ session, generating, onGenerate }: RequirementsStepProps) {
+export default function RequirementsStep({ session, generating, onGenerate, projectId }: RequirementsStepProps) {
   const requirements = session?.requirements
   const [inputValue, setInputValue] = useState('')
   const [localItems, setLocalItems] = useState<string[]>([])
+  const [suggestions, setSuggestions] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!projectId) return
+    let cancelled = false
+
+    async function loadSuggestions() {
+      try {
+        const interviewSession = await apiFetch<{ insights: { label: string; value: string }[] }>(
+          `/interview/session/${projectId}`
+        )
+        if (cancelled) return
+        const insights = interviewSession?.insights ?? []
+        const items = insights
+          .filter((ins) => ins.value && ins.value.length > 5)
+          .map((ins) => ins.value)
+          .slice(0, 8)
+        if (items.length > 0) setSuggestions(items)
+      } catch {
+        // Interview session not found — keep empty suggestions
+      }
+    }
+
+    loadSuggestions()
+    return () => { cancelled = true }
+  }, [projectId])
 
   function addItem(text: string) {
     const trimmed = text.trim()
@@ -70,18 +98,12 @@ export default function RequirementsStep({ session, generating, onGenerate }: Re
           </div>
         )}
 
-        <AiSuggestionList
-          items={[
-            '매주 정해진 요일에 Slack DM으로 추천 책을 받는다',
-            '받은 추천 책에 "관심 있어요 / 별로예요" 피드백을 남긴다',
-            '관리자가 부서별 인기 도서 큐레이션 규칙을 편집한다',
-            '본인이 이미 읽은 책을 표시해 다시 추천되지 않도록 한다',
-            '추천 히스토리를 월별로 모아볼 수 있다',
-            '부서별 인기 도서 Top 10 리스트를 확인할 수 있다',
-            '추천 알림 빈도(주 1회/2회)를 사용자가 직접 설정한다',
-          ]}
-          onAdd={(item) => addItem(item)}
-        />
+        {suggestions.length > 0 && (
+          <AiSuggestionList
+            items={suggestions}
+            onAdd={(item) => addItem(item)}
+          />
+        )}
 
         {/* Input area */}
         <div className="bg-surface border-[1.5px] border-border-strong rounded-xl p-[12px_14px]">

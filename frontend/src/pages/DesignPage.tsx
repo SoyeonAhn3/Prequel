@@ -45,31 +45,57 @@ const STEP_HEADERS: Record<DesignStepId, { title: string; subtitle: string }> = 
   },
 }
 
-const TRANSITION_DATA: Record<string, { summary: string[]; nextPreview: string }> = {
-  requirements: {
-    summary: [
-      '핵심 기능 목록 정의 완료',
-      '우선순위별 분류 (Must / Should / Could)',
-      '인수 기준 자동 생성',
-    ],
-    nextPreview: '어떤 부품으로 만들지 결정해요. 3가지 추천 조합 중 골라도 됩니다.',
-  },
-  architecture: {
-    summary: [
-      '시스템 구성 요소 선택 완료',
-      '기술 스택 정의',
-      '각 부품의 역할이 모두 정의됨',
-    ],
-    nextPreview: '저장해야 할 정보를 정리해요. 엑셀 시트처럼 표 형태로 만들어드립니다.',
-  },
-  'data-model': {
-    summary: [
-      '정보 그룹(테이블) 정의 완료',
-      '각 항목(필드)과 타입 정의',
-      '그룹 간 연결 관계 정의',
-    ],
-    nextPreview: 'AI(Claude)가 어떤 정보를 받고 무엇을 만들어낼지 정의해요. 마지막 단계!',
-  },
+const NEXT_PREVIEWS: Record<string, string> = {
+  requirements: '어떤 부품으로 만들지 결정해요. 3가지 추천 조합 중 골라도 됩니다.',
+  architecture: '저장해야 할 정보를 정리해요. 엑셀 시트처럼 표 형태로 만들어드립니다.',
+  'data-model': 'AI(Claude)가 어떤 정보를 받고 무엇을 만들어낼지 정의해요. 마지막 단계!',
+}
+
+function buildTransitionData(stepId: DesignStepId, s: DesignSession | null): { summary: string[]; nextPreview: string } {
+  const nextPreview = NEXT_PREVIEWS[stepId] ?? ''
+
+  if (!s) {
+    return { summary: ['이 단계의 데이터를 불러오는 중입니다.'], nextPreview }
+  }
+
+  switch (stepId) {
+    case 'requirements': {
+      const reqs = s.requirements ?? []
+      const must = reqs.filter((r) => r.priority === 'must').length
+      const should = reqs.filter((r) => r.priority === 'should').length
+      const could = reqs.filter((r) => r.priority === 'could').length
+      const summary = [`핵심 기능 ${reqs.length}개 정의 완료`]
+      if (must + should + could > 0) {
+        summary.push(`우선순위별 분류 (Must ${must}개 · Should ${should}개 · Could ${could}개)`)
+      }
+      const withCriteria = reqs.filter((r) => r.acceptance_criteria).length
+      if (withCriteria > 0) summary.push(`인수 기준 ${withCriteria}개 자동 생성`)
+      return { summary, nextPreview }
+    }
+    case 'architecture': {
+      const arch = s.architecture
+      if (!arch) return { summary: ['시스템 구조 데이터 없음'], nextPreview }
+      const comps = arch.components ?? []
+      const techs = Object.keys(arch.tech_stack ?? {})
+      const summary = [`시스템 구성 요소 ${comps.length}개 선택 완료`]
+      if (techs.length > 0) summary.push(`기술 스택: ${techs.slice(0, 4).join(', ')}${techs.length > 4 ? ` 외 ${techs.length - 4}개` : ''}`)
+      summary.push('각 부품의 역할이 모두 정의됨')
+      return { summary, nextPreview }
+    }
+    case 'data-model': {
+      const dm = s.data_model
+      if (!dm) return { summary: ['데이터 구조 데이터 없음'], nextPreview }
+      const entities = dm.entities ?? []
+      const totalFields = entities.reduce((sum, e) => sum + e.fields.length, 0)
+      const rels = dm.relationships ?? []
+      const summary = [`정보 그룹(테이블) ${entities.length}개 정의 완료`]
+      summary.push(`항목(필드) ${totalFields}개, 타입 정의 완료`)
+      if (rels.length > 0) summary.push(`그룹 간 연결 관계 ${rels.length}개 정의`)
+      return { summary, nextPreview }
+    }
+    default:
+      return { summary: [], nextPreview }
+  }
 }
 
 export default function DesignPage() {
@@ -87,6 +113,7 @@ export default function DesignPage() {
   })
   const [session, setSession] = useState<DesignSession | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastSavedLabel, setLastSavedLabel] = useState('자동 저장됨')
 
@@ -137,14 +164,16 @@ export default function DesignPage() {
     })
   }
 
-  const handleGenerate = useCallback(async (step: DesignStepId) => {
+  const handleGenerate = useCallback(async (step: DesignStepId, templateIndex?: number) => {
     if (!projectId || generating) return
     setGenerating(true)
     setError(null)
     try {
+      const body: Record<string, unknown> = { project_id: projectId }
+      if (templateIndex !== undefined) body.template_index = templateIndex
       const res = await apiFetch<DesignSession>(`/design/${step}/generate`, {
         method: 'POST',
-        body: JSON.stringify({ project_id: projectId }),
+        body: JSON.stringify(body),
       })
       setSession(res)
       updateStepStatuses(res)
@@ -155,6 +184,22 @@ export default function DesignPage() {
       setGenerating(false)
     }
   }, [projectId, generating])
+
+  const handleLoadTemplates = useCallback(async () => {
+    if (!projectId || loadingTemplates) return
+    setLoadingTemplates(true)
+    try {
+      const res = await apiFetch<{ templates: DesignSession['arch_templates'] }>('/design/architecture/templates', {
+        method: 'POST',
+        body: JSON.stringify({ project_id: projectId }),
+      })
+      setSession((prev) => prev ? { ...prev, arch_templates: res.templates } : prev)
+    } catch {
+      // fallback templates will be used
+    } finally {
+      setLoadingTemplates(false)
+    }
+  }, [projectId, loadingTemplates])
 
   const handleNext = useCallback(() => {
     const currentIdx = DESIGN_STEPS.findIndex((s) => s.id === activeStep)
@@ -246,7 +291,7 @@ export default function DesignPage() {
   if (screen.kind === 'transition') {
     const fromStep = DESIGN_STEPS[screen.fromIdx]
     const toStep = DESIGN_STEPS[screen.fromIdx + 1]
-    const data = TRANSITION_DATA[fromStep.id]
+    const data = buildTransitionData(fromStep.id, session)
 
     return (
       <StepTransition
@@ -267,7 +312,7 @@ export default function DesignPage() {
   if (screen.kind === 'complete') {
     return (
       <Frame>
-        <DesignComplete onNext={() => navigate('/projects')} />
+        <DesignComplete session={session} onNext={() => navigate('/projects')} />
       </Frame>
     )
   }
@@ -280,6 +325,13 @@ export default function DesignPage() {
   const currentStepIdx = DESIGN_STEPS.findIndex((s) => s.id === screen.stepId)
   const totalQ = DESIGN_STEPS.length + 1
   const currentQ = currentStepIdx + 1
+
+  const FOOTER_LABELS: Record<DesignStepId, string> = {
+    requirements: '다음 질문 →',
+    architecture: '데이터 구조로 →',
+    'data-model': 'AI 흐름으로 →',
+    'ai-workflow': '설계 완료',
+  }
 
   const helperPanels: Partial<Record<DesignStepId, React.ReactNode>> = {
     architecture: <ArchHelperPanel />,
@@ -327,13 +379,16 @@ export default function DesignPage() {
                 session={session}
                 generating={generating}
                 onGenerate={() => handleGenerate('requirements')}
+                projectId={projectId!}
               />
             )}
             {screen.stepId === 'architecture' && (
               <ArchitectureStep
                 session={session}
                 generating={generating}
-                onGenerate={() => handleGenerate('architecture')}
+                onGenerate={(templateIndex: number) => handleGenerate('architecture', templateIndex)}
+                loadingTemplates={loadingTemplates}
+                onLoadTemplates={handleLoadTemplates}
               />
             )}
             {screen.stepId === 'data-model' && (
@@ -356,7 +411,7 @@ export default function DesignPage() {
 
           <DesignStepFooter
             canBack={!isFirstStep}
-            primaryLabel={isLastStep ? '설계 완료' : '다음 단계'}
+            primaryLabel={FOOTER_LABELS[screen.stepId]}
             onBack={handleBack}
             onSkip={handleNext}
             onNext={handleNext}

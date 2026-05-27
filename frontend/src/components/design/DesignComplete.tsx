@@ -1,18 +1,54 @@
 import DesignIcon from './DesignIcon'
-import type { DesignIconKind } from './types'
+import type { DesignIconKind, DesignSession } from './types'
 
 interface DesignCompleteProps {
+  session?: DesignSession | null
   onNext?: () => void
 }
 
-const SUMMARY: { n: string; t: string; icon: DesignIconKind; stats: string }[] = [
-  { n: '01', t: '기능 정의', icon: 'features', stats: '기능 3개 · 품질기준 4개' },
-  { n: '02', t: '시스템 구조', icon: 'arch', stats: '부품 6개 · 간단 조합' },
-  { n: '03', t: '데이터 구조', icon: 'data', stats: '그룹 3개 · 항목 15개' },
-  { n: '04', t: 'AI 흐름', icon: 'ai', stats: '입력 3 · 출력 4 · 폴백 3' },
-]
+function buildSummary(session: DesignSession | null | undefined): { n: string; t: string; icon: DesignIconKind; stats: string }[] {
+  const reqs = session?.requirements ?? []
+  const arch = session?.architecture
+  const dm = session?.data_model
+  const hasAi = !!session?.ai_workflow
 
-export default function DesignComplete({ onNext }: DesignCompleteProps) {
+  return [
+    {
+      n: '01', t: '기능 정의', icon: 'features',
+      stats: reqs.length > 0
+        ? `기능 ${reqs.length}개 · Must ${reqs.filter((r) => r.priority === 'must').length}개`
+        : '기능 0개',
+    },
+    {
+      n: '02', t: '시스템 구조', icon: 'arch',
+      stats: arch
+        ? `부품 ${arch.components.length}개 · 기술 ${Object.keys(arch.tech_stack ?? {}).length}개`
+        : '미정의',
+    },
+    {
+      n: '03', t: '데이터 구조', icon: 'data',
+      stats: dm
+        ? `그룹 ${dm.entities.length}개 · 항목 ${dm.entities.reduce((s, e) => s + e.fields.length, 0)}개`
+        : '미정의',
+    },
+    {
+      n: '04', t: 'AI 흐름', icon: 'ai',
+      stats: hasAi ? '워크플로우 정의 완료' : '건너뜀',
+    },
+  ]
+}
+
+function countTotalItems(session: DesignSession | null | undefined): number {
+  const reqs = session?.requirements?.length ?? 0
+  const comps = session?.architecture?.components.length ?? 0
+  const fields = (session?.data_model?.entities ?? []).reduce((s, e) => s + e.fields.length, 0)
+  return reqs + comps + fields
+}
+
+export default function DesignComplete({ session, onNext }: DesignCompleteProps) {
+  const SUMMARY = buildSummary(session)
+  const totalItems = countTotalItems(session)
+  const completedSteps = SUMMARY.filter((s) => s.stats !== '미정의' && s.stats !== '건너뜀').length
   return (
     <div className="h-full flex items-center justify-center bg-bg p-10 overflow-auto">
       <div className="w-full max-w-[760px]">
@@ -45,11 +81,11 @@ export default function DesignComplete({ onNext }: DesignCompleteProps) {
             <div className="text-[32px] font-bold text-accent font-mono leading-none" style={{ letterSpacing: -0.8 }}>
               100%
             </div>
-            <div className="text-[11px] text-accent-deep mt-1">4 / 4 단계</div>
+            <div className="text-[11px] text-accent-deep mt-1">{completedSteps} / 4 단계</div>
           </div>
           <div className="flex-1">
             <div className="text-[13.5px] font-bold text-accent-deep mb-1">설계 문서 v1.0 생성 완료</div>
-            <div className="text-xs text-accent opacity-85 leading-relaxed">약 18분 소요 · 33개 정의 항목 · 자동 다이어그램 3개</div>
+            <div className="text-xs text-accent opacity-85 leading-relaxed">{completedSteps} / 4 단계 완료 · {totalItems}개 정의 항목</div>
           </div>
         </div>
 

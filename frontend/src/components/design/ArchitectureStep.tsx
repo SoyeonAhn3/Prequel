@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Explainer from './Explainer'
 import TemplateCard from './TemplateCard'
-import DesignIcon from './DesignIcon'
 import Tag from '../common/Tag'
-import type { DesignSession } from './types'
+import type { DesignSession, ArchComponent, ArchTemplate } from './types'
 
 interface ArchitectureStepProps {
   session: DesignSession | null
   generating: boolean
-  onGenerate: () => void
+  onGenerate: (templateIndex: number) => void
+  loadingTemplates: boolean
+  onLoadTemplates: () => void
 }
 
 function getRoleColor(role: string) {
@@ -41,14 +42,21 @@ function getCompColor(name: string, technology: string, role: string) {
   return { numBg: 'bg-surface-alt', numText: 'text-text-muted', roleBg: 'bg-surface-alt', roleText: 'text-text-muted' }
 }
 
-const TEMPLATES = [
-  { title: '간단한 조합', badge: '추천', desc: 'React + FastAPI + Supabase. 시작하기 가장 쉽고 빠릅니다. 사용자가 ~수백 명일 때 적합.' },
-  { title: '확장 가능한 조합', desc: 'Next.js + Node + PostgreSQL + Redis. 사용자가 늘어나도 안정적. 처음엔 복잡.' },
+const FALLBACK_TEMPLATES: ArchTemplate[] = [
+  { title: '간단한 조합', badge: '추천', desc: 'React + FastAPI + Supabase. 시작하기 가장 쉽고 빠릅니다.' },
+  { title: '확장 가능한 조합', badge: '', desc: 'Next.js + Node + PostgreSQL + Redis. 확장성이 좋습니다.' },
 ]
 
-export default function ArchitectureStep({ session, generating, onGenerate }: ArchitectureStepProps) {
+export default function ArchitectureStep({ session, generating, onGenerate, loadingTemplates, onLoadTemplates }: ArchitectureStepProps) {
   const architecture = session?.architecture
+  const templates = session?.arch_templates ?? (loadingTemplates ? null : FALLBACK_TEMPLATES)
   const [selectedTemplate, setSelectedTemplate] = useState(0)
+
+  useEffect(() => {
+    if (!architecture && !session?.arch_templates && !loadingTemplates) {
+      onLoadTemplates()
+    }
+  }, [architecture, session?.arch_templates, loadingTemplates, onLoadTemplates])
 
   if (!architecture && !generating) {
     return (
@@ -62,27 +70,37 @@ export default function ArchitectureStep({ session, generating, onGenerate }: Ar
 
         <div className="text-[13px] font-bold text-text mb-1.5">먼저 — 추천 조합 골라보기</div>
         <p className="text-[12.5px] text-text-muted leading-relaxed mb-3.5">
-          프로젝트 유형에 맞는 2가지 조합을 AI가 추려두었어요. 잘 모르겠으면 첫 번째를 고르세요.
+          프로젝트 유형에 맞는 조합을 AI가 추려두었어요. 잘 모르겠으면 첫 번째를 고르세요.
         </p>
 
-        <div className="grid grid-cols-2 gap-2.5 mb-7">
-          {TEMPLATES.map((t, i) => (
-            <TemplateCard
-              key={t.title}
-              title={t.title}
-              badge={t.badge}
-              desc={t.desc}
-              selected={selectedTemplate === i}
-              onClick={() => setSelectedTemplate(i)}
-            />
-          ))}
-        </div>
+        {loadingTemplates || !templates ? (
+          <div className="text-center py-8 mb-7">
+            <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center mx-auto mb-2 animate-pulse">
+              <span className="text-accent text-xs font-bold">AI</span>
+            </div>
+            <p className="text-xs text-text-muted">프로젝트에 맞는 조합을 분석하고 있어요...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 mb-7">
+            {templates.map((t, i) => (
+              <TemplateCard
+                key={t.title}
+                title={t.title}
+                badge={t.badge || undefined}
+                desc={t.desc}
+                selected={selectedTemplate === i}
+                onClick={() => setSelectedTemplate(i)}
+              />
+            ))}
+          </div>
+        )}
 
         <div className="text-center">
           <button
             type="button"
-            onClick={onGenerate}
-            className="px-6 py-3 bg-accent text-white text-sm font-semibold rounded-xl cursor-pointer border-none inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
+            onClick={() => onGenerate(selectedTemplate)}
+            disabled={loadingTemplates || !templates}
+            className="px-7 py-3.5 bg-accent text-white text-[15.4px] font-semibold rounded-2xl cursor-pointer border-none inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             AI로 아키텍처 설계하기
           </button>
@@ -114,61 +132,33 @@ export default function ArchitectureStep({ session, generating, onGenerate }: Ar
       />
 
       {/* Template selection */}
-      <div className="text-[13px] font-bold text-text mb-1.5">먼저 — 추천 조합 골라보기</div>
-      <p className="text-[12.5px] text-text-muted leading-relaxed mb-3.5">
-        프로젝트 유형(AI/ML)에 맞는 2가지 조합을 AI가 추려두었어요. 잘 모르겠으면 첫 번째를 고르세요.
-      </p>
-      <div className="grid grid-cols-2 gap-2.5 mb-7">
-        {TEMPLATES.map((t, i) => (
-          <TemplateCard
-            key={t.title}
-            title={t.title}
-            badge={t.badge}
-            desc={t.desc}
-            selected={selectedTemplate === i}
-            onClick={() => setSelectedTemplate(i)}
-          />
-        ))}
-      </div>
+      {templates && templates.length > 0 && (
+        <>
+          <div className="text-[13px] font-bold text-text mb-1.5">추천 조합</div>
+          <div className="grid grid-cols-2 gap-2.5 mb-7">
+            {templates.map((t, i) => (
+              <TemplateCard
+                key={t.title}
+                title={t.title}
+                badge={t.badge || undefined}
+                desc={t.desc}
+                selected={selectedTemplate === i}
+                onClick={() => setSelectedTemplate(i)}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="text-[13px] font-bold text-text mb-2.5 flex items-center gap-1.5">
         선택한 조합 미리보기
-        <Tag tone="accent">{TEMPLATES[selectedTemplate].title}</Tag>
+        {templates && templates[selectedTemplate] && (
+          <Tag tone="accent">{templates[selectedTemplate].title}</Tag>
+        )}
       </div>
 
       {/* SVG System Architecture Diagram */}
-      <div className="bg-surface border border-border rounded-[14px] p-[18px_20px_14px] mb-[18px]">
-        <svg viewBox="0 0 720 220" style={{ display: 'block', width: '70%', margin: '0 auto' }}>
-          <defs>
-            <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M0 0 L10 5 L0 10 z" fill="var(--color-border-strong)" />
-            </marker>
-          </defs>
-          <g transform="translate(20 80)"><rect width="110" height="60" rx="10" fill="var(--color-surface-alt)" stroke="var(--color-border-strong)" /><text x="55" y="28" fontSize="12" fontWeight="600" textAnchor="middle" fill="var(--color-text)" style={{ fontFamily: 'var(--font-sans)' }}>사용자</text><text x="55" y="44" fontSize="10" textAnchor="middle" fill="var(--color-text-muted)" style={{ fontFamily: 'var(--font-sans)' }}>Slack 사용</text></g>
-          <g transform="translate(190 30)"><rect width="140" height="60" rx="10" fill="var(--color-accent-soft)" stroke="var(--color-accent)" /><text x="70" y="22" fontSize="11" fontWeight="700" textAnchor="middle" fill="var(--color-accent-deep)" style={{ fontFamily: 'var(--font-sans)' }}>화면 (React)</text><text x="70" y="38" fontSize="9" textAnchor="middle" fill="var(--color-accent)" style={{ fontFamily: 'var(--font-sans)' }}>웹 페이지</text><text x="70" y="51" fontSize="9" textAnchor="middle" fill="var(--color-accent)" style={{ fontFamily: 'var(--font-mono)' }}>관리자용</text></g>
-          <g transform="translate(190 130)"><rect width="140" height="60" rx="10" fill="var(--color-accent-soft)" stroke="var(--color-accent)" /><text x="70" y="22" fontSize="11" fontWeight="700" textAnchor="middle" fill="var(--color-accent-deep)" style={{ fontFamily: 'var(--font-sans)' }}>서버 (FastAPI)</text><text x="70" y="38" fontSize="9" textAnchor="middle" fill="var(--color-accent)" style={{ fontFamily: 'var(--font-sans)' }}>중간 다리</text><text x="70" y="51" fontSize="9" textAnchor="middle" fill="var(--color-accent)" style={{ fontFamily: 'var(--font-mono)' }}>Python</text></g>
-          <g transform="translate(400 130)"><rect width="140" height="60" rx="10" fill="var(--color-green-soft)" stroke="var(--color-green)" /><text x="70" y="22" fontSize="11" fontWeight="700" textAnchor="middle" fill="#2f5a44" style={{ fontFamily: 'var(--font-sans)' }}>데이터 (Supabase)</text><text x="70" y="38" fontSize="9" textAnchor="middle" fill="var(--color-green)" style={{ fontFamily: 'var(--font-sans)' }}>저장소</text><text x="70" y="51" fontSize="9" textAnchor="middle" fill="var(--color-green)" style={{ fontFamily: 'var(--font-mono)' }}>책 · 사용자 · 피드백</text></g>
-          <g transform="translate(400 30)"><rect width="140" height="60" rx="10" fill="var(--color-amber-soft)" stroke="var(--color-amber)" /><text x="70" y="22" fontSize="11" fontWeight="700" textAnchor="middle" fill="#7c5c20" style={{ fontFamily: 'var(--font-sans)' }}>AI (Claude)</text><text x="70" y="38" fontSize="9" textAnchor="middle" fill="var(--color-amber)" style={{ fontFamily: 'var(--font-sans)' }}>추천 만드는 두뇌</text><text x="70" y="51" fontSize="9" textAnchor="middle" fill="var(--color-amber)" style={{ fontFamily: 'var(--font-mono)' }}>Anthropic API</text></g>
-          <g transform="translate(600 80)"><rect width="100" height="60" rx="10" fill="var(--color-surface-alt)" stroke="var(--color-border-strong)" /><text x="50" y="28" fontSize="12" fontWeight="600" textAnchor="middle" fill="var(--color-text)" style={{ fontFamily: 'var(--font-sans)' }}>Slack</text><text x="50" y="44" fontSize="9" textAnchor="middle" fill="var(--color-text-muted)" style={{ fontFamily: 'var(--font-sans)' }}>DM 발송</text></g>
-          <path d="M130 110 L190 60" stroke="var(--color-border-strong)" strokeWidth="1.5" fill="none" markerEnd="url(#arrA)" />
-          <path d="M130 110 L190 160" stroke="var(--color-border-strong)" strokeWidth="1.5" fill="none" markerEnd="url(#arrA)" />
-          <path d="M330 60 L400 60" stroke="var(--color-border-strong)" strokeWidth="1.5" fill="none" markerEnd="url(#arrA)" />
-          <path d="M330 160 L400 160" stroke="var(--color-border-strong)" strokeWidth="1.5" fill="none" markerEnd="url(#arrA)" />
-          <path d="M260 90 L260 130" stroke="var(--color-border-strong)" strokeWidth="1.5" fill="none" markerEnd="url(#arrA)" />
-          <path d="M540 160 L600 110" stroke="var(--color-border-strong)" strokeWidth="1.5" fill="none" markerEnd="url(#arrA)" />
-        </svg>
-        <div className="flex gap-3.5 mt-4 pt-4 border-t border-border text-[11.5px] text-text-muted">
-          <span className="flex items-center gap-[5px]">
-            <span className="w-2.5 h-2.5 rounded-[3px] bg-accent-soft" style={{ border: '1px solid var(--color-accent)' }} />사용자가 보는 것
-          </span>
-          <span className="flex items-center gap-[5px]">
-            <span className="w-2.5 h-2.5 rounded-[3px] bg-green-soft" style={{ border: '1px solid var(--color-green)' }} />저장되는 것
-          </span>
-          <span className="flex items-center gap-[5px]">
-            <span className="w-2.5 h-2.5 rounded-[3px] bg-amber-soft" style={{ border: '1px solid var(--color-amber)' }} />AI가 처리하는 것
-          </span>
-        </div>
-      </div>
+      <DynamicArchDiagram components={architecture!.components} />
 
       {/* Components list — numbered, color-coded */}
       <div className="text-[13px] font-bold text-text mt-6 mb-2.5">각 부품을 왜 골랐나요?</div>
@@ -197,6 +187,151 @@ export default function ArchitectureStep({ session, generating, onGenerate }: Ar
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+type RoleCategory = 'frontend' | 'backend' | 'data' | 'ai' | 'external'
+
+const ROLE_COLORS: Record<RoleCategory, { fill: string; stroke: string; titleFill: string; textFill: string }> = {
+  frontend: { fill: 'var(--color-accent-soft)', stroke: 'var(--color-accent)', titleFill: 'var(--color-accent-deep)', textFill: 'var(--color-accent)' },
+  backend: { fill: 'var(--color-accent-soft)', stroke: 'var(--color-accent)', titleFill: 'var(--color-accent-deep)', textFill: 'var(--color-accent)' },
+  data: { fill: 'var(--color-green-soft)', stroke: 'var(--color-green)', titleFill: '#2f5a44', textFill: 'var(--color-green)' },
+  ai: { fill: 'var(--color-amber-soft)', stroke: 'var(--color-amber)', titleFill: '#7c5c20', textFill: 'var(--color-amber)' },
+  external: { fill: 'var(--color-surface-alt)', stroke: 'var(--color-border-strong)', titleFill: 'var(--color-text)', textFill: 'var(--color-text-muted)' },
+}
+
+function categorizeComponent(comp: ArchComponent): RoleCategory {
+  const combined = `${comp.name} ${comp.technology} ${comp.role}`.toLowerCase()
+  if (/front|화면|ui|웹|react|next|vue|angular/.test(combined)) return 'frontend'
+  if (/back|서버|api|server|fastapi|node|python|express/.test(combined)) return 'backend'
+  if (/data|db|저장|데이터|supabase|postgres|mysql|redis|mongo|storage/.test(combined)) return 'data'
+  if (/ai|ml|claude|llm|추천|분석|gpt|anthropic|model/.test(combined)) return 'ai'
+  return 'external'
+}
+
+const LEGEND = [
+  { cls: 'bg-accent-soft', border: 'var(--color-accent)', label: '사용자가 보는 것' },
+  { cls: 'bg-green-soft', border: 'var(--color-green)', label: '저장되는 것' },
+  { cls: 'bg-amber-soft', border: 'var(--color-amber)', label: 'AI가 처리하는 것' },
+]
+
+const LAYER_ORDER: RoleCategory[] = ['frontend', 'backend', 'data', 'ai', 'external']
+
+function DynamicArchDiagram({ components }: { components: ArchComponent[] }) {
+  const layers = new Map<RoleCategory, ArchComponent[]>()
+  for (const comp of components) {
+    const cat = categorizeComponent(comp)
+    if (!layers.has(cat)) layers.set(cat, [])
+    layers.get(cat)!.push(comp)
+  }
+
+  const orderedLayers = LAYER_ORDER.filter((l) => layers.has(l))
+  const BOX_W = 130
+  const BOX_H = 56
+  const COL_GAP = 30
+  const ROW_GAP = 14
+  const PADDING = 20
+
+  const colX: number[] = []
+  let x = PADDING
+  for (const layer of orderedLayers) {
+    colX.push(x)
+    x += BOX_W + COL_GAP
+  }
+  const totalW = x - COL_GAP + PADDING
+
+  let maxColH = 0
+  for (const layer of orderedLayers) {
+    const count = layers.get(layer)!.length
+    const h = count * BOX_H + (count - 1) * ROW_GAP
+    if (h > maxColH) maxColH = h
+  }
+  const totalH = maxColH + PADDING * 2
+
+  type BoxPos = { cx: number; cy: number; comp: ArchComponent; cat: RoleCategory }
+  const boxes: BoxPos[] = []
+
+  for (let ci = 0; ci < orderedLayers.length; ci++) {
+    const layer = orderedLayers[ci]
+    const items = layers.get(layer)!
+    const colH = items.length * BOX_H + (items.length - 1) * ROW_GAP
+    const startY = PADDING + (maxColH - colH) / 2
+    for (let ri = 0; ri < items.length; ri++) {
+      const bx = colX[ci]
+      const by = startY + ri * (BOX_H + ROW_GAP)
+      boxes.push({ cx: bx + BOX_W / 2, cy: by + BOX_H / 2, comp: items[ri], cat: layer })
+    }
+  }
+
+  const arrows: { x1: number; y1: number; x2: number; y2: number }[] = []
+  for (let ci = 0; ci < orderedLayers.length - 1; ci++) {
+    const curLayer = orderedLayers[ci]
+    const nextLayer = orderedLayers[ci + 1]
+    const curBoxes = boxes.filter((b) => b.cat === curLayer)
+    const nextBoxes = boxes.filter((b) => b.cat === nextLayer)
+    for (const cb of curBoxes) {
+      for (const nb of nextBoxes) {
+        arrows.push({
+          x1: cb.cx + BOX_W / 2 - 2,
+          y1: cb.cy,
+          x2: nb.cx - BOX_W / 2 + 2,
+          y2: nb.cy,
+        })
+      }
+    }
+  }
+
+  return (
+    <div className="bg-surface border border-border rounded-[14px] p-[18px_20px_14px] mb-[18px]">
+      <svg viewBox={`0 0 ${totalW} ${totalH}`} style={{ display: 'block', width: '100%', maxWidth: 720, margin: '0 auto' }}>
+        <defs>
+          <marker id="arrDyn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--color-border-strong)" />
+          </marker>
+        </defs>
+        {arrows.map((a, i) => (
+          <path
+            key={i}
+            d={`M${a.x1} ${a.y1} L${a.x2} ${a.y2}`}
+            stroke="var(--color-border-strong)"
+            strokeWidth="1.5"
+            fill="none"
+            markerEnd="url(#arrDyn)"
+          />
+        ))}
+        {boxes.map((b, i) => {
+          const col = ROLE_COLORS[b.cat]
+          const bx = b.cx - BOX_W / 2
+          const by = b.cy - BOX_H / 2
+          const name = b.comp.name.length > 16 ? b.comp.name.slice(0, 15) + '…' : b.comp.name
+          const tech = b.comp.technology?.length > 18 ? b.comp.technology.slice(0, 17) + '…' : b.comp.technology
+          return (
+            <g key={i} transform={`translate(${bx} ${by})`}>
+              <rect width={BOX_W} height={BOX_H} rx="10" fill={col.fill} stroke={col.stroke} />
+              <text x={BOX_W / 2} y={22} fontSize="11" fontWeight="700" textAnchor="middle" fill={col.titleFill} style={{ fontFamily: 'var(--font-sans)' }}>
+                {name}
+              </text>
+              {tech && (
+                <text x={BOX_W / 2} y={38} fontSize="9" textAnchor="middle" fill={col.textFill} style={{ fontFamily: 'var(--font-mono)' }}>
+                  {tech}
+                </text>
+              )}
+              <text x={BOX_W / 2} y={tech ? 50 : 38} fontSize="9" textAnchor="middle" fill={col.textFill} style={{ fontFamily: 'var(--font-sans)' }}>
+                {b.comp.role.length > 18 ? b.comp.role.slice(0, 17) + '…' : b.comp.role}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      <div className="flex gap-3.5 mt-4 pt-4 border-t border-border text-[11.5px] text-text-muted">
+        {LEGEND.map((l) => (
+          <span key={l.label} className="flex items-center gap-[5px]">
+            <span className={`w-2.5 h-2.5 rounded-[3px] ${l.cls}`} style={{ border: `1px solid ${l.border}` }} />
+            {l.label}
+          </span>
+        ))}
       </div>
     </div>
   )

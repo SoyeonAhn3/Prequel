@@ -1,8 +1,8 @@
-# Phase 5 — Design (How) `In Progress`
+# Phase 5 — Design (How) `Complete`
 
 > Post-kickoff design phase: 9-screen guided flow — welcome → requirements → architecture → data model → AI workflow → completion, with step transitions between each. Wizard-style shell UI designed for beginners.
 
-**Status**: In Progress (Backend ✅, Frontend rewriting)
+**Status**: Complete (Backend ✅, Frontend ✅)
 **Prerequisites**: Phase 4 completion (Kickoff + user chose to proceed with design)
 **Design reference**: `ui-reference/design-phase-flow-standalone.jsx` (9 screens, standalone)
 
@@ -35,7 +35,7 @@ Each design skill takes interview insights + prior step outputs as input and pro
 
 ## Deliverables
 
-### Backend (✅ Complete — no changes needed)
+### Backend (✅ Complete)
 
 | # | Task | Status | Related FR |
 |---|---|---|---|
@@ -46,32 +46,38 @@ Each design skill takes interview insights + prior step outputs as input and pro
 | B5 | `design_sessions` DB table + migration (006) | ✅ | — |
 | B6 | Truncated JSON auto-repair (`_repair_truncated_json`) | ✅ | — |
 | B7 | Project status routing (`designing` status support) | ✅ | — |
+| B8 | Interview `_insights` DB persistence (migration 007) — save/load across start, answer, resume | ✅ | — |
+| B9 | `_get_interview_context` bugfix — wrong keys `insights`→`_insights`, `text`→`content` | ✅ | — |
+| B10 | `/design/architecture/templates` — AI-generated arch template suggestions (dynamic, not hardcoded) | ✅ | — |
+| B11 | `generate_architecture` — pass selected template context to AI prompt | ✅ | — |
 
-### Frontend (Rewriting — match `design-phase-flow-standalone.jsx`)
+### Frontend (✅ Complete — match `design-phase-flow-standalone.jsx`)
 
 | # | Task | Status |
 |---|---|---|
-| F1 | Shared `Frame` + `TopBar` component (56px nav bar, tabs, user avatar, credits) | |
-| F2 | Shared `Btn` component (primary/secondary/ghost/soft/danger × sm/md/lg) | |
-| F3 | `AiQuestion` component — AI question bubble (AiMarkD + accent border + hint) | |
-| F4 | `AiSuggestionList` component — clickable suggestion cards with + button | |
-| F5 | `StepTransition` component — step complete/summary/next preview full-page | |
-| F6 | `ScreenDesignWelcome` — welcome page (4-step preview cards, CTA) | |
-| F7 | `ScreenDesignStep1Start` — requirements (AiQuestion + empty state + suggestions + direct input) | |
-| F8 | `ScreenDesignStep2Start` — architecture (TemplateCard selection + SVG diagram + component explanations) | |
-| F9 | `ScreenDesignStep3Start` — data model (3-col entity grid + relationship cards + validation rules) | |
-| F10 | `ScreenDesignStep4Start` — AI workflow (INPUT→AI→OUTPUT pipeline + fallback strategy) | |
-| F11 | `ScreenDesignComplete` — completion page (stats + summary + export buttons + Phase 3 CTA) | |
-| F12 | `ArchHelperPanel` — right 300px panel (guide + glossary) | |
-| F13 | `DataHelperPanel` — right 300px panel (Excel analogy + type explanations) | |
-| F14 | `AiHelperPanel` — right 300px panel (3-question guide + fallback tips) | |
-| F15 | `DesignStepFooter` update — step-specific primary labels ("시스템 구조로 →" etc.) | |
-| F16 | `DesignShell` update — integrate Frame wrapper + right helper panel slot | |
-| F17 | `AiSuggestionList` dynamic data binding — connect to backend recommendation based on interview context | |
-| F18 | `ArchitectureStep` dynamic SVG generation — render diagram from `session.architecture.components[]` | |
-| F19 | `AiWorkflowStep` dynamic IO pipeline — parse `session.ai_workflow` for INPUT/OUTPUT lists | |
-| F20 | `StepTransition` dynamic summaries — extract summary from each step's session data | |
-| F21 | `DataModelStep` dynamic validation rules — derive integrity rules from `session.data_model` analysis | |
+| F1 | Shared `Frame` + `TopBar` component (56px nav bar, tabs, user avatar, credits) | ✅ |
+| F2 | Shared `Btn` component (primary/secondary/ghost/soft/danger × sm/md/lg) | ✅ |
+| F3 | `AiQuestion` component — AI question bubble (AiMarkD + accent border + hint) | ✅ |
+| F4 | `AiSuggestionList` component — clickable suggestion cards with + button | ✅ |
+| F5 | `StepTransition` component — step complete/summary/next preview full-page | ✅ |
+| F6 | `ScreenDesignWelcome` — welcome page (4-step preview cards, CTA) | ✅ |
+| F7 | `ScreenDesignStep1Start` — requirements (AiQuestion + empty state + suggestions + direct input) | ✅ |
+| F8 | `ScreenDesignStep2Start` — architecture (TemplateCard selection + SVG diagram + component explanations) | ✅ |
+| F9 | `ScreenDesignStep3Start` — data model (3-col entity grid + relationship cards + validation rules) | ✅ |
+| F10 | `ScreenDesignStep4Start` — AI workflow (INPUT→AI→OUTPUT pipeline + fallback strategy) | ✅ |
+| F11 | `ScreenDesignComplete` — completion page (stats + summary + export buttons + Phase 3 CTA) | ✅ |
+| F12 | `ArchHelperPanel` — right 300px panel (guide + glossary) | ✅ |
+| F13 | `DataHelperPanel` — right 300px panel (Excel analogy + type explanations) | ✅ |
+| F14 | `AiHelperPanel` — right 300px panel (3-question guide + fallback tips) | ✅ |
+| F15 | `DesignStepFooter` update — step-specific primary labels ("시스템 구조로 →" etc.) | ✅ |
+| F16 | `DesignShell` update — integrate Frame wrapper + right helper panel slot | ✅ |
+| F17 | `AiSuggestionList` dynamic data binding — connect to backend recommendation based on interview context | ✅ |
+| F18 | `ArchitectureStep` dynamic SVG generation — render diagram from `session.architecture.components[]` | ✅ |
+| F19 | `AiWorkflowStep` dynamic IO pipeline — parse `session.ai_workflow` for INPUT/OUTPUT lists | ✅ |
+| F20 | `StepTransition` dynamic summaries — extract summary from each step's session data | ✅ |
+| F21 | `DataModelStep` dynamic validation rules — derive integrity rules from `session.data_model` analysis | ✅ |
+| F22 | `DataModelStep` entity field add — "+ 항목 추가" button per entity card (add new field to existing entity) | ✅ |
+| F23 | `DataModelStep` entity group add — "+ 새 정보 그룹 추가" button (create new entity with default fields) | ✅ |
 
 ---
 
@@ -140,7 +146,7 @@ DesignShell with activeStep="data-model", helperPanel={DataHelperPanel}.
 - "그룹 간 연결 관계" — relationship cards:
   - from → arrow SVG → to + description + cardinality badge (1:N)
 - "+ 새 정보 그룹 추가" full-width dashed button
-- "정합성 규칙 (자동 검증)" — check/warning items with "해결하기 →" for unresolved
+- "정합성 규칙 (자동 검증)" — check/warning items with status labels (resolved/needs attention)
 - Footer: "AI 흐름으로 →"
 
 ### Screen 03→04 · `StepTransition` (데이터→AI)
@@ -317,15 +323,17 @@ Full-page step completion screen:
 | 2026-05-26 | v1 complete: Backend 11 endpoints + 4 skills + DB migration. Frontend 10 components (basic wizard). E2E tested |
 | 2026-05-26 | v2 rewrite: Frontend rewriting to match `design-phase-flow-standalone.jsx`. 9-screen flow (welcome + 4 steps + 3 transitions + complete). Added Frame/TopBar, AiQuestion, AiSuggestionList, StepTransition, 3 helper panels, step-specific content rewrite. Backend preserved. Model selection + cost estimation deferred to V2 |
 | 2026-05-26 | F17-F21 added: dynamic data binding tasks for AiSuggestionList, SVG diagram, IO pipeline, transition summaries, validation rules. Completion criteria updated to require no hardcoded placeholder data |
+| 2026-05-27 | F22-F23 added: DataModelStep entity field add + entity group add. "해결하기 →" button removed from validation rules (replaced with status label). Generate buttons enlarged 10% for visibility |
+| 2026-05-27 | B8-B11: Interview insights DB persistence (migration 007), `_get_interview_context` bugfix (wrong keys), dynamic architecture templates endpoint, template-aware architecture generation |
 
 ---
 ---
 
-# Phase 5 — 설계 (How) `진행 중`
+# Phase 5 — 설계 (How) `완료`
 
 > 킥오프 후 설계 단계: 9개 화면 가이드 흐름 — 환영 → 요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우 → 완료, 각 단계 사이에 전환 화면 포함. 초보자를 위한 wizard 형태 쉘 UI.
 
-**상태**: 진행 중 (백엔드 ✅, 프론트엔드 재작성 중)
+**상태**: 완료 (백엔드 ✅, 프론트엔드 ✅)
 **선행 조건**: Phase 4 완료 (킥오프 + 설계 진행 선택)
 **디자인 레퍼런스**: `ui-reference/design-phase-flow-standalone.jsx` (9개 화면, 독립형)
 
@@ -358,7 +366,7 @@ Phase 4 킥오프 완료 후 설계 진행을 선택하면 Phase 5에 진입한�
 
 ## 완료 예정 / 완료 항목
 
-### 백엔드 (✅ 완료 — 변경 없음)
+### 백엔드 (✅ 완료)
 
 | # | 작업 | 상태 | 관련 FR |
 |---|---|---|---|
@@ -369,32 +377,38 @@ Phase 4 킥오프 완료 후 설계 진행을 선택하면 Phase 5에 진입한�
 | B5 | `design_sessions` DB 테이블 + 마이그레이션 (006) | ✅ | — |
 | B6 | 잘린 JSON 자동 복구 (`_repair_truncated_json`) | ✅ | — |
 | B7 | 프로젝트 상태 라우팅 (`designing` 상태 지원) | ✅ | — |
+| B8 | 인터뷰 `_insights` DB 영속화 (마이그레이션 007) — start/answer/resume에서 저장/로드 | ✅ | — |
+| B9 | `_get_interview_context` 버그 수정 — 잘못된 키 `insights`→`_insights`, `text`→`content` | ✅ | — |
+| B10 | `/design/architecture/templates` — AI 기반 동적 아키텍처 템플릿 생성 (하드코딩 제거) | ✅ | — |
+| B11 | `generate_architecture` — 선택된 템플릿 정보를 AI 프롬프트에 전달 | ✅ | — |
 
-### 프론트엔드 (재작성 중 — `design-phase-flow-standalone.jsx` 기준)
+### 프론트엔드 (✅ 완료 — `design-phase-flow-standalone.jsx` 기준)
 
 | # | 작업 | 상태 |
 |---|---|---|
-| F1 | 공유 `Frame` + `TopBar` 컴포넌트 (56px 네비, 탭, 유저 아바타, 크레딧) | |
-| F2 | 공유 `Btn` 컴포넌트 (primary/secondary/ghost/soft/danger × sm/md/lg) | |
-| F3 | `AiQuestion` 컴포넌트 — AI 질문 말풍선 (AiMarkD + accent 테두리 + 힌트) | |
-| F4 | `AiSuggestionList` 컴포넌트 — 클릭형 추천 카드 (+ 버튼으로 개별 추가) | |
-| F5 | `StepTransition` 컴포넌트 — 스텝 완료/요약/다음 미리보기 전체 화면 | |
-| F6 | `ScreenDesignWelcome` — 환영 페이지 (4단계 미리보기 카드, CTA) | |
-| F7 | `ScreenDesignStep1Start` — 기능 정의 (AiQuestion + 빈 상태 + 추천 + 직접 입력) | |
-| F8 | `ScreenDesignStep2Start` — 시스템 구조 (TemplateCard 선택 + SVG 다이어그램 + 부품 설명) | |
-| F9 | `ScreenDesignStep3Start` — 데이터 구조 (3컬럼 엔티티 그리드 + 관계 카드 + 정합성 규칙) | |
-| F10 | `ScreenDesignStep4Start` — AI 흐름 (INPUT→AI→OUTPUT 파이프라인 + 폴백 전략) | |
-| F11 | `ScreenDesignComplete` — 완료 페이지 (통계 + 요약 + 내보내기 + Phase 3 CTA) | |
-| F12 | `ArchHelperPanel` — 우측 300px 패널 (가이드 + 용어사전) | |
-| F13 | `DataHelperPanel` — 우측 300px 패널 (엑셀 비유 + 타입 설명) | |
-| F14 | `AiHelperPanel` — 우측 300px 패널 (3가지 질문 가이드 + 폴백 팁) | |
-| F15 | `DesignStepFooter` 업데이트 — 스텝별 primary 라벨 ("시스템 구조로 →" 등) | |
-| F16 | `DesignShell` 업데이트 — Frame 래퍼 통합 + 우측 헬퍼 패널 슬롯 | |
-| F17 | `AiSuggestionList` 동적 데이터 바인딩 — 인터뷰 컨텍스트 기반 백엔드 추천 API 연결 | |
-| F18 | `ArchitectureStep` SVG 동적 생성 — `session.architecture.components[]` 기반 다이어그램 렌더링 | |
-| F19 | `AiWorkflowStep` IO 파이프라인 동적 렌더 — `session.ai_workflow` 파싱하여 INPUT/OUTPUT 리스트 생성 | |
-| F20 | `StepTransition` 요약 동적 생성 — 각 단계 세션 데이터에서 실제 요약 추출 | |
-| F21 | `DataModelStep` 정합성 규칙 동적 생성 — `session.data_model` 분석 기반 검증 규칙 도출 | |
+| F1 | 공유 `Frame` + `TopBar` 컴포넌트 (56px 네비, 탭, 유저 아바타, 크레딧) | ✅ |
+| F2 | 공유 `Btn` 컴포넌트 (primary/secondary/ghost/soft/danger × sm/md/lg) | ✅ |
+| F3 | `AiQuestion` 컴포넌트 — AI 질문 말풍선 (AiMarkD + accent 테두리 + 힌트) | ✅ |
+| F4 | `AiSuggestionList` 컴포넌트 — 클릭형 추천 카드 (+ 버튼으로 개별 추가) | ✅ |
+| F5 | `StepTransition` 컴포넌트 — 스텝 완료/요약/다음 미리보기 전체 화면 | ✅ |
+| F6 | `ScreenDesignWelcome` — 환영 페이지 (4단계 미리보기 카드, CTA) | ✅ |
+| F7 | `ScreenDesignStep1Start` — 기능 정의 (AiQuestion + 빈 상태 + 추천 + 직접 입력) | ✅ |
+| F8 | `ScreenDesignStep2Start` — 시스템 구조 (TemplateCard 선택 + SVG 다이어그램 + 부품 설명) | ✅ |
+| F9 | `ScreenDesignStep3Start` — 데이터 구조 (3컬럼 엔티티 그리드 + 관계 카드 + 정합성 규칙) | ✅ |
+| F10 | `ScreenDesignStep4Start` — AI 흐름 (INPUT→AI→OUTPUT 파이프라인 + 폴백 전략) | ✅ |
+| F11 | `ScreenDesignComplete` — 완료 페이지 (통계 + 요약 + 내보내기 + Phase 3 CTA) | ✅ |
+| F12 | `ArchHelperPanel` — 우측 300px 패널 (가이드 + 용어사전) | ✅ |
+| F13 | `DataHelperPanel` — 우측 300px 패널 (엑셀 비유 + 타입 설명) | ✅ |
+| F14 | `AiHelperPanel` — 우측 300px 패널 (3가지 질문 가이드 + 폴백 팁) | ✅ |
+| F15 | `DesignStepFooter` 업데이트 — 스텝별 primary 라벨 ("시스템 구조로 →" 등) | ✅ |
+| F16 | `DesignShell` 업데이트 — Frame 래퍼 통합 + 우측 헬퍼 패널 슬롯 | ✅ |
+| F17 | `AiSuggestionList` 동적 데이터 바인딩 — 인터뷰 컨텍스트 기반 백엔드 추천 API 연결 | ✅ |
+| F18 | `ArchitectureStep` SVG 동적 생성 — `session.architecture.components[]` 기반 다이어그램 렌더링 | ✅ |
+| F19 | `AiWorkflowStep` IO 파이프라인 동적 렌더 — `session.ai_workflow` 파싱하여 INPUT/OUTPUT 리스트 생성 | ✅ |
+| F20 | `StepTransition` 요약 동적 생성 — 각 단계 세션 데이터에서 실제 요약 추출 | ✅ |
+| F21 | `DataModelStep` 정합성 규칙 동적 생성 — `session.data_model` 분석 기반 검증 규칙 도출 | ✅ |
+| F22 | `DataModelStep` 엔티티 필드 추가 — 엔티티 카드별 "+ 항목 추가" 버튼 (기존 엔티티에 새 필드 추가) | ✅ |
+| F23 | `DataModelStep` 엔티티 그룹 추가 — "+ 새 정보 그룹 추가" 버튼 (기본 필드 포함 새 엔티티 생성) | ✅ |
 
 ---
 
@@ -463,7 +477,7 @@ DesignShell, activeStep="data-model", helperPanel={DataHelperPanel}.
 - "그룹 간 연결 관계" — 관계 카드:
   - from → 화살표 SVG → to + 설명 + 카디널리티 배지 (1:N)
 - "+ 새 정보 그룹 추가" 전체 너비 dashed 버튼
-- "정합성 규칙 (자동 검증)" — 체크/경고 항목 + "해결하기 →"
+- "정합성 규칙 (자동 검증)" — 체크/경고 항목 + 상태 라벨 (확인됨/확인 필요)
 - 푸터: "AI 흐름으로 →"
 
 ### 화면 03→04 · `StepTransition` (데이터→AI)
@@ -565,7 +579,7 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 - `design_sessions` 테이블 (requirements/architecture/data_model JSONB 컬럼)
 - 생성 호출 시 `max_tokens=8192`
 
-### 프론트엔드 (재작성 중)
+### 프론트엔드 (✅ 완료)
 
 **v1에서 재사용 (변경 없음)**:
 - `DesignLeftRail.tsx` — 264px 왼쪽 레일 + 스텝 카드 ✅
@@ -640,3 +654,5 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 | 2026-05-26 | v1 완료: 백엔드 11개 엔드포인트 + 스킬 4개 + DB 마이그레이션. 프론트엔드 10개 컴포넌트 (기본 wizard). E2E 테스트 완료 |
 | 2026-05-26 | v2 재작성: `design-phase-flow-standalone.jsx` 기준 프론트엔드 재작성. 9개 화면 흐름 (환영 + 스텝 4개 + 전환 3개 + 완료). Frame/TopBar, AiQuestion, AiSuggestionList, StepTransition, 헬퍼 패널 3개, 스텝별 콘텐츠 재작성 추가. 백엔드 유지. 모델 선택 + 비용 추정 V2로 연기 |
 | 2026-05-26 | F17-F21 추가: AiSuggestionList, SVG 다이어그램, IO 파이프라인, 전환 요약, 정합성 규칙의 동적 데이터 바인딩 작업. 완료 기준에 하드코딩 플레이스홀더 데이터 없음 조건 추가 |
+| 2026-05-27 | F22-F23 추가: DataModelStep 엔티티 필드 추가 + 엔티티 그룹 추가. 정합성 규칙 "해결하기 →" 버튼 삭제 (상태 라벨로 대체). Generate 버튼 크기 10% 확대 |
+| 2026-05-27 | B8-B11: 인터뷰 insights DB 영속화 (마이그레이션 007), `_get_interview_context` 버그 수정 (잘못된 키), 동적 아키텍처 템플릿 엔드포인트, 템플릿 기반 아키텍처 생성 |

@@ -62,6 +62,12 @@ export interface DataModel {
   relationships: string[]
 }
 
+export interface ArchTemplate {
+  title: string
+  badge: string
+  desc: string
+}
+
 export interface DesignSession {
   id: string
   project_id: string
@@ -70,5 +76,6 @@ export interface DesignSession {
   architecture: Architecture | null
   data_model: DataModel | null
   ai_workflow: string | null
+  arch_templates: ArchTemplate[] | null
   status: 'in_progress' | 'completed'
 }

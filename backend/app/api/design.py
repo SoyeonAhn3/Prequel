@@ -72,7 +72,7 @@ def _get_interview_context(project_id: str) -> str:
 
     s = session.data[0]
     messages = s.get("messages", [])
-    insights = s.get("insights", [])
+    insights = s.get("_insights", [])
 
     parts = []
     for ins in insights:
@@ -81,7 +81,7 @@ def _get_interview_context(project_id: str) -> str:
     conversation = []
     for msg in messages[-20:]:
         role = msg.get("role", "user")
-        text = msg.get("text", "")
+        text = msg.get("content", "")
         conversation.append(f"[{role}] {text}")
 
     return (
@@ -141,6 +141,7 @@ def _session_to_out(session: dict) -> DesignSessionOut:
         architecture=session.get("architecture"),
         data_model=session.get("data_model"),
         ai_workflow=session.get("ai_workflow"),
+        arch_templates=session.get("arch_templates"),
         status=session.get("status", "in_progress"),
     )
 
@@ -313,6 +314,91 @@ async def update_requirement(
 
 # ─── Architecture ─────────────────────────────────────────
 
+_TEMPLATE_PROMPT = """\
+당신은 소프트웨어 아키텍트입니다. 프로젝트 정보를 바탕으로 추천 기술 스택 조합 2가지를 생성하세요.
+
+반드시 아래 JSON 형식으로만 응답하세요:
+```json
+{
+  "templates": [
+    {
+      "title": "조합 이름",
+      "badge": "추천 (첫 번째만, 나머지는 빈 문자열)",
+      "desc": "기술 스택 나열 + 1~2문장 설명. 어떤 상황에 적합한지."
+    }
+  ]
+}
+```
+
+규칙:
+1. 첫 번째: 가장 쉽고 빠른 시작이 가능한 조합 (badge: "추천")
+2. 두 번째: 확장성이나 성능 면에서 유리한 조합 (badge: "")
+3. 프로젝트 유형과 요구사항에 맞는 실제 기술 스택 추천
+4. desc에 구체적 기술 이름 포함 (예: React, FastAPI, Supabase)
+5. 한국어로 작성
+"""
+
+
+@router.post("/architecture/templates")
+async def generate_arch_templates(
+    body: DesignGenerateRequest,
+    user: dict = Depends(get_current_user),
+):
+    sb = get_supabase()
+    project = (
+        sb.table("projects")
+        .select("*")
+        .eq("id", body.project_id)
+        .eq("user_id", user["id"])
+        .is_("deleted_at", "null")
+        .maybe_single()
+        .execute()
+    )
+    if not project.data:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    session = _get_or_create_session(body.project_id, user["id"])
+
+    if session.get("arch_templates"):
+        return {"templates": session["arch_templates"]}
+
+    context = _get_interview_context(body.project_id)
+
+    requirements_text = ""
+    if session.get("requirements"):
+        reqs = session["requirements"]
+        requirements_text = "\n## 생성된 요구사항\n" + "\n".join(
+            f"- [{r['priority'].upper()}] {r['text']}" for r in reqs
+        )
+
+    proj = project.data
+    user_message = (
+        f"프로젝트명: {proj['name']}\n"
+        f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
+        f"설명: {proj.get('description', '')}\n\n"
+        f"{context}{requirements_text}"
+    )
+
+    system = [{"type": "text", "text": _TEMPLATE_PROMPT}]
+    messages = [{"role": "user", "content": user_message}]
+
+    text, usage = chat(system, messages, max_tokens=1024)
+    parsed = _parse_json_response(text)
+    templates = parsed.get("templates", [])
+
+    sb.table("design_sessions").update({
+        "arch_templates": templates,
+    }).eq("id", session["id"]).execute()
+
+    logger.info(
+        "arch_templates_generated",
+        project_id=body.project_id,
+        count=len(templates),
+        tokens=usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+    )
+    return {"templates": templates}
+
+
 @router.post("/architecture/generate", response_model=DesignSessionOut)
 async def generate_architecture(
     body: DesignGenerateRequest,
@@ -342,12 +428,24 @@ async def generate_architecture(
             f"- [{r['priority'].upper()}] {r['text']}" for r in reqs
         )
 
+    template_text = ""
+    if body.template_index is not None and session.get("arch_templates"):
+        templates = session["arch_templates"]
+        if 0 <= body.template_index < len(templates):
+            selected = templates[body.template_index]
+            template_text = (
+                f"\n\n## 선택된 기술 스택 조합\n"
+                f"제목: {selected['title']}\n"
+                f"설명: {selected['desc']}\n"
+                f"이 조합을 기반으로 아키텍처를 설계하세요."
+            )
+
     proj = project.data
     user_message = (
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
         f"설명: {proj.get('description', '')}\n\n"
-        f"{context}{requirements_text}"
+        f"{context}{requirements_text}{template_text}"
     )
 
     system = [{"type": "text", "text": skill_text, "cache_control": {"type": "ephemeral"}}]

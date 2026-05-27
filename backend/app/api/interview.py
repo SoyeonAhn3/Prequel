@@ -239,6 +239,7 @@ async def start_interview(
     result = sb.table("interview_sessions").insert(session_data).execute()
     session = result.data[0]
     session["_insights"] = insights
+    _save_session(session["id"], {"_insights": insights})
 
     if project.get("project_type") is None and parsed.get("insights"):
         type_insight = next(
@@ -338,6 +339,7 @@ async def submit_answer(
         "messages": messages,
         "current_question": next_step,
         "token_used": total_tokens,
+        "_insights": all_insights,
     }
     if status == "completed":
         updates["status"] = "completed"
@@ -432,7 +434,7 @@ async def resume_interview(
             last_meta = msg.get("_meta", {})
             break
 
-    session["_insights"] = []
+    session["_insights"] = session.get("_insights") or []
     logger.info("interview_resumed", session_id=body.session_id)
 
     return _build_response(
@@ -501,13 +503,19 @@ async def get_session_by_project(
 
     result = (
         sb.table("interview_sessions")
-        .select("id, status, current_question, token_used, created_at, paused_at")
+        .select("id, status, current_question, token_used, created_at, paused_at, _insights")
         .eq("project_id", project_id)
         .order("created_at", desc=True)
         .limit(1)
         .execute()
     )
     if not result.data:
-        return {"session": None}
+        return {"session": None, "insights": []}
 
-    return {"session": result.data[0]}
+    session_data = result.data[0]
+    raw_insights = session_data.pop("_insights", None) or []
+    insights = [
+        {"label": ins.get("label", ""), "value": ins.get("value", "")}
+        for ins in raw_insights
+    ]
+    return {"session": session_data, "insights": insights}
