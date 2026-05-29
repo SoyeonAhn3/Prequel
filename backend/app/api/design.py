@@ -312,6 +312,18 @@ async def update_requirement(
     return {"requirements": requirements}
 
 
+@router.put("/requirements/{session_id}")
+async def replace_requirements(
+    session_id: str,
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    sb = get_supabase()
+    requirements = body.get("requirements", [])
+    sb.table("design_sessions").update({"requirements": requirements}).eq("id", session_id).execute()
+    return {"requirements": requirements}
+
+
 # ─── Architecture ─────────────────────────────────────────
 
 _TEMPLATE_PROMPT = """\

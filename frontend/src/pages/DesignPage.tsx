@@ -379,7 +379,7 @@ export default function DesignPage() {
                 session={session}
                 generating={generating}
                 onGenerate={() => handleGenerate('requirements')}
-                projectId={projectId!}
+                onUpdateSession={setSession}
               />
             )}
             {screen.stepId === 'architecture' && (

@@ -325,6 +325,8 @@ Full-page step completion screen:
 | 2026-05-26 | F17-F21 added: dynamic data binding tasks for AiSuggestionList, SVG diagram, IO pipeline, transition summaries, validation rules. Completion criteria updated to require no hardcoded placeholder data |
 | 2026-05-27 | F22-F23 added: DataModelStep entity field add + entity group add. "해결하기 →" button removed from validation rules (replaced with status label). Generate buttons enlarged 10% for visibility |
 | 2026-05-27 | B8-B11: Interview insights DB persistence (migration 007), `_get_interview_context` bugfix (wrong keys), dynamic architecture templates endpoint, template-aware architecture generation |
+| 2026-05-29 | Logged 3 test-found issues (fix pending): I1 long-response raw-JSON breakage (max_tokens/parser), I2 insights flicker (resume returns empty + 60s auto-save), I3 premature doc-gen prompt (STEP 10 directive) — see "수정 예정" section |
+| 2026-05-29 | Added design-step issues D1–D4 (fix pending): D1 personas shown as feature suggestions, D2 added items not removed from list, D3 transition shows "loading data", D4 requirements↔interview redundancy. Common root = RequirementsStep disconnected from design_session |
 
 ---
 ---
@@ -644,6 +646,55 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 
 ---
 
+## 수정 예정 — 테스트 발견 이슈 (2026-05-29)
+
+> Phase 5 설계 플로우 테스트 중 발견. 인터뷰 파이프라인(Phase 4)과 연계된 이슈 포함. **원인 분석 완료, 수정 미적용 상태.**
+
+### I1 · 긴 응답 글자 깨짐 (raw JSON 노출)
+- **증상**: 인터뷰의 긴 응답 질문(마무리 요약·AI 제안 등)에서 메시지가 렌더링되지 않고 `{"message": ...}` raw JSON이 그대로 노출
+- **원인**: `chat()` 기본 `max_tokens=1024`가 작아 긴 한국어 JSON 응답이 중간에 잘림 → `_parse_ai_response`에 truncation 복구 로직이 없어 fallback이 잘린 raw 텍스트를 `message`에 그대로 넣음
+- **위치**: `backend/app/core/claude_client.py:18`, `backend/app/api/interview.py:35-77, 209, 309`
+- **수정 방향**: 인터뷰 생성 호출 `max_tokens` 상향(설계는 8192) + 설계의 `_repair_truncated_json` 동등 로직을 인터뷰 파서에 적용
+
+### I2 · 수집된 정보(insights) 사라짐/재등장 반복
+- **증상**: 인터뷰 중 우측 "수집된 정보" 패널이 주기적으로 비워졌다가 다음 답변에 다시 채워짐
+- **원인**: 60초 자동저장(pause→resume)이 `resume_interview`의 빈 insights 응답으로 패널을 덮어씀. `resume_interview`가 `session_insights=[]`를 하드코딩 반환 (DB의 `_insights`를 응답에 싣지 않음)
+- **위치**: `frontend/src/pages/InterviewPage.tsx:190-207`, `backend/app/api/interview.py:442-449`
+- **수정 방향**: `resume_interview`가 `session["_insights"]`를 응답에 포함하도록 수정 (start 경유 resume도 동일)
+
+### I3 · 문서 생성 안내 조기 노출
+- **증상**: AI 제안 단계 이전(마무리 확인 등)에 "킥오프 문서를 생성할 준비가 됐어요… 시작할까요?" 안내가 노출됨
+- **원인**: STEP 10(마무리 확인) 스킬 지시문에 "킥오프 문서 생성을 안내한다"가 포함되어 AI가 조기 안내
+- **위치**: `backend/skills/kickoff-interview.md:145` (원본 `.claude/skills/kickoff-interview/SKILL.md`)
+- **수정 방향**: 해당 지시문을 STEP 10에서 제거하고 AI 제안(STEP 11) 이후 시점으로 이동
+
+> **공통 뿌리 (D1~D3)**: 기능 정의 화면(`RequirementsStep`)이 백엔드 `design_session`과 단절되어 있음 — 추천은 raw 인터뷰 insight를 직접 쓰고, 추가 항목은 로컬 state(`localItems`)에만 남으며, 실제 생성 엔드포인트(`onGenerate`)가 호출되지 않음.
+
+### D1 · 기능 정의: AI 추천에 비-기능 항목(페르소나 등) 노출
+- **증상**: "꼭 할 수 있어야 하는 일" 질문인데 AI 추천에 "부동산을 처음 구매하는 일반인"·"비전문가(등기부등본 해석 경험 없음)" 등 기능이 아닌 항목(주요 사용자/타겟)이 노출
+- **원인**: 추천을 인터뷰 insight의 `value`로 그대로 채우고 `value.length > 5`만 필터 → 주요 사용자/리스크/기술스택 등 비-기능 insight가 모두 기능 추천으로 표시(카테고리 구분 없음). 실제 기능 생성 경로(`/design/requirements/generate` + `design-requirements` 스킬)는 호출되지 않음
+- **위치**: `frontend/src/components/design/RequirementsStep.tsx:32-43`
+- **수정 방향**: 추천을 raw insight가 아니라 `/design-requirements`가 생성한 기능 목록으로 바인딩 + `onGenerate` 실제 트리거
+
+### D2 · 기능 정의: 추가한 추천 항목이 리스트에서 사라지지 않음
+- **증상**: AI 추천에서 추가한 항목이 추천 리스트에 계속 남아 중복 추가 가능
+- **원인**: `suggestions`(추천)와 `localItems`(추가됨)가 분리 state. `addItem`이 `suggestions`에서 제거하지 않고, `AiSuggestionList`는 전체 추천을 항상 렌더(이미 추가된 항목 제외 필터 없음)
+- **위치**: `frontend/src/components/design/RequirementsStep.tsx:53-58, 101-106`, `AiSuggestionList.tsx:19-36`
+- **수정 방향**: `localItems`에 이미 포함된 항목을 `suggestions`에서 제외하여 렌더
+
+### D3 · 전환 화면: "기능 정의 완료"인데 "데이터를 불러오는 중" 표시
+- **증상**: "기능 정의 완료!" 전환 화면 요약이 "이 단계의 데이터를 불러오는 중입니다."로 표시됨 (항목 선택·다음 진행해도 동일)
+- **원인**: `buildTransitionData`가 `session`이 null이면 해당 문구를 반환. 새 프로젝트는 design_session이 `/generate` 시에만 생성되어 `GET /design/session` 404 → welcome로 빠지며 `session`이 null 유지. 추가한 기능도 `localItems` 로컬 state에만 있고 `session.requirements`로 영속화되지 않음
+- **위치**: `frontend/src/pages/DesignPage.tsx:57-59, 137-145`, `RequirementsStep.tsx`(localItems)
+- **수정 방향**: 기능 정의 진행 시 design_session 생성 + `localItems`를 `session.requirements`로 저장(영속화)
+
+### D4 · 기능 정의 단계 ↔ 인터뷰 중복성 (구조 개선)
+- **분석**: 인터뷰가 이미 핵심 기능 4개 + 우선순위 기능 + AI 제안 5개를 수집함. `design-requirements` 스킬의 목적은 이를 Must/Should/Could + 카테고리 + 인수 기준(acceptance_criteria) + 비기능 요구사항으로 **구조화**하는 것이라 본래 중복 아님. 그러나 현재는 D1·D3 때문에 구조화가 실현되지 않고 인터뷰 insight를 재노출만 함 → **사실상 중복/순환**
+- **위치**: `backend/skills/design-requirements.md:28-43`, `RequirementsStep.tsx`
+- **수정 방향**: D1·D3 해소 시 중복 해소(추천=생성된 기능, 영속화). 단계 자체는 유지(우선순위·인수기준·NFR 산출 가치 있음)
+
+---
+
 ## 변경 이력
 
 | 날짜 | 내용 |
@@ -656,3 +707,5 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 | 2026-05-26 | F17-F21 추가: AiSuggestionList, SVG 다이어그램, IO 파이프라인, 전환 요약, 정합성 규칙의 동적 데이터 바인딩 작업. 완료 기준에 하드코딩 플레이스홀더 데이터 없음 조건 추가 |
 | 2026-05-27 | F22-F23 추가: DataModelStep 엔티티 필드 추가 + 엔티티 그룹 추가. 정합성 규칙 "해결하기 →" 버튼 삭제 (상태 라벨로 대체). Generate 버튼 크기 10% 확대 |
 | 2026-05-27 | B8-B11: 인터뷰 insights DB 영속화 (마이그레이션 007), `_get_interview_context` 버그 수정 (잘못된 키), 동적 아키텍처 템플릿 엔드포인트, 템플릿 기반 아키텍처 생성 |
+| 2026-05-29 | 테스트 발견 이슈 3건 기록 (수정 예정): I1 긴 응답 글자 깨짐(max_tokens/파서), I2 insights 사라짐(resume 빈 배열 + 60초 자동저장), I3 문서 생성 안내 조기 노출(STEP 10 지시문) |
+| 2026-05-29 | 설계 단계 이슈 D1~D4 추가 (수정 예정): D1 추천에 페르소나 노출, D2 추가 항목 안 사라짐, D3 전환 화면 "데이터 불러오는 중", D4 기능정의↔인터뷰 중복성. 공통 뿌리 = RequirementsStep ↔ design_session 단절 |
