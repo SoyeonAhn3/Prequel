@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import Explainer from './Explainer'
 import TemplateCard from './TemplateCard'
-import Tag from '../common/Tag'
 import type { DesignSession, ArchComponent, ArchTemplate } from './types'
 
 interface ArchitectureStepProps {
@@ -42,15 +41,11 @@ function getCompColor(name: string, technology: string, role: string) {
   return { numBg: 'bg-surface-alt', numText: 'text-text-muted', roleBg: 'bg-surface-alt', roleText: 'text-text-muted' }
 }
 
-const FALLBACK_TEMPLATES: ArchTemplate[] = [
-  { title: '간단한 조합', badge: '추천', desc: 'React + FastAPI + Supabase. 시작하기 가장 쉽고 빠릅니다.' },
-  { title: '확장 가능한 조합', badge: '', desc: 'Next.js + Node + PostgreSQL + Redis. 확장성이 좋습니다.' },
-]
+const FALLBACK_TEMPLATE: ArchTemplate = { title: '간단한 조합', badge: '추천', desc: 'React + FastAPI + Supabase. 시작하기 가장 쉽고 빠릅니다.' }
 
 export default function ArchitectureStep({ session, generating, onGenerate, loadingTemplates, onLoadTemplates }: ArchitectureStepProps) {
   const architecture = session?.architecture
-  const templates = session?.arch_templates ?? (loadingTemplates ? null : FALLBACK_TEMPLATES)
-  const [selectedTemplate, setSelectedTemplate] = useState(0)
+  const template = session?.arch_templates?.[0] ?? (loadingTemplates ? null : FALLBACK_TEMPLATE)
 
   useEffect(() => {
     if (!architecture && !session?.arch_templates && !loadingTemplates) {
@@ -68,12 +63,12 @@ export default function ArchitectureStep({ session, generating, onGenerate, load
           example="화면(React) ↔ 서버(FastAPI) ↔ 데이터(Supabase) — 셋 다 인기 부품들이에요"
         />
 
-        <div className="text-[13px] font-bold text-text mb-1.5">먼저 — 추천 조합 골라보기</div>
+        <div className="text-[13px] font-bold text-text mb-1.5">AI 추천 조합</div>
         <p className="text-[12.5px] text-text-muted leading-relaxed mb-3.5">
-          프로젝트 유형에 맞는 조합을 AI가 추려두었어요. 잘 모르겠으면 첫 번째를 고르세요.
+          프로젝트 유형에 맞는 최적의 조합을 AI가 추천해드려요.
         </p>
 
-        {loadingTemplates || !templates ? (
+        {loadingTemplates || !template ? (
           <div className="text-center py-8 mb-7">
             <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center mx-auto mb-2 animate-pulse">
               <span className="text-accent text-xs font-bold">AI</span>
@@ -81,30 +76,27 @@ export default function ArchitectureStep({ session, generating, onGenerate, load
             <p className="text-xs text-text-muted">프로젝트에 맞는 조합을 분석하고 있어요...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 mb-7">
-            {templates.map((t, i) => (
-              <TemplateCard
-                key={t.title}
-                title={t.title}
-                badge={t.badge || undefined}
-                desc={t.desc}
-                selected={selectedTemplate === i}
-                onClick={() => setSelectedTemplate(i)}
-              />
-            ))}
+          <div className="mb-7">
+            <TemplateCard
+              title={template.title}
+              badge={template.badge || '추천'}
+              desc={template.desc}
+              selected={true}
+              onClick={() => {}}
+            />
           </div>
         )}
 
         <div className="text-center">
           <button
             type="button"
-            onClick={() => onGenerate(selectedTemplate)}
-            disabled={loadingTemplates || !templates}
+            onClick={() => onGenerate(0)}
+            disabled={loadingTemplates || !template}
             className="px-7 py-3.5 bg-accent text-white text-[15.4px] font-semibold rounded-2xl cursor-pointer border-none inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             AI로 아키텍처 설계하기
           </button>
-          <p className="text-xs text-text-muted mt-3">선택한 조합을 바탕으로 시스템 구조를 설계합니다</p>
+          <p className="text-xs text-text-muted mt-3">추천 조합을 바탕으로 시스템 구조를 설계합니다</p>
         </div>
       </div>
     )
@@ -131,31 +123,7 @@ export default function ArchitectureStep({ session, generating, onGenerate, load
         example="화면(React) ↔ 서버(FastAPI) ↔ 데이터(Supabase) — 셋 다 인기 부품들이에요"
       />
 
-      {/* Template selection */}
-      {templates && templates.length > 0 && (
-        <>
-          <div className="text-[13px] font-bold text-text mb-1.5">추천 조합</div>
-          <div className="grid grid-cols-2 gap-2.5 mb-7">
-            {templates.map((t, i) => (
-              <TemplateCard
-                key={t.title}
-                title={t.title}
-                badge={t.badge || undefined}
-                desc={t.desc}
-                selected={selectedTemplate === i}
-                onClick={() => setSelectedTemplate(i)}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      <div className="text-[13px] font-bold text-text mb-2.5 flex items-center gap-1.5">
-        선택한 조합 미리보기
-        {templates && templates[selectedTemplate] && (
-          <Tag tone="accent">{templates[selectedTemplate].title}</Tag>
-        )}
-      </div>
+      <div className="text-[13px] font-bold text-text mb-2.5">시스템 구조 미리보기</div>
 
       {/* SVG System Architecture Diagram */}
       <DynamicArchDiagram components={architecture!.components} />

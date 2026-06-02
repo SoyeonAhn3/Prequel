@@ -32,7 +32,26 @@ router = APIRouter(prefix="/api/interview", tags=["interview"])
 TOTAL_STEPS = len(INTERVIEW_STEPS)
 
 
+def _repair_truncated_json(text: str) -> dict | None:
+    for end in range(len(text), max(len(text) - 2000, 0), -1):
+        candidate = text[:end].rstrip()
+        if candidate.endswith(','):
+            candidate = candidate[:-1]
+        opens = candidate.count('{') - candidate.count('}')
+        open_arrays = candidate.count('[') - candidate.count(']')
+        if opens < 0 or open_arrays < 0:
+            continue
+        candidate += ']' * open_arrays + '}' * opens
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
 def _parse_ai_response(text: str) -> dict:
+    import re
+
     fallback = {
         "message": text,
         "insights": [],
@@ -51,7 +70,6 @@ def _parse_ai_response(text: str) -> dict:
         pass
 
     # Extract JSON from ```json ... ``` code block
-    import re
     m = re.search(r"```(?:json)?\s*\n?(\{.*?\})\s*\n?```", cleaned, re.DOTALL)
     if m:
         try:
@@ -73,6 +91,12 @@ def _parse_ai_response(text: str) -> dict:
                         return json.loads(cleaned[brace_start : i + 1])
                     except json.JSONDecodeError:
                         break
+
+    # Truncated JSON recovery — token limit may have cut the response mid-JSON
+    if brace_start is not None and brace_start != -1:
+        repaired = _repair_truncated_json(cleaned[brace_start:])
+        if repaired and "message" in repaired:
+            return {**fallback, **repaired}
 
     return fallback
 
@@ -206,7 +230,7 @@ async def start_interview(
         "content": f"프로젝트 이름: {project['name']}\n설명: {project.get('description', '(없음)')}",
     }
 
-    ai_text, usage = chat(system=system_prompt, messages=[first_message])
+    ai_text, usage = chat(system=system_prompt, messages=[first_message], max_tokens=2048)
     parsed = _parse_ai_response(ai_text)
 
     now = datetime.now(timezone.utc).isoformat()
@@ -306,7 +330,7 @@ async def submit_answer(
         {"role": m["role"], "content": m["content"]} for m in messages
     ])
 
-    ai_text, usage = chat(system=system_prompt, messages=api_messages)
+    ai_text, usage = chat(system=system_prompt, messages=api_messages, max_tokens=2048)
     parsed = _parse_ai_response(ai_text)
 
     messages.append({
@@ -445,7 +469,7 @@ async def resume_interview(
         topics=last_meta.get("topics", []),
         importance=last_meta.get("importance"),
         example_answers=last_meta.get("example_answers", []),
-        session_insights=[],
+        session_insights=session.get("_insights") or [],
     )
 
 

@@ -33,7 +33,7 @@ const STEP_HEADERS: Record<DesignStepId, { title: string; subtitle: string }> = 
   },
   architecture: {
     title: '이 도구의 부품들을 골라볼까요?',
-    subtitle: '실제로 동작하려면 화면, 서버, 데이터베이스, AI 같은 부품들이 필요해요. AI가 추천하는 조합 중에서 고르시면 돼요.',
+    subtitle: '실제로 동작하려면 화면, 서버, 데이터베이스, AI 같은 부품들이 필요해요. AI가 최적의 조합을 추천해드려요.',
   },
   'data-model': {
     title: '저장해야 할 정보를 정리해볼까요?',
@@ -46,9 +46,9 @@ const STEP_HEADERS: Record<DesignStepId, { title: string; subtitle: string }> = 
 }
 
 const NEXT_PREVIEWS: Record<string, string> = {
-  requirements: '어떤 부품으로 만들지 결정해요. 3가지 추천 조합 중 골라도 됩니다.',
+  requirements: '어떤 부품으로 만들지 결정해요. AI가 최적의 조합을 추천해드립니다.',
   architecture: '저장해야 할 정보를 정리해요. 엑셀 시트처럼 표 형태로 만들어드립니다.',
-  'data-model': 'AI(Claude)가 어떤 정보를 받고 무엇을 만들어낼지 정의해요. 마지막 단계!',
+  'data-model': 'AI가 어떤 정보를 받고 무엇을 만들어낼지 정의해요. 마지막 단계!',
 }
 
 function buildTransitionData(stepId: DesignStepId, s: DesignSession | null): { summary: string[]; nextPreview: string } {

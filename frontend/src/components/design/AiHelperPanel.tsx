@@ -35,20 +35,6 @@ export default function AiHelperPanel() {
         예: <code className="font-mono text-[11px]">{`{ "title": "...", "reason": "..." }`}</code>
       </ExampleBox>
 
-      <div
-        className="mt-[22px] p-[12px_13px] rounded-[10px]"
-        style={{
-          background: 'color-mix(in srgb, var(--color-amber-soft) 60%, transparent)',
-          border: '1px solid color-mix(in srgb, var(--color-amber) 15%, transparent)',
-        }}
-      >
-        <div className="text-xs font-semibold mb-[5px] flex items-center gap-[5px]" style={{ color: '#7e5a23' }}>
-          <span>💰</span> 비용 알림
-        </div>
-        <p className="text-[11.5px] opacity-90 leading-relaxed m-0" style={{ color: '#7e5a23' }}>
-          AI 모델마다 가격이 달라요. Sonnet은 균형, Haiku는 저렴, Opus는 비쌈. 처음엔 Sonnet으로 시작하는 게 좋아요.
-        </p>
-      </div>
     </div>
   )
 }

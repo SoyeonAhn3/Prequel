@@ -68,6 +68,33 @@ export interface ArchTemplate {
   desc: string
 }
 
+export interface AiWorkflowInput {
+  name: string
+  description: string
+}
+
+export interface AiWorkflowOutput {
+  name: string
+  description: string
+  format: string
+}
+
+export interface AiWorkflowFallback {
+  condition: string
+  action: string
+}
+
+export interface AiWorkflow {
+  summary: string
+  model: string
+  model_version: string
+  task: string
+  inputs: AiWorkflowInput[]
+  outputs: AiWorkflowOutput[]
+  fallbacks: AiWorkflowFallback[]
+  monitoring: string[]
+}
+
 export interface DesignSession {
   id: string
   project_id: string
@@ -75,7 +102,7 @@ export interface DesignSession {
   requirements: Requirement[] | null
   architecture: Architecture | null
   data_model: DataModel | null
-  ai_workflow: string | null
+  ai_workflow: AiWorkflow | null
   arch_templates: ArchTemplate[] | null
   status: 'in_progress' | 'completed'
 }

@@ -1,83 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import Explainer from './Explainer'
 import type { DesignSession } from './types'
-
-interface ParsedWorkflow {
-  inputs: string[]
-  outputs: string[]
-  model: string
-  modelVersion: string
-  task: string
-  fallbacks: { icon: string; bg: string; title: string; action: string }[]
-}
-
-function extractBullets(text: string, sectionPattern: RegExp, limit = 6): string[] {
-  const match = text.match(sectionPattern)
-  if (!match) return []
-  const afterMatch = text.slice(match.index! + match[0].length)
-  const nextSection = afterMatch.search(/\n#{1,3}\s/)
-  const section = nextSection > -1 ? afterMatch.slice(0, nextSection) : afterMatch
-  const bullets = section
-    .split('\n')
-    .map((l) => l.replace(/^[\s]*[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim())
-    .filter((l) => l.length > 0 && l.length < 120 && !l.startsWith('#'))
-    .slice(0, limit)
-  return bullets
-}
-
-function parseAiWorkflow(raw: string): ParsedWorkflow {
-  const defaults: ParsedWorkflow = {
-    inputs: ['사용자 요청 데이터', '컨텍스트 정보'],
-    outputs: ['AI 처리 결과', '구조화된 응답'],
-    model: 'Claude',
-    modelVersion: 'sonnet',
-    task: 'AI 처리',
-    fallbacks: [
-      { icon: '⏱', bg: 'bg-amber-soft', title: 'AI 응답 지연 시', action: '타임아웃 후 기본 응답 반환' },
-      { icon: '✕', bg: 'bg-red-soft', title: 'AI 응답 오류 시', action: '재시도 후 기본값 반환' },
-    ],
-  }
-
-  if (!raw || raw.trim().length < 20) return defaults
-
-  const inputs = extractBullets(raw, /#{1,3}\s*(추론\s*흐름|데이터\s*파이프라인|입력|input)/i)
-  const outputs = extractBullets(raw, /#{1,3}\s*(출력|output|응답|결과)/i)
-
-  let model = 'Claude'
-  let modelVersion = 'sonnet'
-  const modelMatch = raw.match(/(?:Claude|GPT|Gemini)[\s-]*(\S*)/i)
-  if (modelMatch) {
-    model = modelMatch[0].split(/[\s-]/)[0]
-    modelVersion = modelMatch[1] || 'sonnet'
-  }
-
-  let task = 'AI 처리'
-  const taskMatch = raw.match(/AI가?\s*(.*?(?:생성|추천|분석|분류|예측|요약|번역))/i)
-  if (taskMatch) task = taskMatch[1].trim().slice(0, 20)
-
-  const opSection = extractBullets(raw, /#{1,3}\s*(운영\s*고려|모니터링|폴백|fallback|장애|비용)/i, 5)
-  const fallbacks: ParsedWorkflow['fallbacks'] = []
-  const icons = ['⏱', '✕', '💰', '🔄', '📊']
-  const bgs = ['bg-amber-soft', 'bg-red-soft', 'bg-surface-alt', 'bg-accent-soft', 'bg-green-soft']
-  for (let i = 0; i < Math.min(opSection.length, 4); i++) {
-    const line = opSection[i]
-    const colonIdx = line.indexOf(':')
-    if (colonIdx > 0 && colonIdx < line.length - 1) {
-      fallbacks.push({ icon: icons[i % icons.length], bg: bgs[i % bgs.length], title: line.slice(0, colonIdx).trim(), action: line.slice(colonIdx + 1).trim() })
-    } else {
-      fallbacks.push({ icon: icons[i % icons.length], bg: bgs[i % bgs.length], title: line, action: '정의됨' })
-    }
-  }
-
-  return {
-    inputs: inputs.length > 0 ? inputs : defaults.inputs,
-    outputs: outputs.length > 0 ? outputs : defaults.outputs,
-    model,
-    modelVersion,
-    task,
-    fallbacks: fallbacks.length > 0 ? fallbacks : defaults.fallbacks,
-  }
-}
 
 interface AiWorkflowStepProps {
   session: DesignSession | null
@@ -85,6 +8,9 @@ interface AiWorkflowStepProps {
   generating: boolean
   onGenerate: () => void
 }
+
+const FALLBACK_ICONS = ['⏱', '✕', '💰', '🔄']
+const FALLBACK_BGS = ['bg-amber-soft', 'bg-red-soft', 'bg-surface-alt', 'bg-accent-soft']
 
 export default function AiWorkflowStep({ session, projectType, generating, onGenerate }: AiWorkflowStepProps) {
   const aiWorkflow = session?.ai_workflow
@@ -95,8 +21,6 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
       onGenerate()
     }
   }, [isAiProject, aiWorkflow, generating, onGenerate])
-
-  const parsed = useMemo(() => parseAiWorkflow(aiWorkflow ?? ''), [aiWorkflow])
 
   if (!isAiProject) {
     return (
@@ -119,7 +43,7 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
         <Explainer
           title="AI 흐름 = AI Workflow"
           technical="I/O + Fallback"
-          plain="AI(Claude)가 어떤 정보를 받고 무엇을 만들지, 그리고 잘못되었을 때 대처법을 정하는 단계예요."
+          plain="AI가 어떤 정보를 받고 무엇을 만들지, 그리고 잘못되었을 때 대처법을 정하는 단계예요."
           example="입력: 사용자 부서 + 지난주 인기 책 → AI 처리 → 출력: 추천 책 카드 1개 (제목 + 이유 2줄)"
         />
         <div className="text-center py-12">
@@ -153,9 +77,13 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
       <Explainer
         title="AI 흐름 = AI Workflow"
         technical="I/O + Fallback"
-        plain="AI(Claude)가 어떤 정보를 받고 무엇을 만들지, 그리고 잘못되었을 때 대처법을 정하는 단계예요."
+        plain="AI가 어떤 정보를 받고 무엇을 만들지, 그리고 잘못되었을 때 대처법을 정하는 단계예요."
         example="입력: 사용자 부서 + 지난주 인기 책 → AI 처리 → 출력: 추천 책 카드 1개 (제목 + 이유 2줄)"
       />
+
+      {aiWorkflow.summary && (
+        <p className="text-[12.5px] text-text-muted leading-relaxed mb-5">{aiWorkflow.summary}</p>
+      )}
 
       {/* IO Pipeline visual */}
       <div className="text-[13px] font-bold text-text mb-2.5">AI의 입출력 흐름</div>
@@ -167,11 +95,16 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
             style={{ border: '1px solid color-mix(in srgb, var(--color-accent) 18%, transparent)' }}
           >
             <div className="text-[10.5px] font-mono text-accent font-bold mb-2" style={{ letterSpacing: 0.4 }}>
-              📥 입력 (INPUT)
+              INPUT
             </div>
             <div className="text-xs text-accent-deep leading-[1.65]">
-              {parsed.inputs.map((item, i) => (
-                <span key={i}>• {item}{i < parsed.inputs.length - 1 && <br />}</span>
+              {aiWorkflow.inputs.map((item, i) => (
+                <div key={i} className="mb-1 last:mb-0">
+                  <span className="font-semibold">{item.name}</span>
+                  {item.description && (
+                    <span className="text-[11px] text-accent opacity-80 block">{item.description}</span>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -191,10 +124,10 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
               boxShadow: '0 8px 24px -8px color-mix(in srgb, var(--color-accent) 50%, transparent)',
             }}
           >
-            <div className="text-[10.5px] font-mono opacity-80 font-bold mb-2" style={{ letterSpacing: 0.4 }}>🤖 AI</div>
-            <div className="text-base font-bold mb-1" style={{ letterSpacing: -0.3 }}>{parsed.model}</div>
-            <div className="text-[11px] opacity-85 font-mono">{parsed.modelVersion}</div>
-            <div className="mt-3 px-2.5 py-1.5 bg-white/15 rounded-full text-[10.5px] font-semibold inline-block">{parsed.task}</div>
+            <div className="text-[10.5px] font-mono opacity-80 font-bold mb-2" style={{ letterSpacing: 0.4 }}>AI</div>
+            <div className="text-base font-bold mb-1" style={{ letterSpacing: -0.3 }}>{aiWorkflow.model}</div>
+            <div className="text-[11px] opacity-85 font-mono">{aiWorkflow.model_version}</div>
+            <div className="mt-3 px-2.5 py-1.5 bg-white/15 rounded-full text-[10.5px] font-semibold inline-block">{aiWorkflow.task}</div>
           </div>
 
           {/* Arrow */}
@@ -210,11 +143,19 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
             style={{ border: '1px solid color-mix(in srgb, var(--color-green) 18%, transparent)' }}
           >
             <div className="text-[10.5px] font-mono font-bold mb-2" style={{ letterSpacing: 0.4, color: '#2f5a44' }}>
-              📤 출력 (OUTPUT)
+              OUTPUT
             </div>
             <div className="text-xs leading-[1.65]" style={{ color: '#2f5a44' }}>
-              {parsed.outputs.map((item, i) => (
-                <span key={i}>• {item}{i < parsed.outputs.length - 1 && <br />}</span>
+              {aiWorkflow.outputs.map((item, i) => (
+                <div key={i} className="mb-1 last:mb-0">
+                  <span className="font-semibold">{item.name}</span>
+                  {item.format && (
+                    <span className="text-[10px] font-mono ml-1 px-1 py-0.5 bg-green/10 rounded">{item.format}</span>
+                  )}
+                  {item.description && (
+                    <span className="text-[11px] opacity-80 block">{item.description}</span>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -229,13 +170,13 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
         AI가 답을 못 주거나 느릴 때의 대처법이에요.
       </p>
       <div className="flex flex-col gap-2">
-        {parsed.fallbacks.map((rule, i) => (
+        {aiWorkflow.fallbacks.map((rule, i) => (
           <div key={i} className="flex gap-3 p-[12px_14px] bg-surface border border-border rounded-[10px] items-start">
-            <div className={`w-[30px] h-[30px] rounded-lg ${rule.bg} flex items-center justify-center text-sm shrink-0 font-bold`}>
-              {rule.icon}
+            <div className={`w-[30px] h-[30px] rounded-lg ${FALLBACK_BGS[i % FALLBACK_BGS.length]} flex items-center justify-center text-sm shrink-0 font-bold`}>
+              {FALLBACK_ICONS[i % FALLBACK_ICONS.length]}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-text">{rule.title}</div>
+              <div className="text-[13px] font-semibold text-text">{rule.condition}</div>
               <div className="text-xs mt-[3px] leading-relaxed text-text-muted">
                 → {rule.action}
               </div>
@@ -245,6 +186,21 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
         ))}
       </div>
 
+      {/* Monitoring section */}
+      {aiWorkflow.monitoring.length > 0 && (
+        <>
+          <div className="text-[13px] font-bold text-text mt-6 mb-2.5">
+            운영 모니터링 지표
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {aiWorkflow.monitoring.map((item, i) => (
+              <span key={i} className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs text-text-muted">
+                {item}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -327,7 +327,7 @@ async def replace_requirements(
 # ─── Architecture ─────────────────────────────────────────
 
 _TEMPLATE_PROMPT = """\
-당신은 소프트웨어 아키텍트입니다. 프로젝트 정보를 바탕으로 추천 기술 스택 조합 2가지를 생성하세요.
+당신은 소프트웨어 아키텍트입니다. 프로젝트 정보를 바탕으로 가장 적합한 추천 기술 스택 조합 1가지를 생성하세요.
 
 반드시 아래 JSON 형식으로만 응답하세요:
 ```json
@@ -335,19 +335,18 @@ _TEMPLATE_PROMPT = """\
   "templates": [
     {
       "title": "조합 이름",
-      "badge": "추천 (첫 번째만, 나머지는 빈 문자열)",
-      "desc": "기술 스택 나열 + 1~2문장 설명. 어떤 상황에 적합한지."
+      "badge": "추천",
+      "desc": "기술 스택 나열 + 2~3문장 설명. 왜 이 조합이 최적인지, 어떤 상황에 적합한지."
     }
   ]
 }
 ```
 
 규칙:
-1. 첫 번째: 가장 쉽고 빠른 시작이 가능한 조합 (badge: "추천")
-2. 두 번째: 확장성이나 성능 면에서 유리한 조합 (badge: "")
-3. 프로젝트 유형과 요구사항에 맞는 실제 기술 스택 추천
-4. desc에 구체적 기술 이름 포함 (예: React, FastAPI, Supabase)
-5. 한국어로 작성
+1. 가장 쉽고 빠른 시작이 가능하면서도 프로젝트 요구에 충분한 조합을 추천
+2. 프로젝트 유형과 요구사항에 맞는 실제 기술 스택 추천
+3. desc에 구체적 기술 이름 포함 (예: React, FastAPI, Supabase)
+4. 한국어로 작성
 """
 
 
@@ -673,14 +672,26 @@ async def generate_ai_workflow(
     messages = [{"role": "user", "content": user_message}]
 
     text, usage = chat(system, messages, max_tokens=8192)
+    parsed = _parse_json_response(text)
+
+    ai_workflow = {
+        "summary": parsed.get("summary", ""),
+        "model": parsed.get("model", "Claude"),
+        "model_version": parsed.get("model_version", "sonnet"),
+        "task": parsed.get("task", "AI 처리"),
+        "inputs": parsed.get("inputs", []),
+        "outputs": parsed.get("outputs", []),
+        "fallbacks": parsed.get("fallbacks", []),
+        "monitoring": parsed.get("monitoring", []),
+    }
 
     sb.table("design_sessions").update({
-        "ai_workflow": text,
+        "ai_workflow": ai_workflow,
         "current_step": "ai-workflow",
         "status": "completed",
     }).eq("id", session["id"]).execute()
 
-    session["ai_workflow"] = text
+    session["ai_workflow"] = ai_workflow
     session["current_step"] = "ai-workflow"
     session["status"] = "completed"
 

@@ -60,6 +60,33 @@ class ArchTemplateItem(BaseModel):
     desc: str = ""
 
 
+class AiWorkflowInput(BaseModel):
+    name: str = ""
+    description: str = ""
+
+
+class AiWorkflowOutput(BaseModel):
+    name: str = ""
+    description: str = ""
+    format: str = ""
+
+
+class AiWorkflowFallback(BaseModel):
+    condition: str = ""
+    action: str = ""
+
+
+class AiWorkflowData(BaseModel):
+    summary: str = ""
+    model: str = "Claude"
+    model_version: str = "sonnet"
+    task: str = "AI 처리"
+    inputs: list[AiWorkflowInput] = []
+    outputs: list[AiWorkflowOutput] = []
+    fallbacks: list[AiWorkflowFallback] = []
+    monitoring: list[str] = []
+
+
 class DesignSessionOut(BaseModel):
     id: str
     project_id: str
@@ -67,6 +94,6 @@ class DesignSessionOut(BaseModel):
     requirements: list[RequirementItem] | None = None
     architecture: ArchitectureData | None = None
     data_model: DataModelData | None = None
-    ai_workflow: str | None = None
+    ai_workflow: AiWorkflowData | None = None
     arch_templates: list[ArchTemplateItem] | None = None
     status: str = "in_progress"

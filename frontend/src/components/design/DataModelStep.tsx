@@ -62,11 +62,12 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
     onUpdateSession?.(updated)
   }
 
-  function addFieldToEntity(entityIdx: number, fieldName: string, fieldType: string) {
+  function addFieldToEntity(entityIdx: number, fieldName: string, fieldType: string, nullable: boolean) {
     if (!session || !dataModel || !fieldName.trim()) return
+    const constraints = nullable ? '' : 'NOT_NULL'
     const entities = dataModel.entities.map((e, i) => {
       if (i !== entityIdx) return e
-      return { ...e, fields: [...e.fields, { name: fieldName.trim(), type: fieldType || 'text', constraints: '' }] }
+      return { ...e, fields: [...e.fields, { name: fieldName.trim(), type: fieldType || 'text', constraints }] }
     })
     const updated = {
       ...session,
@@ -131,14 +132,17 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
       {/* Entity grid */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {entities.map((entity, i) => (
-          <EntityCard key={i} entity={entity} index={i} onDelete={() => removeEntity(i)} onAddField={(name, type) => addFieldToEntity(i, name, type)} />
+          <EntityCard key={i} entity={entity} index={i} onDelete={() => removeEntity(i)} onAddField={(name, type, nullable) => addFieldToEntity(i, name, type, nullable)} />
         ))}
       </div>
+
+      {/* Add new group — placed before relationships for discoverability */}
+      <AddEntityForm onAdd={addEntity} />
 
       {/* Relationships */}
       {relationships.length > 0 && (
         <>
-          <div className="text-[13px] font-bold text-text mb-1.5">그룹 간 연결 관계</div>
+          <div className="text-[13px] font-bold text-text mt-6 mb-1.5">그룹 간 연결 관계</div>
           <p className="text-[12.5px] text-text-muted leading-relaxed mb-3.5">
             서로 다른 그룹이 어떻게 연결되는지 보여드릴게요. 자동으로 감지되었습니다.
           </p>
@@ -170,9 +174,6 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
           </div>
         </>
       )}
-
-      {/* Add new group */}
-      <AddEntityForm onAdd={addEntity} />
 
       {/* 정합성 규칙 (자동 검증) */}
       <div className="text-[13px] font-bold text-text mt-6 mb-1.5">
@@ -316,17 +317,19 @@ function AddEntityForm({ onAdd }: { onAdd: (name: string) => void }) {
   )
 }
 
-function EntityCard({ entity, index, onDelete, onAddField }: { entity: DataEntity; index: number; onDelete?: () => void; onAddField?: (name: string, type: string) => void }) {
+function EntityCard({ entity, index, onDelete, onAddField }: { entity: DataEntity; index: number; onDelete?: () => void; onAddField?: (name: string, type: string, nullable: boolean) => void }) {
   const icon = ENTITY_ICONS[index % ENTITY_ICONS.length]
   const [adding, setAdding] = useState(false)
   const [fieldName, setFieldName] = useState('')
   const [fieldType, setFieldType] = useState('text')
+  const [nullable, setNullable] = useState(true)
 
   function handleAdd() {
     if (!fieldName.trim()) return
-    onAddField?.(fieldName, fieldType)
+    onAddField?.(fieldName, fieldType, nullable)
     setFieldName('')
     setFieldType('text')
+    setNullable(true)
     setAdding(false)
   }
 
@@ -379,22 +382,39 @@ function EntityCard({ entity, index, onDelete, onAddField }: { entity: DataEntit
             className="w-full text-[11px] text-text bg-surface border border-border rounded px-2 py-1.5 outline-none"
             style={{ fontFamily: 'inherit' }}
           />
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 items-center">
             <select
               value={fieldType}
               onChange={(e) => setFieldType(e.target.value)}
               className="flex-1 text-[10px] text-text-muted bg-surface border border-border rounded px-1.5 py-1 outline-none"
               style={{ fontFamily: 'inherit' }}
             >
-              <option value="text">text</option>
-              <option value="uuid">uuid</option>
-              <option value="integer">integer</option>
-              <option value="boolean">boolean</option>
-              <option value="timestamp">timestamp</option>
-              <option value="jsonb">jsonb</option>
+              <option value="text">text (문자열)</option>
+              <option value="varchar">varchar (짧은 문자)</option>
+              <option value="integer">integer (정수)</option>
+              <option value="bigint">bigint (큰 정수)</option>
+              <option value="float">float (소수)</option>
+              <option value="boolean">boolean (참/거짓)</option>
+              <option value="date">date (날짜)</option>
+              <option value="timestamp">timestamp (날짜+시간)</option>
+              <option value="uuid">uuid (고유 ID)</option>
+              <option value="jsonb">jsonb (JSON 데이터)</option>
+              <option value="array">array (목록)</option>
             </select>
-            <button type="button" onClick={handleAdd} className="px-2 py-1 bg-accent text-white text-[10px] font-semibold rounded cursor-pointer border-none">추가</button>
-            <button type="button" onClick={() => { setFieldName(''); setAdding(false) }} className="text-[10px] text-text-subtle cursor-pointer bg-transparent border-none">취소</button>
+            <button
+              type="button"
+              onClick={() => setNullable(!nullable)}
+              className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer border shrink-0 ${
+                nullable
+                  ? 'text-text-subtle bg-surface border-border'
+                  : 'text-red bg-red/8 border-red/20'
+              }`}
+              title={nullable ? '빈 값 허용 (NULL)' : '빈 값 불가 (NOT NULL)'}
+            >
+              {nullable ? 'NULL' : 'NOT NULL'}
+            </button>
+            <button type="button" onClick={handleAdd} className="px-2 py-1 bg-accent text-white text-[10px] font-semibold rounded cursor-pointer border-none shrink-0">추가</button>
+            <button type="button" onClick={() => { setFieldName(''); setAdding(false) }} className="text-[10px] text-text-subtle cursor-pointer bg-transparent border-none shrink-0">취소</button>
           </div>
         </div>
       ) : (
