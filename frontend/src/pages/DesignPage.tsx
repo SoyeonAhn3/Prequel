@@ -114,6 +114,7 @@ export default function DesignPage() {
   const [session, setSession] = useState<DesignSession | null>(null)
   const [generating, setGenerating] = useState(false)
   const [loadingTemplates, setLoadingTemplates] = useState(false)
+  const [templatesError, setTemplatesError] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastSavedLabel, setLastSavedLabel] = useState('자동 저장됨')
 
@@ -188,6 +189,7 @@ export default function DesignPage() {
   const handleLoadTemplates = useCallback(async () => {
     if (!projectId || loadingTemplates) return
     setLoadingTemplates(true)
+    setTemplatesError(false)
     try {
       const res = await apiFetch<{ templates: DesignSession['arch_templates'] }>('/design/architecture/templates', {
         method: 'POST',
@@ -195,13 +197,14 @@ export default function DesignPage() {
       })
       setSession((prev) => prev ? { ...prev, arch_templates: res.templates } : prev)
     } catch {
-      // fallback templates will be used
+      setTemplatesError(true)
     } finally {
       setLoadingTemplates(false)
     }
   }, [projectId, loadingTemplates])
 
   const handleNext = useCallback(() => {
+    if (generating) return
     const currentIdx = DESIGN_STEPS.findIndex((s) => s.id === activeStep)
     if (currentIdx < DESIGN_STEPS.length - 1) {
       setStepStatuses((prev) => ({ ...prev, [activeStep]: 'done' }))
@@ -210,9 +213,10 @@ export default function DesignPage() {
       setStepStatuses((prev) => ({ ...prev, [activeStep]: 'done' }))
       setScreen({ kind: 'complete' })
     }
-  }, [activeStep])
+  }, [activeStep, generating])
 
   const handleBack = useCallback(() => {
+    if (generating) return
     const currentIdx = DESIGN_STEPS.findIndex((s) => s.id === activeStep)
     if (currentIdx > 0) {
       const prevStep = DESIGN_STEPS[currentIdx - 1].id
@@ -220,7 +224,7 @@ export default function DesignPage() {
       setStepStatuses((prev) => ({ ...prev, [prevStep]: 'active' }))
       setScreen({ kind: 'step', stepId: prevStep })
     }
-  }, [activeStep])
+  }, [activeStep, generating])
 
   const handleTransitionNext = useCallback((fromIdx: number) => {
     const nextStep = DESIGN_STEPS[fromIdx + 1].id
@@ -237,9 +241,10 @@ export default function DesignPage() {
   }, [])
 
   const handleStepClick = useCallback((stepId: DesignStepId) => {
+    if (generating) return
     setActiveStep(stepId)
     setScreen({ kind: 'step', stepId })
-  }, [])
+  }, [generating])
 
   // --- SCREEN ROUTING ---
 
@@ -312,7 +317,7 @@ export default function DesignPage() {
   if (screen.kind === 'complete') {
     return (
       <Frame>
-        <DesignComplete session={session} onNext={() => navigate('/projects')} />
+        <DesignComplete session={session} onNext={() => navigate(`/projects/${projectId}/finalize`)} />
       </Frame>
     )
   }
@@ -327,9 +332,9 @@ export default function DesignPage() {
   const currentQ = currentStepIdx + 1
 
   const FOOTER_LABELS: Record<DesignStepId, string> = {
-    requirements: '다음 질문 →',
-    architecture: '데이터 구조로 →',
-    'data-model': 'AI 흐름으로 →',
+    requirements: '다음 질문',
+    architecture: '데이터 구조로',
+    'data-model': 'AI 흐름으로',
     'ai-workflow': '설계 완료',
   }
 
@@ -348,6 +353,7 @@ export default function DesignPage() {
           activeStep={screen.stepId}
           stepStatuses={stepStatuses}
           onStepClick={handleStepClick}
+          disabled={generating}
         />
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-bg">
@@ -388,6 +394,7 @@ export default function DesignPage() {
                 generating={generating}
                 onGenerate={(templateIndex: number) => handleGenerate('architecture', templateIndex)}
                 loadingTemplates={loadingTemplates}
+                templatesError={templatesError}
                 onLoadTemplates={handleLoadTemplates}
               />
             )}

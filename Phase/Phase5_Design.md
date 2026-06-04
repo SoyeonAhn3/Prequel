@@ -293,6 +293,8 @@ Full-page step completion screen:
 | Model selection | Deferred to V2 | Simplifies AI workflow step; Claude Sonnet used as default |
 | Cost estimation | Deferred to V2 | Requires usage tracking infrastructure not yet built |
 | Shared Frame | Wrap all pages in `Frame` + `TopBar` | Consistent navigation across the app |
+| Step auto-generation | All 4 design steps auto-generate on entry (no manual "설계하기" button) | Beginners shouldn't decide when to "run AI" — entering a step means they're ready to see results; explanation + result appear together. Generation failures fall back to a "다시 시도" button |
+| Lock nav during generation | Block step navigation while AI is generating | Prevents half-saved state and confusing mid-generation transitions |
 
 ---
 
@@ -327,6 +329,8 @@ Full-page step completion screen:
 | 2026-05-27 | B8-B11: Interview insights DB persistence (migration 007), `_get_interview_context` bugfix (wrong keys), dynamic architecture templates endpoint, template-aware architecture generation |
 | 2026-05-29 | Logged 3 test-found issues (fix pending): I1 long-response raw-JSON breakage (max_tokens/parser), I2 insights flicker (resume returns empty + 60s auto-save), I3 premature doc-gen prompt (STEP 10 directive) — see "수정 예정" section |
 | 2026-05-29 | Added design-step issues D1–D4 (fix pending): D1 personas shown as feature suggestions, D2 added items not removed from list, D3 transition shows "loading data", D4 requirements↔interview redundancy. Common root = RequirementsStep disconnected from design_session |
+| 2026-06-04 | Completed P5-10 (AI workflow model consistency: pass interview context + lock architecture-chosen model + remove "Claude" default + skill rule), P5-09 (architecture template hardcoded fallback removed + error surfaced via `templatesError`, verified already applied), P5-BL4 (per-table `entity.description` shown in EntityCard header), P5-BL5 (keep Explainer/AiQuestion visible during AI generation — extracted `explainer` var, loading replaces body only) |
+| 2026-06-04 | Additional UI polish P5-11~P5-14: P5-11 lock step navigation during AI generation (left rail + footer back/skip disabled + handler guards), P5-12 architecture step auto-generates on entry (removed "설계하기" button — explanation + preview shown together), P5-13 data-model step auto-generates on entry, P5-14 fix relationship display `)` leftover (`parseRelationship` now parses canonical `테이블A N--N 테이블B: 설명` cardinality format). All 4 design steps now auto-generate on entry |
 
 ---
 ---
@@ -626,6 +630,8 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 | 모델 선택 | V2로 연기 | AI 워크플로우 단계 단순화; Claude Sonnet을 기본값으로 사용 |
 | 비용 추정 | V2로 연기 | 아직 구축되지 않은 사용량 추적 인프라 필요 |
 | 공유 Frame | 모든 페이지를 `Frame` + `TopBar`로 래핑 | 앱 전체의 일관된 네비게이션 |
+| 단계 자동 생성 | 4개 설계 단계 모두 진입 시 자동 생성 (수동 "설계하기" 버튼 없음) | 초보자가 'AI 실행' 시점을 직접 고를 필요 없음 — 단계 진입 = 결과 확인 의사. 설명+결과 동시 표시. 생성 실패 시 "다시 시도" 버튼으로 폴백 |
+| 분석 중 네비 잠금 | AI 생성 중 스텝 이동 차단 | 중간 저장/혼란스러운 생성 도중 전환 방지 |
 
 ---
 
@@ -710,6 +716,9 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 | 2026-05-29 | 테스트 발견 이슈 3건 기록 (수정 예정): I1 긴 응답 글자 깨짐(max_tokens/파서), I2 insights 사라짐(resume 빈 배열 + 60초 자동저장), I3 문서 생성 안내 조기 노출(STEP 10 지시문) |
 | 2026-05-29 | 설계 단계 이슈 D1~D4 추가 (수정 예정): D1 추천에 페르소나 노출, D2 추가 항목 안 사라짐, D3 전환 화면 "데이터 불러오는 중", D4 기능정의↔인터뷰 중복성. 공통 뿌리 = RequirementsStep ↔ design_session 단절 |
 | 2026-06-02 | UI 테스트 이슈 P5-01~P5-05 추가 + 즉시 수정 2건 완료 (P5-06, P5-07). 설계 개선 백로그 3건 기록 (P5-BL1~BL3) |
+| 2026-06-04 | 로딩 문구 통일 완료 (P5-08). 수정 예정 3건 추가: P5-09 추천 조합 하드코딩 폴백 제거+에러 노출(옵션 A), P5-10 AI 흐름 GPT↔Claude 모델 불일치, P5-BL4 테이블별 설명 표시. 백로그 P5-BL5(분석 중 설명 화면 유지) 기록 |
+| 2026-06-04 | P5-10 완료(AI 흐름 모델 일관성: 인터뷰 컨텍스트 전달 + 아키텍처 확정 모델 고정 + "Claude" 기본값 제거 + 스킬 규칙 추가). P5-09 완료(아키텍처 추천 하드코딩 폴백 제거 + `templatesError`로 에러 노출, 기적용 확인). P5-BL4 완료(EntityCard 헤더에 `entity.description` 표시, 백엔드 0건). P5-BL5 완료(AI 생성 중 상단 Explainer/AiQuestion 유지 — `explainer` 변수 추출, 본문만 로딩 교체) |
+| 2026-06-04 | 추가 UI 개선 P5-11~P5-14: P5-11 AI 분석 중 스텝 이동 차단(좌측 레일 + footer 이전/건너뛰기 비활성 + 핸들러 가드), P5-12 아키텍처 단계 진입 시 자동 생성(설계하기 버튼 제거 — 설명+미리보기 동시 표시), P5-13 데이터 구조 단계 진입 시 자동 생성, P5-14 관계 표시 `)` 누락 수정(`parseRelationship`이 표준 `테이블A N--N 테이블B: 설명` 카디널리티 포맷 파싱). 4개 설계 단계 모두 진입 시 자동 생성으로 통일 |
 
 ---
 
@@ -769,3 +778,88 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 | P5-BL1 | 데이터 구조 항목 추가 시 데이터 유형(string, int 등) 입력/선택 기능 | `DataModelStep.tsx` |
 | P5-BL2 | 데이터 구조 항목 추가 시 NOT NULL / NULL 선택 기능 | `DataModelStep.tsx` |
 | P5-BL3 | "새 정보 그룹 추가" 버튼을 "그룹 간 연결 관계" 섹션 위로 이동 | `DataModelStep.tsx` |
+
+---
+
+## 수정 예정 — UI 테스트 이슈 (2026-06-04)
+
+> 설계 플로우 실제 사용 테스트 중 발견. 원인 분석 완료, P5-08만 적용 완료·나머지 수정 미적용.
+
+### 즉시 수정 완료
+
+| ID | 내용 | 수정 파일 | 상태 |
+|---|---|---|---|
+| P5-08 | 모든 단계 로딩 문구를 "AI가 분석중이에요 조금만 기다려주세요"로 통일 (각 단계별 "약 N초 소요됩니다" / 단계별 안내 문구 제거) | `RequirementsStep.tsx:104`, `ArchitectureStep.tsx:111-112`, `DataModelStep.tsx:109-110`, `AiWorkflowStep.tsx:53-54` | ✅ 완료 |
+
+### P5-09 · 시스템 구조 "AI 추천 조합"이 하드코딩 폴백으로 즉시 노출 (옵션 A 확정) ✅ 완료 (2026-06-04)
+
+- **증상**: 시스템 구조 단계 진입 시 AI가 분석하기도 전에 "React + FastAPI + Supabase" 추천이 즉시 뜸 → 사용자가 AI 추천으로 오인
+- **원인**:
+  - `ArchitectureStep.tsx:44,48` — AI 응답(`session.arch_templates`)이 없고 로딩 상태도 아닐 때 하드코딩 `FALLBACK_TEMPLATE`을 즉시 표시
+  - `DesignPage.tsx:197-198` — `/design/architecture/templates` 호출 실패 시 `catch {}`로 에러를 조용히 삼켜, 폴백이 그대로 노출됨 (사용자는 실패를 인지 못 함)
+- **수정 방향 (옵션 A — 폴백 제거 + 에러 노출)**:
+  | 파일 | 수정 내용 |
+  |------|-----------|
+  | `ArchitectureStep.tsx:48` | `?? (loadingTemplates ? null : FALLBACK_TEMPLATE)` → `?? null`로 변경 (하드코딩 폴백 제거). `FALLBACK_TEMPLATE` 상수(line 44) 삭제 |
+  | `ArchitectureStep.tsx:71-77` | 로딩/실패 분기 분리 — 실패 시 "다시 시도" 버튼 노출 |
+  | `DesignPage.tsx:197` | `catch {}` → `catch (e) { setError(...) }`로 변경하여 templates 실패를 사용자에게 표시 |
+- **효과**: 진짜 AI 추천만 노출, 실패 시 사용자 인지 + 재시도 가능
+
+### P5-10 · AI 흐름 모델 불일치 (이전 단계 GPT → AI 흐름 Claude) ✅ 완료 (2026-06-04)
+
+- **증상**: 등기부등본 AI 해석기 설계에서 이전 단계(아키텍처/인터뷰)는 GPT를 쓴다고 했으나, AI 흐름의 입출력 흐름에는 Claude로 표시됨
+- **원인 3가지**:
+  1. `design.py:625` `generate_ai_workflow`가 `_get_interview_context()`를 호출하지 않음 → 인터뷰의 GPT 선택이 AI 흐름 생성에 전달 안 됨 (아키텍처 단계는 `design.py:432`에서 호출함)
+  2. `design-ai-workflow.md` 스킬 프롬프트가 Claude(sonnet/haiku) 위주 예시 + "비용 효율 우선" 규칙으로 Claude 편향
+  3. `design.py:679` — `parsed.get("model", "Claude")` 기본값이 Claude로 하드코딩
+- **수정 방향**:
+  | 파일 | 수정 내용 |
+  |------|-----------|
+  | `design.py` (`generate_ai_workflow`) | `_get_interview_context(body.project_id)` 호출 추가 → 인터뷰 컨텍스트를 user_message에 포함 |
+  | `design.py` (동) | 아키텍처 components에서 AI 모델(GPT 등)을 추출해 "확정된 AI 모델 (변경 금지)"로 프롬프트에 명시 |
+  | `design.py:679` | 기본값 `"Claude"` 제거 → 아키텍처에서 추출한 모델 또는 빈 값 사용 |
+  | `design-ai-workflow.md` | "이전 단계에서 AI 모델이 정해졌다면 반드시 그대로 사용, 임의 변경 금지" 규칙 추가 |
+- **효과**: 인터뷰·아키텍처에서 정한 모델(GPT)이 AI 흐름까지 일관 표시
+
+### 설계 개선 백로그 추가 (나중에 구현)
+
+| ID | 내용 | 대상 | 상태 |
+|---|---|---|---|
+| P5-BL4 | 데이터 테이블별 설명 문구 표시 (예: `users(사용자 정보 table)`). 타입·스키마·AI·DB에 `entity.description` 이미 존재·저장 중, 프론트 표시 코드만 추가하면 됨 (백엔드 변경 0건) | `DataModelStep.tsx` (EntityCard 헤더) | ✅ 완료 (2026-06-04) |
+| P5-BL5 | AI 분석 중일 때 상단 "이게 뭐예요?"(Explainer) 설명 화면은 유지하고 그 아래 본문 영역만 로딩 표시. 이전엔 `if (generating)` 블록이 화면 전체를 교체함 | `ArchitectureStep.tsx`, `DataModelStep.tsx` (Requirements·AiWorkflow는 이미 부합) | ✅ 완료 (2026-06-04) |
+
+---
+
+## 추가 UI 개선 (2026-06-04, ✅ 적용 완료)
+
+> "수정 예정" 목록에 없던 추가 개선. 사용자 실사용 테스트 피드백 기반 즉시 적용.
+
+### P5-11 · AI 분석 중 스텝 이동 차단 ✅ 완료
+- **요청**: AI가 분석 중일 때 다른 STEP으로 넘어가지 못하게.
+- **원인**: 기존엔 footer "다음" 버튼만 `disabled={loading}` 처리되어, "건너뛰기"·"이전"·좌측 레일 스텝 클릭으로는 분석 중에도 이동 가능했음.
+- **수정**:
+  | 파일 | 내용 |
+  |------|------|
+  | `DesignPage.tsx` | `handleNext`/`handleBack`/`handleStepClick`에 `if (generating) return` 가드 + `DesignLeftRail`에 `disabled={generating}` 전달 |
+  | `DesignStepFooter.tsx` | "이전"·"건너뛰기" 버튼에 `disabled={loading}` 추가 |
+  | `DesignLeftRail.tsx` | `disabled` prop 추가 → 분석 중 모든 스텝 버튼 비활성(`cursor-not-allowed` + dim), `<button disabled>` |
+- **효과**: UI 비활성 + 핸들러 가드 이중 방어로 분석 중 스텝 이동 완전 차단.
+
+### P5-12 · 아키텍처 단계 진입 시 자동 생성 ✅ 완료
+- **요청**: 시스템 구조 설명만 먼저 보이고 버튼을 눌러야 미리보기가 생성되는 2단계 흐름 → 진입 시 설명과 미리보기를 함께 자동 생성.
+- **수정 (`ArchitectureStep.tsx`)**:
+  - AI 추천 템플릿 로드 완료 시 `useEffect`로 `onGenerate(0)` 자동 호출 (`autoGenRef`로 1회만).
+  - "AI 추천 조합" 카드 + "AI로 아키텍처 설계하기" 버튼 제거 (미사용 `TemplateCard` import 정리).
+  - pre-generation 화면 = 설명(Explainer) + "AI가 분석중이에요" 로딩 → 완료 시 설명 + 미리보기 다이어그램 + 부품 설명 동시 표시.
+  - 실패 처리: 템플릿 로드 실패 / 생성 실패 각각 "다시 시도" 버튼 노출.
+
+### P5-13 · 데이터 구조 단계 진입 시 자동 생성 ✅ 완료
+- **요청**: 데이터 구조 단계도 다른 단계처럼 "설계하기" 버튼 없이 진입 시 자동 분석.
+- **수정 (`DataModelStep.tsx`)**: P5-12와 동일 패턴 — `useEffect` + `autoGenRef`로 진입 시 `onGenerate()` 자동 호출, "AI로 데이터 구조 설계하기" 버튼 제거, 로딩/실패-재시도 분기.
+- **결과**: 4개 설계 단계(요구사항·아키텍처·데이터 구조·AI 흐름) 모두 진입 시 자동 생성으로 통일.
+
+### P5-14 · 데이터 구조 관계 표시 `)` 누락 버그 ✅ 완료
+- **증상**: 관계 카드에서 `historical_events N--N categories: ... (event_categories 매핑)` 가 `to` 칸에 `매핑)` 으로 잘못 표시 (닫는 괄호 누락).
+- **원인**: `parseRelationship`의 1차 정규식이 `→` 화살표만 매칭 → 실제 스킬 포맷 `테이블A 1--N 테이블B: 설명`(`--` 카디널리티)에서 실패 → 공백 분리 폴백으로 `to = 마지막 토큰 = "매핑)"`.
+- **수정 (`DataModelStep.tsx` `parseRelationship`)**: `--` 카디널리티 포맷(`(\S*--\S*)`)을 우선 파싱하는 정규식 추가 → `to`가 `categories`로 정확히 파싱, 카디널리티도 실제값(`N : N`) 표시. 기존 `→` 포맷 폴백 유지.
+- **참고(미수정)**: 같은 파일 `deriveValidationRules`도 관계 파싱에 `→`-only 정규식을 써서 `--` 포맷에선 관계 기반 정합성 규칙이 표시되지 않음 (별도 항목으로 보류).

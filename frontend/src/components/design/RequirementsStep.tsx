@@ -101,7 +101,7 @@ export default function RequirementsStep({ session, generating, onGenerate, onUp
           <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
             <span className="text-white text-sm font-bold">P</span>
           </div>
-          <p className="text-sm text-text-muted">약 15초 소요됩니다</p>
+          <p className="text-sm text-text-muted">AI가 분석중이에요 조금만 기다려주세요</p>
         </div>
       </div>
     )

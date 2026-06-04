@@ -1,8 +1,10 @@
-import json
-
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api._shared import (
+    get_interview_context as _get_interview_context,
+    parse_json_response as _parse_json_response,
+)
 from app.core.claude_client import chat
 from app.core.harness_loader import load_skill
 from app.core.supabase import get_supabase
@@ -54,82 +56,6 @@ def _get_or_create_session(project_id: str, user_id: str) -> dict:
         .execute()
     )
     return new_session.data[0]
-
-
-def _get_interview_context(project_id: str) -> str:
-    sb = get_supabase()
-    session = (
-        sb.table("interview_sessions")
-        .select("*")
-        .eq("project_id", project_id)
-        .eq("status", "completed")
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    if not session.data:
-        raise HTTPException(status_code=400, detail="완료된 인터뷰 세션이 없습니다")
-
-    s = session.data[0]
-    messages = s.get("messages", [])
-    insights = s.get("_insights", [])
-
-    parts = []
-    for ins in insights:
-        parts.append(f"- {ins.get('label', '')}: {ins.get('value', '')}")
-
-    conversation = []
-    for msg in messages[-20:]:
-        role = msg.get("role", "user")
-        text = msg.get("content", "")
-        conversation.append(f"[{role}] {text}")
-
-    return (
-        "## 인터뷰 인사이트\n" + "\n".join(parts)
-        + "\n\n## 최근 대화 내용\n" + "\n".join(conversation)
-    )
-
-
-def _parse_json_response(text: str) -> dict:
-    text = text.strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        text = "\n".join(lines)
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return _repair_truncated_json(text)
-
-
-def _repair_truncated_json(text: str) -> dict:
-    import re
-    # find the last successfully closed property (: "value",  or : [...],  or : {...},)
-    # by searching backwards for a clean break point
-    last_good = -1
-    for m in re.finditer(r'(?:,|\{|\[)\s*$', text, re.MULTILINE):
-        last_good = m.start()
-
-    # try progressively trimming from the end
-    for end in range(len(text), max(len(text) - 2000, 0), -1):
-        candidate = text[:end].rstrip()
-        # remove trailing comma
-        if candidate.endswith(','):
-            candidate = candidate[:-1]
-        # close open brackets
-        opens = candidate.count('{') - candidate.count('}')
-        open_arrays = candidate.count('[') - candidate.count(']')
-        if opens < 0 or open_arrays < 0:
-            continue
-        candidate += ']' * open_arrays + '}' * opens
-        try:
-            return json.loads(candidate)
-        except json.JSONDecodeError:
-            continue
-
-    raise ValueError("Could not repair truncated JSON response from Claude")
 
 
 def _session_to_out(session: dict) -> DesignSessionOut:
@@ -641,6 +567,7 @@ async def generate_ai_workflow(
         raise HTTPException(status_code=404, detail="Project not found")
 
     session = _get_or_create_session(body.project_id, user["id"])
+    context = _get_interview_context(body.project_id)
     skill_text = load_skill("design-ai-workflow")
 
     prev_context = ""
@@ -649,15 +576,29 @@ async def generate_ai_workflow(
         prev_context += "\n## 요구사항\n" + "\n".join(
             f"- [{r['priority'].upper()}] {r['text']}" for r in reqs
         )
+    arch_ai_model = ""
     if session.get("architecture"):
         arch = session["architecture"]
         prev_context += "\n## 아키텍처\n" + "\n".join(
             f"- {c['name']} ({c['technology']}): {c['description']}" for c in arch.get("components", [])
         )
+        for c in arch.get("components", []):
+            blob = f"{c.get('name', '')} {c.get('technology', '')} {c.get('role', '')}".lower()
+            if any(k in blob for k in ("ai", "ml", "gpt", "claude", "llm", "모델", "추천", "분석")):
+                arch_ai_model = c.get("technology", "")
+                break
     if session.get("data_model"):
         dm = session["data_model"]
         prev_context += "\n## 데이터 모델\n" + "\n".join(
             f"- {e['name']}: {e['description']}" for e in dm.get("entities", [])
+        )
+
+    ai_constraint = ""
+    if arch_ai_model:
+        ai_constraint = (
+            f"\n\n## 확정된 AI 모델 (변경 금지)\n"
+            f"이전 단계(아키텍처)에서 AI 모델은 '{arch_ai_model}'(으)로 이미 결정되었습니다. "
+            f"AI 흐름의 model 필드에 반드시 이 모델을 그대로 사용하고, 임의로 다른 모델로 변경하지 마세요."
         )
 
     proj = project.data
@@ -665,7 +606,7 @@ async def generate_ai_workflow(
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
         f"설명: {proj.get('description', '')}\n\n"
-        f"{prev_context}"
+        f"{context}{prev_context}{ai_constraint}"
     )
 
     system = [{"type": "text", "text": skill_text, "cache_control": {"type": "ephemeral"}}]
@@ -676,8 +617,8 @@ async def generate_ai_workflow(
 
     ai_workflow = {
         "summary": parsed.get("summary", ""),
-        "model": parsed.get("model", "Claude"),
-        "model_version": parsed.get("model_version", "sonnet"),
+        "model": parsed.get("model") or arch_ai_model or "",
+        "model_version": parsed.get("model_version", ""),
         "task": parsed.get("task", "AI 처리"),
         "inputs": parsed.get("inputs", []),
         "outputs": parsed.get("outputs", []),

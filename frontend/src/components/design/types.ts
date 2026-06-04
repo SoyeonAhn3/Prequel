@@ -106,3 +106,81 @@ export interface DesignSession {
   arch_templates: ArchTemplate[] | null
   status: 'in_progress' | 'completed'
 }
+
+// ─── Phase 6: Evaluation & Finalization ───────────────────
+
+export type FinalizeStepId = 'evaluate' | 'done' | 'gap' | 'checklist'
+
+export interface FinalizeStepDef {
+  id: FinalizeStepId
+  num: string
+  title: string
+  subtitle: string
+  icon: DesignIconKind
+}
+
+export const FINALIZE_STEPS: FinalizeStepDef[] = [
+  { id: 'evaluate', num: '01', title: '정직한 평가', subtitle: '이 계획 괜찮을까', icon: 'eye' },
+  { id: 'done', num: '02', title: '완료 조건', subtitle: '뭘 하면 끝인지', icon: 'check' },
+  { id: 'gap', num: '03', title: '빈틈 점검', subtitle: '놓친 건 없는지', icon: 'help' },
+  { id: 'checklist', num: '04', title: '착수 준비', subtitle: '시작 전 준비물', icon: 'features' },
+]
+
+export type FinalizeLevel = 'green' | 'yellow' | 'red'
+
+export interface EvalDimension {
+  name: string
+  applicable: boolean
+  level: FinalizeLevel
+  score: number
+  comment: string
+}
+
+export interface Evaluation {
+  dimensions: EvalDimension[]
+  overall_level: FinalizeLevel
+  recommendation: string
+}
+
+export interface DoneCriterion {
+  category: string
+  text: string
+  measurable: boolean
+}
+
+export interface DoneCriteria {
+  criteria: DoneCriterion[]
+}
+
+export interface GapItem {
+  type: string
+  category: string
+  issue: string
+  severity: 'high' | 'medium' | 'low'
+  suggestion: string
+}
+
+export interface Gaps {
+  gaps: GapItem[]
+}
+
+export interface ChecklistItem {
+  area: string
+  task: string
+  done: boolean
+}
+
+export interface Checklist {
+  items: ChecklistItem[]
+}
+
+export interface FinalizeSession {
+  id: string
+  project_id: string
+  current_step: FinalizeStepId
+  evaluation: Evaluation | null
+  done_criteria: DoneCriteria | null
+  gaps: Gaps | null
+  checklist: Checklist | null
+  status: 'in_progress' | 'completed'
+}

@@ -332,7 +332,7 @@ export default function InterviewPage() {
       if (decision === 'design') {
         navigate(`/projects/${projectId}/design`)
       } else {
-        navigate('/projects')
+        navigate(`/projects/${projectId}/finalize`)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : '선택 저장에 실패했습니다')

@@ -1,13 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import Explainer from './Explainer'
-import TemplateCard from './TemplateCard'
-import type { DesignSession, ArchComponent, ArchTemplate } from './types'
+import type { DesignSession, ArchComponent } from './types'
 
 interface ArchitectureStepProps {
   session: DesignSession | null
   generating: boolean
   onGenerate: (templateIndex: number) => void
   loadingTemplates: boolean
+  templatesError: boolean
   onLoadTemplates: () => void
 }
 
@@ -41,87 +41,97 @@ function getCompColor(name: string, technology: string, role: string) {
   return { numBg: 'bg-surface-alt', numText: 'text-text-muted', roleBg: 'bg-surface-alt', roleText: 'text-text-muted' }
 }
 
-const FALLBACK_TEMPLATE: ArchTemplate = { title: '간단한 조합', badge: '추천', desc: 'React + FastAPI + Supabase. 시작하기 가장 쉽고 빠릅니다.' }
-
-export default function ArchitectureStep({ session, generating, onGenerate, loadingTemplates, onLoadTemplates }: ArchitectureStepProps) {
+export default function ArchitectureStep({ session, generating, onGenerate, loadingTemplates, templatesError, onLoadTemplates }: ArchitectureStepProps) {
   const architecture = session?.architecture
-  const template = session?.arch_templates?.[0] ?? (loadingTemplates ? null : FALLBACK_TEMPLATE)
+  const template = session?.arch_templates?.[0] ?? null
+  const autoGenRef = useRef(false)
+
+  const explainer = (
+    <Explainer
+      title="시스템 구조 = 아키텍처 (Architecture)"
+      technical="System Architecture"
+      plain="앱을 만들기 위해 필요한 '부품'들과 그것들이 어떻게 연결되는지를 그린 그림이에요. 레고 조립도라고 생각하시면 돼요."
+      example="화면(React) ↔ 서버(FastAPI) ↔ 데이터(Supabase) — 셋 다 인기 부품들이에요"
+    />
+  )
 
   useEffect(() => {
-    if (!architecture && !session?.arch_templates && !loadingTemplates) {
+    if (!architecture && !session?.arch_templates && !loadingTemplates && !templatesError) {
       onLoadTemplates()
     }
-  }, [architecture, session?.arch_templates, loadingTemplates, onLoadTemplates])
+  }, [architecture, session?.arch_templates, loadingTemplates, templatesError, onLoadTemplates])
+
+  // Auto-generate the architecture once the AI template recommendation is ready —
+  // explanation + preview appear together without a manual "설계하기" button.
+  useEffect(() => {
+    if (autoGenRef.current || architecture || generating || templatesError) return
+    if (!template) return
+    autoGenRef.current = true
+    onGenerate(0)
+  }, [architecture, generating, templatesError, template, onGenerate])
 
   if (!architecture && !generating) {
     return (
       <div className="pb-7">
-        <Explainer
-          title="시스템 구조 = 아키텍처 (Architecture)"
-          technical="System Architecture"
-          plain="앱을 만들기 위해 필요한 '부품'들과 그것들이 어떻게 연결되는지를 그린 그림이에요. 레고 조립도라고 생각하시면 돼요."
-          example="화면(React) ↔ 서버(FastAPI) ↔ 데이터(Supabase) — 셋 다 인기 부품들이에요"
-        />
+        {explainer}
 
-        <div className="text-[13px] font-bold text-text mb-1.5">AI 추천 조합</div>
-        <p className="text-[12.5px] text-text-muted leading-relaxed mb-3.5">
-          프로젝트 유형에 맞는 최적의 조합을 AI가 추천해드려요.
-        </p>
-
-        {loadingTemplates || !template ? (
-          <div className="text-center py-8 mb-7">
-            <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center mx-auto mb-2 animate-pulse">
-              <span className="text-accent text-xs font-bold">AI</span>
+        {templatesError ? (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 rounded-lg bg-red-soft flex items-center justify-center mx-auto mb-2">
+              <span className="text-red text-xs font-bold">!</span>
             </div>
-            <p className="text-xs text-text-muted">프로젝트에 맞는 조합을 분석하고 있어요...</p>
+            <p className="text-xs text-text-muted mb-3">추천 조합을 불러오지 못했어요.</p>
+            <button
+              type="button"
+              onClick={onLoadTemplates}
+              className="px-4 py-2 bg-accent-soft text-accent text-xs font-semibold rounded-lg cursor-pointer border-none hover:opacity-90 transition-opacity"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : autoGenRef.current ? (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 rounded-lg bg-red-soft flex items-center justify-center mx-auto mb-2">
+              <span className="text-red text-xs font-bold">!</span>
+            </div>
+            <p className="text-xs text-text-muted mb-3">시스템 구조를 생성하지 못했어요.</p>
+            <button
+              type="button"
+              onClick={() => onGenerate(0)}
+              className="px-4 py-2 bg-accent-soft text-accent text-xs font-semibold rounded-lg cursor-pointer border-none hover:opacity-90 transition-opacity"
+            >
+              다시 시도
+            </button>
           </div>
         ) : (
-          <div className="mb-7">
-            <TemplateCard
-              title={template.title}
-              badge={template.badge || '추천'}
-              desc={template.desc}
-              selected={true}
-              onClick={() => {}}
-            />
+          <div className="text-center py-12">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
+              <span className="text-white text-sm font-bold">P</span>
+            </div>
+            <p className="text-sm text-text-muted">AI가 분석중이에요 조금만 기다려주세요</p>
           </div>
         )}
-
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => onGenerate(0)}
-            disabled={loadingTemplates || !template}
-            className="px-7 py-3.5 bg-accent text-white text-[15.4px] font-semibold rounded-2xl cursor-pointer border-none inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            AI로 아키텍처 설계하기
-          </button>
-          <p className="text-xs text-text-muted mt-3">추천 조합을 바탕으로 시스템 구조를 설계합니다</p>
-        </div>
       </div>
     )
   }
 
   if (generating) {
     return (
-      <div className="pb-7 text-center py-12">
-        <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
-          <span className="text-white text-sm font-bold">P</span>
+      <div className="pb-7">
+        {explainer}
+        <div className="text-center py-12">
+          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
+            <span className="text-white text-sm font-bold">P</span>
+          </div>
+          <p className="text-sm text-text-muted">AI가 분석중이에요 조금만 기다려주세요</p>
         </div>
-        <p className="text-sm text-text-muted">AI가 시스템 구조를 설계하고 있습니다...</p>
-        <p className="text-xs text-text-subtle mt-1">약 20초 소요됩니다</p>
       </div>
     )
   }
 
   return (
     <div className="pb-7">
-      <Explainer
-        title="시스템 구조 = 아키텍처 (Architecture)"
-        technical="System Architecture"
-        plain="앱을 만들기 위해 필요한 '부품'들과 그것들이 어떻게 연결되는지를 그린 그림이에요. 레고 조립도라고 생각하시면 돼요."
-        example="화면(React) ↔ 서버(FastAPI) ↔ 데이터(Supabase) — 셋 다 인기 부품들이에요"
-      />
+      {explainer}
 
       <div className="text-[13px] font-bold text-text mb-2.5">시스템 구조 미리보기</div>
 

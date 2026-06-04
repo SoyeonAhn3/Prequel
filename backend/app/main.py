@@ -9,6 +9,7 @@ from app.api.admin import router as admin_router
 from app.api.projects import router as projects_router
 from app.api.interview import router as interview_router
 from app.api.design import router as design_router
+from app.api.finalize import router as finalize_router
 
 structlog.configure(
     processors=[
@@ -53,6 +54,7 @@ app.include_router(admin_router)
 app.include_router(projects_router)
 app.include_router(interview_router)
 app.include_router(design_router)
+app.include_router(finalize_router)
 
 
 @app.get("/health")

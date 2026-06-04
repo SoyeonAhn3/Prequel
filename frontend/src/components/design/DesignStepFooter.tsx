@@ -28,14 +28,14 @@ export default function DesignStepFooter({
   return (
     <div className="px-6 py-3.5 bg-surface border-t border-border flex items-center gap-2.5">
       {canBack && (
-        <Btn kind="ghost" size="md" onClick={onBack}>← 이전</Btn>
+        <Btn kind="ghost" size="md" onClick={onBack} disabled={loading}>← 이전</Btn>
       )}
       <span className="flex-1" />
       <span className="text-[11.5px] text-text-subtle font-mono flex items-center gap-1.5">
         <span className="w-[5px] h-[5px] rounded-full bg-green" />
         {lastSavedLabel}
       </span>
-      <Btn kind="secondary" size="md" onClick={onSkip}>건너뛰기</Btn>
+      <Btn kind="secondary" size="md" onClick={onSkip} disabled={loading}>건너뛰기</Btn>
       <Btn kind="primary" size="md" icon={arrowIcon} onClick={onNext} disabled={loading} className="flex-row-reverse">
         {primaryLabel}
       </Btn>

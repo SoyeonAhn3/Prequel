@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Explainer from './Explainer'
 import DesignIcon from './DesignIcon'
 import type { DesignSession, DataEntity, DataModel } from './types'
@@ -20,6 +20,23 @@ const REQ_STYLE: Record<string, string> = {
 
 export default function DataModelStep({ session, generating, onGenerate, onUpdateSession }: DataModelStepProps) {
   const dataModel = session?.data_model
+  const autoGenRef = useRef(false)
+
+  const explainer = (
+    <Explainer
+      title="데이터 구조 = 데이터 모델 (Data Model)"
+      technical="Database Schema"
+      plain="앱에 저장되는 정보의 '카테고리'와 '항목'을 정리한 것이에요. 엑셀의 시트와 열 같은 거라고 생각하시면 돼요."
+      example="시트 '사용자' → 열: 이름, 이메일, 부서, 가입일 / 시트 '추천 기록' → 열: 누구에게, 어떤 책, 언제, 반응"
+    />
+  )
+
+  // Auto-generate on entry — no manual "설계하기" button (matches requirements/architecture/ai-workflow steps).
+  useEffect(() => {
+    if (autoGenRef.current || dataModel || generating) return
+    autoGenRef.current = true
+    onGenerate()
+  }, [dataModel, generating, onGenerate])
 
   function removeEntity(idx: number) {
     if (!session || !dataModel) return
@@ -79,35 +96,44 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
   if (!dataModel && !generating) {
     return (
       <div className="pb-7">
-        <Explainer
-          title="데이터 구조 = 데이터 모델 (Data Model)"
-          technical="Database Schema"
-          plain="앱에 저장되는 정보의 '카테고리'와 '항목'을 정리한 것이에요. 엑셀의 시트와 열 같은 거라고 생각하시면 돼요."
-          example="시트 '사용자' → 열: 이름, 이메일, 부서, 가입일 / 시트 '추천 기록' → 열: 누구에게, 어떤 책, 언제, 반응"
-        />
+        {explainer}
 
-        <div className="text-center mt-8">
-          <button
-            type="button"
-            onClick={onGenerate}
-            className="px-7 py-3.5 bg-accent text-white text-[15.4px] font-semibold rounded-2xl cursor-pointer border-none inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
-          >
-            AI로 데이터 구조 설계하기
-          </button>
-          <p className="text-xs text-text-muted mt-3">아키텍처를 바탕으로 데이터 구조를 설계합니다</p>
-        </div>
+        {autoGenRef.current ? (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 rounded-lg bg-red-soft flex items-center justify-center mx-auto mb-2">
+              <span className="text-red text-xs font-bold">!</span>
+            </div>
+            <p className="text-xs text-text-muted mb-3">데이터 구조를 생성하지 못했어요.</p>
+            <button
+              type="button"
+              onClick={onGenerate}
+              className="px-4 py-2 bg-accent-soft text-accent text-xs font-semibold rounded-lg cursor-pointer border-none hover:opacity-90 transition-opacity"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
+              <span className="text-white text-sm font-bold">P</span>
+            </div>
+            <p className="text-sm text-text-muted">AI가 분석중이에요 조금만 기다려주세요</p>
+          </div>
+        )}
       </div>
     )
   }
 
   if (generating) {
     return (
-      <div className="pb-7 text-center py-12">
-        <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
-          <span className="text-white text-sm font-bold">P</span>
+      <div className="pb-7">
+        {explainer}
+        <div className="text-center py-12">
+          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
+            <span className="text-white text-sm font-bold">P</span>
+          </div>
+          <p className="text-sm text-text-muted">AI가 분석중이에요 조금만 기다려주세요</p>
         </div>
-        <p className="text-sm text-text-muted">AI가 데이터 구조를 설계하고 있습니다...</p>
-        <p className="text-xs text-text-subtle mt-1">약 20초 소요됩니다</p>
       </div>
     )
   }
@@ -117,12 +143,7 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
 
   return (
     <div className="pb-7">
-      <Explainer
-        title="데이터 구조 = 데이터 모델 (Data Model)"
-        technical="Database Schema"
-        plain="앱에 저장되는 정보의 '카테고리'와 '항목'을 정리한 것이에요. 엑셀의 시트와 열 같은 거라고 생각하시면 돼요."
-        example="시트 '사용자' → 열: 이름, 이메일, 부서, 가입일 / 시트 '추천 기록' → 열: 누구에게, 어떤 책, 언제, 반응"
-      />
+      {explainer}
 
       <div className="text-[13px] font-bold text-text mb-1.5">저장할 정보 그룹 (테이블)</div>
       <p className="text-[12.5px] text-text-muted leading-relaxed mb-3.5">
@@ -208,9 +229,15 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
 }
 
 function parseRelationship(rel: string) {
-  const match = rel.match(/^(.+?)\s*→\s*(.+?):\s*(.+)$/)
-  if (match) {
-    return { from: match[1].trim(), to: match[2].trim(), desc: match[3].trim(), cardinality: '1 : N' }
+  // Canonical skill format: "테이블A 1--N 테이블B: 설명" (cardinality uses --, e.g. 1--N, N--N, 1--1)
+  const card = rel.match(/^(.+?)\s+(\S*--\S*)\s+(.+?)\s*:\s*(.+)$/)
+  if (card) {
+    return { from: card[1].trim(), to: card[3].trim(), desc: card[4].trim(), cardinality: card[2].replace(/--/, ' : ') }
+  }
+  // Legacy arrow format: "테이블A → 테이블B: 설명"
+  const arrow = rel.match(/^(.+?)\s*→\s*(.+?):\s*(.+)$/)
+  if (arrow) {
+    return { from: arrow[1].trim(), to: arrow[2].trim(), desc: arrow[3].trim(), cardinality: '1 : N' }
   }
   const parts = rel.split(/\s+/).filter((p) => p !== '→')
   if (parts.length >= 2) {
@@ -337,14 +364,21 @@ function EntityCard({ entity, index, onDelete, onAddField }: { entity: DataEntit
     <div className="bg-surface border border-border rounded-xl overflow-hidden">
       <div className="px-3.5 py-3 bg-surface-alt border-b border-border flex items-center gap-2">
         <span className="text-lg">{icon}</span>
-        <span className="text-[13px] font-bold text-text flex-1">{entity.name}</span>
-        <span className="text-[10px] font-mono text-text-subtle px-[7px] py-0.5 bg-surface rounded">
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-bold text-text truncate">{entity.name}</div>
+          {entity.description && (
+            <div className="text-[10.5px] text-text-muted leading-snug truncate" title={entity.description}>
+              {entity.description}
+            </div>
+          )}
+        </div>
+        <span className="text-[10px] font-mono text-text-subtle px-[7px] py-0.5 bg-surface rounded shrink-0">
           {entity.fields.length}개
         </span>
         <button
           type="button"
           onClick={onDelete}
-          className="text-[11px] text-text-subtle hover:text-red cursor-pointer bg-transparent border-none px-0.5"
+          className="text-[11px] text-text-subtle hover:text-red cursor-pointer bg-transparent border-none px-0.5 shrink-0"
         >
           ✕
         </button>

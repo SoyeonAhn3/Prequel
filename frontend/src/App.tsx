@@ -8,6 +8,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage'
 import MyProjectsPage from './pages/MyProjectsPage'
 import InterviewPage from './pages/InterviewPage'
 import DesignPage from './pages/DesignPage'
+import FinalizePage from './pages/FinalizePage'
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
             </Route>
             <Route path="/projects/:projectId/interview" element={<InterviewPage />} />
             <Route path="/projects/:projectId/design" element={<DesignPage />} />
+            <Route path="/projects/:projectId/finalize" element={<FinalizePage />} />
           </Route>
 
           {/* Default */}

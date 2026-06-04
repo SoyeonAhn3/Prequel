@@ -50,8 +50,7 @@ export default function AiWorkflowStep({ session, projectType, generating, onGen
           <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3 animate-pulse">
             <span className="text-white text-sm font-bold">P</span>
           </div>
-          <p className="text-sm text-text-muted">AI가 워크플로우를 자동으로 설계하고 있습니다...</p>
-          <p className="text-xs text-text-subtle mt-1">약 30초 소요됩니다</p>
+          <p className="text-sm text-text-muted">AI가 분석중이에요 조금만 기다려주세요</p>
         </div>
       </div>
     )
