@@ -118,7 +118,7 @@ async def set_design_decision(
     sb = get_supabase()
     existing = (
         sb.table("projects")
-        .select("id, user_id, status")
+        .select("*")
         .eq("id", project_id)
         .eq("user_id", user["id"])
         .is_("deleted_at", "null")
@@ -127,6 +127,11 @@ async def set_design_decision(
     )
     if not existing.data:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Never move a finished project backwards. Re-entering design/skip on a
+    # completed kickoff must not downgrade its status (or re-charge credits).
+    if existing.data["status"] == "completed":
+        return existing.data
 
     if body.decision == "design":
         _check_credits(user)

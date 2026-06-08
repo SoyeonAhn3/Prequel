@@ -162,10 +162,12 @@ prequel/
 │   ├── Phase1_ProjectSetup.md     # ✅ Project setup & infrastructure
 │   ├── Phase2_AuthSystem.md       # ✅ Auth & user system
 │   ├── Phase3_ProjectManagement.md # ✅ Project CRUD & quota
-│   ├── Phase4_InterviewPipeline.md # 🚧 AI interview pipeline (core)
-│   ├── Phase5_DocGeneration.md    # 🔲 Document generation & result viewer
-│   ├── Phase6_AdminFeatures.md    # 🔲 Admin & supporting features
-│   └── Phase7_IntegrationDeploy.md # 🔲 i18n, testing & deployment
+│   ├── Phase4_InterviewPipeline.md # ✅ AI interview pipeline (core)
+│   ├── Phase5_Design.md           # ✅ Design phase (How) — 9-screen wizard
+│   ├── Phase6_EvalFinalize.md     # ✅ Evaluation & finalization
+│   ├── Phase7_DocGeneration.md    # 🔲 Document preview & generation
+│   ├── Phase8_AdminFeatures.md    # 🔲 Admin & supporting features
+│   └── Phase9_IntegrationDeploy.md # 🔲 i18n, testing & deployment
 ├── .env.example
 └── README.md
 ```
@@ -201,12 +203,14 @@ Payment integration is planned for MVP-2.
 | Phase 1: Project Setup | ✅ Done | FastAPI/React scaffold, Supabase 6 tables + RLS, Alembic, harness sync |
 | Phase 2: Auth System | ✅ Done | OAuth (Google/GitHub), JWT middleware, RBAC, login/landing page (ui-reference), slate blue design system |
 | Phase 3: Project Management | ✅ Done | Project CRUD API, free quota enforcement, My Projects page (stat cards, filters, search, table), new project modal, delete modal |
-| Phase 4: Interview Pipeline | 🚧 In Progress | Backend API complete (6 endpoints), chat UI shell complete, frontend↔backend connection pending |
-| Phase 5: Doc Generation | 🔲 Not Started | doc_engine, Mermaid diagram, result viewer |
-| Phase 6: Admin Features | 🔲 Not Started | Admin dashboard, announcements, rate limiting |
-| Phase 7: Integration & Deploy | 🔲 Not Started | i18n, E2E testing, Netlify + Railway deploy |
+| Phase 4: Interview Pipeline | ✅ Done | Backend API (6 endpoints), 3-column chat UI, type detection, pause/resume, design-decision UI — all 29 deliverables (test 28/28) |
+| Phase 5: Design (How) | ✅ Done | 9-screen guided wizard (requirements → architecture → data model → AI workflow), dynamic design pipeline, interview insights persistence |
+| Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
+| Phase 7: Doc Preview & Generation | 🔲 Not Started | Progressive live document preview (doc v1 → v2 → v3), result viewer |
+| Phase 8: Admin & Supporting | 🔲 Not Started | Admin dashboard, announcements, token logging, rate limiting |
+| Phase 9: i18n, Testing & Deploy | 🔲 Not Started | Multilingual UI, landing page, E2E testing, Netlify + Railway deploy |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
-| v2 | 📋 Planned | Gap analysis, DOCX export, share links |
+| v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
 
 ### Test Scenarios
 
@@ -247,7 +251,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-3 complete, Phase 4 in progress (backend API done, chat UI shell done, frontend↔backend connection pending)
+- **Early development** — Phase 1-6 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization); Phase 7-9 (doc preview, admin, deploy) not started
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2

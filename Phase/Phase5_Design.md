@@ -93,7 +93,8 @@ Full-page welcome, centered content (maxWidth 760px).
 - 2×2 grid: 4 step preview cards (icon 40px + step number + name + question + ~5분)
 - "완료하면 얻는 것" green info box (check icon + description)
 - Primary CTA: "네, 설계를 시작할게요" (accent + shadow)
-- Ghost CTA: "나중에 결정할게요"
+- Secondary CTA: "설계 건너뛰고 평가로 →" (skip design → status `evaluating` → `/finalize`)
+- Ghost link: "저장 후 나가기" (interview is auto-saved per answer → just navigate to `/projects`)
 
 ### Screen 01-A · `ScreenDesignStep1Start` (기능 정의)
 
@@ -295,6 +296,8 @@ Full-page step completion screen:
 | Shared Frame | Wrap all pages in `Frame` + `TopBar` | Consistent navigation across the app |
 | Step auto-generation | All 4 design steps auto-generate on entry (no manual "설계하기" button) | Beginners shouldn't decide when to "run AI" — entering a step means they're ready to see results; explanation + result appear together. Generation failures fall back to a "다시 시도" button |
 | Lock nav during generation | Block step navigation while AI is generating | Prevents half-saved state and confusing mid-generation transitions |
+| Welcome screen actions (2026-06-08) | 3 buttons: 설계 시작 / 설계 건너뛰고 평가로 / 저장 후 나가기 | The old "나중에 결정할게요" only went to `/projects` — a dead-end with no path to evaluation. Skip-to-eval mirrors the interview's skip (status→evaluating→/finalize); save-exit just navigates since interview data is auto-saved per answer |
+| Design→Finalize handoff (2026-06-08) | Persist `project.status='evaluating'` when leaving design; route by status | Design completion wasn't a durable state — project stayed `designing`, so re-entry looped back into the design wizard instead of advancing to evaluation |
 
 ---
 
@@ -331,6 +334,7 @@ Full-page step completion screen:
 | 2026-05-29 | Added design-step issues D1–D4 (fix pending): D1 personas shown as feature suggestions, D2 added items not removed from list, D3 transition shows "loading data", D4 requirements↔interview redundancy. Common root = RequirementsStep disconnected from design_session |
 | 2026-06-04 | Completed P5-10 (AI workflow model consistency: pass interview context + lock architecture-chosen model + remove "Claude" default + skill rule), P5-09 (architecture template hardcoded fallback removed + error surfaced via `templatesError`, verified already applied), P5-BL4 (per-table `entity.description` shown in EntityCard header), P5-BL5 (keep Explainer/AiQuestion visible during AI generation — extracted `explainer` var, loading replaces body only) |
 | 2026-06-04 | Additional UI polish P5-11~P5-14: P5-11 lock step navigation during AI generation (left rail + footer back/skip disabled + handler guards), P5-12 architecture step auto-generates on entry (removed "설계하기" button — explanation + preview shown together), P5-13 data-model step auto-generates on entry, P5-14 fix relationship display `)` leftover (`parseRelationship` now parses canonical `테이블A N--N 테이블B: 설명` cardinality format). All 4 design steps now auto-generate on entry |
+| 2026-06-08 | Bug fixes (design→finalize transition). `DesignWelcome` now has 3 actions (설계 시작 / 설계 건너뛰고 평가로 / 저장 후 나가기) replacing the dead-end "나중에 결정할게요". `DesignPage.goToEvaluation` persists status→`evaluating` (via design-decision skip) then routes to `/finalize` — used by both skip-to-eval and `DesignComplete` onNext. `DesignPage` init redirects to `/finalize` when the design_session is already `completed`. `MyProjectsPage.resumeRoute` routes `evaluating`·`completed`→`/finalize` (+ "평가 이어하기"/"결과 보기" context-menu). Root cause: design completion was never propagated as a durable project status. See KO "설계→마무리 전환 버그 수정" section |
 
 ---
 ---
@@ -430,7 +434,8 @@ Phase 4 킥오프 완료 후 설계 진행을 선택하면 Phase 5에 진입한�
 - 2×2 그리드: 4단계 미리보기 카드 (아이콘 40px + 스텝 번호 + 이름 + 질문 + ~5분)
 - "완료하면 얻는 것" 초록 info 박스 (체크 아이콘 + 설명)
 - 메인 CTA: "네, 설계를 시작할게요" (accent + 그림자)
-- 고스트 CTA: "나중에 결정할게요"
+- 보조 CTA: "설계 건너뛰고 평가로 →" (설계 건너뛰기 → status `evaluating` → `/finalize`)
+- 고스트 링크: "저장 후 나가기" (인터뷰는 매 답변 자동 저장 → `/projects`로 이동만)
 
 ### 화면 01-A · `ScreenDesignStep1Start` (기능 정의)
 
@@ -632,6 +637,8 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 | 공유 Frame | 모든 페이지를 `Frame` + `TopBar`로 래핑 | 앱 전체의 일관된 네비게이션 |
 | 단계 자동 생성 | 4개 설계 단계 모두 진입 시 자동 생성 (수동 "설계하기" 버튼 없음) | 초보자가 'AI 실행' 시점을 직접 고를 필요 없음 — 단계 진입 = 결과 확인 의사. 설명+결과 동시 표시. 생성 실패 시 "다시 시도" 버튼으로 폴백 |
 | 분석 중 네비 잠금 | AI 생성 중 스텝 이동 차단 | 중간 저장/혼란스러운 생성 도중 전환 방지 |
+| 환영 화면 액션 (2026-06-08) | 버튼 3개: 설계 시작 / 설계 건너뛰고 평가로 / 저장 후 나가기 | 기존 "나중에 결정할게요"는 `/projects`로만 가는 막다른 길(평가로 가는 경로 없음). 평가로 건너뛰기는 인터뷰의 건너뛰기와 동일(status→evaluating→/finalize), 저장 후 나가기는 인터뷰가 매 답변 자동 저장되므로 이동만 |
+| 설계→마무리 전환 (2026-06-08) | 설계를 떠날 때 `project.status='evaluating'` 영구 반영 + status 기반 라우팅 | 설계 완료가 영구 상태로 전파되지 않아 project가 `designing`에 머물렀고, 재진입 시 평가로 가지 못하고 설계 위저드로 되돌아감 |
 
 ---
 
@@ -863,3 +870,26 @@ AI 질문 말풍선: AiMarkD (36px) + accent 테두리 카드 (14px radius, 그�
 - **원인**: `parseRelationship`의 1차 정규식이 `→` 화살표만 매칭 → 실제 스킬 포맷 `테이블A 1--N 테이블B: 설명`(`--` 카디널리티)에서 실패 → 공백 분리 폴백으로 `to = 마지막 토큰 = "매핑)"`.
 - **수정 (`DataModelStep.tsx` `parseRelationship`)**: `--` 카디널리티 포맷(`(\S*--\S*)`)을 우선 파싱하는 정규식 추가 → `to`가 `categories`로 정확히 파싱, 카디널리티도 실제값(`N : N`) 표시. 기존 `→` 포맷 폴백 유지.
 - **참고(미수정)**: 같은 파일 `deriveValidationRules`도 관계 파싱에 `→`-only 정규식을 써서 `--` 포맷에선 관계 기반 정합성 규칙이 표시되지 않음 (별도 항목으로 보류).
+
+---
+
+## 설계→마무리 전환 버그 수정 (2026-06-08, ✅ 적용 완료)
+
+> 재테스트 중 발견: "설계 완료했는데 다시 설계하라고 함", "설계 시작 화면의 '나중에 결정'이 평가로 안 넘어감". **공통 뿌리 = 설계 완료가 영구 상태로 전파되지 않음.**
+
+### 원인
+- 설계 완료 시 `design_sessions.status='completed'`만 찍히고 **`projects.status`는 `designing`에 머묾** (`design.py`는 project status를 안 바꿈).
+- 재진입 라우팅(`MyProjectsPage`)이 `designing`이면 무조건 `/design`으로 보내고, `evaluating`/`completed`용 `/finalize` 분기가 없었음.
+- `DesignPage` 진입 시 `design_session.status==='completed'`를 무시하고 항상 설계 step으로 들어감.
+- DesignWelcome "나중에 결정할게요"는 `/projects`로만 이동 (평가 경로 부재).
+
+### 수정
+| 파일 | 내용 |
+|------|------|
+| `DesignWelcome.tsx` | 버튼 3개로 변경: `onStart`(설계 시작) / `onSkipToEval`(설계 건너뛰고 평가로) / `onSaveExit`(저장 후 나가기) |
+| `DesignPage.tsx` | `goToEvaluation()` 추가 — `design-decision {skip}` 호출로 `status='evaluating'` 영구 반영 후 `/finalize` 이동. DesignWelcome `onSkipToEval` + `DesignComplete` `onNext`에 연결. init에서 `design_session.status==='completed'`면 `/finalize`로 리다이렉트하는 가드 추가 |
+| `MyProjectsPage.tsx` | `resumeRoute()` 헬퍼 — `designing→/design`, `evaluating`·`completed→/finalize`, 그 외 `→/interview`. 행 클릭 + 컨텍스트 메뉴("평가 이어하기"/"결과 보기") 적용 |
+| `projects.py` (Phase 6 연계) | `set_design_decision` 가드 — status가 `completed`면 강등/크레딧 재청구 없이 그대로 반환 (완료 프로젝트가 `evaluating`으로 강등되던 버그 차단) |
+
+### 효과
+설계 완료 후 재진입 시 설계로 되돌아가지 않고 평가(`/finalize`)로 연결. 설계 시작 화면에서 평가로 바로 건너뛰기 가능. 완료된 프로젝트는 다시 강등되지 않음.

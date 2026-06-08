@@ -137,6 +137,11 @@ export default function DesignPage() {
 
         try {
           const designSession = await apiFetch<DesignSession>(`/design/session/${projectId}`)
+          // Design already finished — don't drop the user back into a design step; send them to finalize.
+          if (designSession.status === 'completed') {
+            navigate(`/projects/${projectId}/finalize`)
+            return
+          }
           setSession(designSession)
           setActiveStep(designSession.current_step)
           updateStepStatuses(designSession)
@@ -246,6 +251,21 @@ export default function DesignPage() {
     setScreen({ kind: 'step', stepId })
   }, [generating])
 
+  // Leave design and advance to the evaluation phase: persist status -> evaluating, then route.
+  // Used both when skipping design from the welcome screen and after design completes.
+  const goToEvaluation = useCallback(async () => {
+    if (!projectId) return
+    try {
+      await apiFetch(`/projects/${projectId}/design-decision`, {
+        method: 'POST',
+        body: JSON.stringify({ decision: 'skip' }),
+      })
+    } catch {
+      // Non-fatal: even if the status update fails, still let the user into finalize.
+    }
+    navigate(`/projects/${projectId}/finalize`)
+  }, [projectId, navigate])
+
   // --- SCREEN ROUTING ---
 
   if (screen.kind === 'loading') {
@@ -287,7 +307,8 @@ export default function DesignPage() {
             setStepStatuses((prev) => ({ ...prev, requirements: 'active' }))
             setScreen({ kind: 'step', stepId: 'requirements' })
           }}
-          onDefer={() => navigate('/projects')}
+          onSkipToEval={goToEvaluation}
+          onSaveExit={() => navigate('/projects')}
         />
       </Frame>
     )
@@ -317,7 +338,7 @@ export default function DesignPage() {
   if (screen.kind === 'complete') {
     return (
       <Frame>
-        <DesignComplete session={session} onNext={() => navigate(`/projects/${projectId}/finalize`)} />
+        <DesignComplete session={session} onNext={goToEvaluation} />
       </Frame>
     )
   }

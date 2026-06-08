@@ -1,8 +1,8 @@
-# Phase 6 — Evaluation & Finalization `🚧 In Progress`
+# Phase 6 — Evaluation & Finalization `✅ Complete`
 
 > Post-design (or post-kickoff) quality assurance: honest evaluation → completion criteria → gap analysis → dev checklist → document generation.
 
-**Status**: 🚧 In Progress (implementation plan confirmed 2026-06-04, starting build)
+**Status**: ✅ Complete (Backend ✅, Frontend ✅ — implemented 2026-06-08, pending test)
 **Prerequisites**: Phase 5 (Design) completion, or Phase 4 (Kickoff) with design skipped
 
 ---
@@ -37,19 +37,19 @@ Phase 5(설계) 완료 또는 Phase 4에서 설계 건너뛰기
 | # | Task | Area | Status | Related FR |
 |---|---|---|---|---|
 | **Skill Files** | | | | |
-| 1 | **Rewrite** 4 skill files for web-app JSON output (mirror `design-*.md`, NOT raw harness copy) into `backend/skills/`: `kickoff-evaluate/done/gap/checklist.md` + run `sync_harness.py` | Backend | 🔲 | FR-020 |
-| 2 | Copy/adapt reference files to `backend/references/`: `evaluation-criteria.md`, `done-criteria-templates.md`, `gap-rules.md` | Backend | 🔲 | FR-020 |
-| 2.5 | Migration `008_finalize_sessions.sql` — `finalize_sessions` table (mirrors 006 `design_sessions`; JSONB cols: evaluation/done_criteria/gaps/checklist) | Backend | 🔲 | — |
+| 1 | **Rewrite** 4 skill files for web-app JSON output (mirror `design-*.md`, NOT raw harness copy) into `backend/skills/`: `kickoff-evaluate/done/gap/checklist.md` + run `sync_harness.py` | Backend | ✅ | FR-020 |
+| 2 | ~~Copy/adapt reference files to `backend/references/`~~ — **N/A**: skills rewritten as self-contained JSON-output prompts, no external reference files needed | Backend | ➖ | FR-020 |
+| 2.5 | Migration `008_finalize_sessions.sql` — `finalize_sessions` table (mirrors 006 `design_sessions`; JSONB cols: evaluation/done_criteria/gaps/checklist) | Backend | ✅ | — |
 | **Backend** | | | | |
-| 3 | Step management — FINALIZE_REGISTRY with 4 evaluation/finalization steps | Backend | 🔲 | FR-001 |
-| 4 | `/kickoff-evaluate` API — honest evaluation (4+2 dimensions) | Backend | 🔲 | FR-028 |
-| 5 | `/kickoff-done` API — completion criteria (DoD) | Backend | 🔲 | FR-029 |
-| 6 | `/kickoff-gap` API — gap analysis (chat-based) | Backend | 🔲 | FR-026 |
-| 7 | `/kickoff-checklist` API — dev readiness checklist (chat-based) | Backend | 🔲 | FR-027 |
-| 8 | Checklist 완료 시 doc v3 자동 생성 + 크레딧 차감 + status `completed` | Backend | 🔲 | FR-001, FR-003, FR-012 |
+| 3 | Step management — FINALIZE_REGISTRY with 4 evaluation/finalization steps | Backend | ✅ | FR-001 |
+| 4 | `/kickoff-evaluate` API — honest evaluation (4+2 dimensions) | Backend | ✅ | FR-028 |
+| 5 | `/kickoff-done` API — completion criteria (DoD) | Backend | ✅ | FR-029 |
+| 6 | `/kickoff-gap` API — gap analysis (chat-based) | Backend | ✅ | FR-026 |
+| 7 | `/kickoff-checklist` API — dev readiness checklist (chat-based) | Backend | ✅ | FR-027 |
+| 8 | Checklist 완료 시 doc v3 자동 생성 + 크레딧 차감 + status `completed` | Backend | ✅ | FR-001, FR-003, FR-012 |
 | **Frontend** | | | | |
-| 9 | `FinalizePage` + 4 step components (`EvaluateStep`/`DoneStep`/`GapStep`/`ChecklistStep`) — replicate Phase 5 `DesignPage` card wizard; reuse `StepTransition`/`DesignStepFooter`/`Explainer`; auto-generate on entry | Frontend | 🔲 | FR-001 |
-| 10 | Left rail stepper (4 steps) — adapt `DesignLeftRail`; route `/projects/:projectId/finalize`; enter from design-complete "구현 단계로" | Frontend | 🔲 | FR-010 |
+| 9 | `FinalizePage` + 4 step components (`EvaluateStep`/`DoneStep`/`GapStep`/`ChecklistStep`) — replicate Phase 5 `DesignPage` card wizard; reuse `StepTransition`/`DesignStepFooter`/`Explainer`; auto-generate on entry | Frontend | ✅ | FR-001 |
+| 10 | Left rail stepper (4 steps) — adapt `DesignLeftRail`; route `/projects/:projectId/finalize`; enter from design-complete "구현 단계로" | Frontend | ✅ | FR-010 |
 
 ---
 
@@ -139,17 +139,18 @@ After STEP 4 (checklist) completes:
 | Checklist → doc v3 | Automatic after checklist completes | doc v3 최종 생성 + 크레딧 차감 + status completed. 별도 Phase 전환 아닌 doc 업데이트 |
 | Evaluation/finalization UI | **Replicate Phase 5 card wizard** (`FinalizePage`), NOT ChatCenter | evaluate/done/gap/checklist produce structured results (score tables, checklists) that fit cards better than chat; keeps visual + behavioral consistency with Phase 5 (auto-generate on entry, nav lock during generation, Explainer kept visible). Reverses the original 2026-05-25 ChatCenter decision. Decided 2026-06-04 |
 | Design later | Deferred to V2 | Adds complexity (project state tracking, re-entry flow) |
+| No status downgrade (2026-06-08) | `design-decision` returns the project unchanged if it is already `completed` | A finished kickoff must not be reset to `evaluating` (or re-charged) when the new design→finalize skip transition re-triggers `design-decision` |
 
 ---
 
 ## Completion Criteria
 
-- [ ] After design completes (or is skipped), evaluate step starts automatically
-- [ ] All 4 steps (evaluate → done → gap → checklist) run as chat-based interview
-- [ ] Each step uses `load_skill()` from harness_loader (not hardcoded)
-- [ ] Checklist completion triggers doc v3 generation + credit deduction + status `completed`
-- [ ] Left rail stepper shows 4 steps (evaluate → done → gap → checklist)
-- [ ] Step progress updates correctly as evaluation/finalization proceeds
+- [x] After design completes (or is skipped), evaluate step starts automatically
+- [x] All 4 steps (evaluate → done → gap → checklist) run as chat-based interview
+- [x] Each step uses `load_skill()` from harness_loader (not hardcoded)
+- [x] Checklist completion triggers doc v3 generation + credit deduction + status `completed`
+- [x] Left rail stepper shows 4 steps (evaluate → done → gap → checklist)
+- [x] Step progress updates correctly as evaluation/finalization proceeds
 
 ---
 
@@ -162,10 +163,12 @@ After STEP 4 (checklist) completes:
 | 2026-05-25 | Phase 5 → Phase 6 renumbered. Phase Complete Modal removed. Flow rewritten: runs after Phase 5 (Design) or directly after Phase 4 if design skipped. STEP 12-15 → 1-4. Checklist completion auto-transitions to Phase 7 |
 | 2026-05-26 | Phase 7 점진적 생성 반영: checklist 완료 → doc v3 생성 + 크레딧 차감 + status completed. "Phase 7 전환" → "doc 업데이트" 개념으로 변경. 과금 정책 반영 (횟수제 크레딧) |
 | 2026-06-04 | Implementation plan confirmed, status → In Progress. **UI decision reversed: ChatCenter reuse → Phase 5 card wizard (`FinalizePage`)**. Plan: new `finalize_sessions` table (migration 008), new `finalize.py` router (`/api/finalize`, mirrors `design.py`), 4 skills **rewritten** for web-app JSON output (not raw harness copy), shared JSON helpers extracted from design.py, doc_engine extended to v3, checklist-complete triggers credit deduction + status `completed`. Build order: skills → migration → helper extraction → finalize.py → doc v3 → FinalizePage → wiring |
+| 2026-06-08 | Bug fix (design→finalize transition). `set_design_decision` now no-ops when the project is already `completed` (no status downgrade, no credit re-charge) — fixes completed projects being reset to `evaluating` by the new skip-to-eval path. Paired with Phase 5 handoff fixes (`goToEvaluation`, `resumeRoute`, DesignPage completed-guard). Restored one test project that had been downgraded completed→evaluating. |
+| 2026-06-08 | **Phase 6 implemented, status → Complete** (commit `aea8d05`). Backend: `finalize.py` (`/api/finalize`, STEP_CONFIG = evaluate→done→gap→checklist), `_shared.py` helpers extracted from design.py, 4 skills rewritten (`kickoff-evaluate/done/gap/checklist.md`), migration `008_finalize_sessions.sql`, `doc_engine.generate_final_document` (doc v3). Frontend: `FinalizePage` + `EvaluateStep`/`DoneStep`/`GapStep`/`ChecklistStep`/`FinalizeComplete`/`FinalizeLeftRail`/`FinalizeStates`. Deliverable #2 (reference files) marked N/A — skills are self-contained. Pending: E2E test |
 
 > 설계 후(또는 킥오프 직후) 품질 보증: 정직한 평가 → 완료 조건 → 누락 점검 → 착수 체크리스트 → 문서 생성.
 
-**상태**: 🚧 진행 중 (구현 계획 확정 2026-06-04, 착수 시작)
+**상태**: ✅ 완료 (Backend ✅, Frontend ✅ — 2026-06-08 구현 완료, 테스트 대기)
 **선행 조건**: Phase 5(설계) 완료 또는 Phase 4(킥오프)에서 설계 건너뛰기
 
 ---
@@ -200,19 +203,19 @@ Phase 5(설계) 완료 또는 Phase 4에서 설계 건너뛰기
 | # | 작업 | 영역 | 상태 | 관련 FR |
 |---|---|---|---|---|
 | **스킬 파일** | | | | |
-| 1 | 스킬 4개를 웹앱용 JSON 출력으로 **재작성** (`design-*.md` 패턴, 하네스 원본 복사 아님) → `backend/skills/`: `kickoff-evaluate/done/gap/checklist.md` + `sync_harness.py` 실행 | Backend | 🔲 | FR-020 |
-| 2 | Reference 파일 복사/조정 → `backend/references/`: `evaluation-criteria.md`, `done-criteria-templates.md`, `gap-rules.md` | Backend | 🔲 | FR-020 |
-| 2.5 | 마이그레이션 `008_finalize_sessions.sql` — `finalize_sessions` 테이블 (006 `design_sessions` 패턴; JSONB 컬럼: evaluation/done_criteria/gaps/checklist) | Backend | 🔲 | — |
+| 1 | 스킬 4개를 웹앱용 JSON 출력으로 **재작성** (`design-*.md` 패턴, 하네스 원본 복사 아님) → `backend/skills/`: `kickoff-evaluate/done/gap/checklist.md` + `sync_harness.py` 실행 | Backend | ✅ | FR-020 |
+| 2 | ~~Reference 파일 복사/조정 → `backend/references/`~~ — **해당 없음**: 스킬을 self-contained JSON 출력 프롬프트로 재작성하여 외부 reference 파일 불필요 | Backend | ➖ | FR-020 |
+| 2.5 | 마이그레이션 `008_finalize_sessions.sql` — `finalize_sessions` 테이블 (006 `design_sessions` 패턴; JSONB 컬럼: evaluation/done_criteria/gaps/checklist) | Backend | ✅ | — |
 | **백엔드** | | | | |
-| 3 | 스텝 관리 — FINALIZE_REGISTRY로 4개 평가/마무리 스텝 관리 | Backend | 🔲 | FR-001 |
-| 4 | `/kickoff-evaluate` API — 정직한 평가 (4+2 차원) | Backend | 🔲 | FR-028 |
-| 5 | `/kickoff-done` API — 완료 조건 정의 (DoD) | Backend | 🔲 | FR-029 |
-| 6 | `/kickoff-gap` API — 누락/모순 점검 (채팅 기반) | Backend | 🔲 | FR-026 |
-| 7 | `/kickoff-checklist` API — 개발 착수 체크리스트 (채팅 기반) | Backend | 🔲 | FR-027 |
-| 8 | Checklist 완료 시 doc v3 자동 생성 + 크레딧 차감 + status `completed` | Backend | 🔲 | FR-001, FR-003, FR-012 |
+| 3 | 스텝 관리 — FINALIZE_REGISTRY로 4개 평가/마무리 스텝 관리 | Backend | ✅ | FR-001 |
+| 4 | `/kickoff-evaluate` API — 정직한 평가 (4+2 차원) | Backend | ✅ | FR-028 |
+| 5 | `/kickoff-done` API — 완료 조건 정의 (DoD) | Backend | ✅ | FR-029 |
+| 6 | `/kickoff-gap` API — 누락/모순 점검 (채팅 기반) | Backend | ✅ | FR-026 |
+| 7 | `/kickoff-checklist` API — 개발 착수 체크리스트 (채팅 기반) | Backend | ✅ | FR-027 |
+| 8 | Checklist 완료 시 doc v3 자동 생성 + 크레딧 차감 + status `completed` | Backend | ✅ | FR-001, FR-003, FR-012 |
 | **프론트엔드** | | | | |
-| 9 | `FinalizePage` + 스텝 컴포넌트 4개 (`EvaluateStep`/`DoneStep`/`GapStep`/`ChecklistStep`) — Phase 5 `DesignPage` 카드 위저드 복제; `StepTransition`/`DesignStepFooter`/`Explainer` 재활용; 진입 시 자동 생성 | Frontend | 🔲 | FR-001 |
-| 10 | 왼쪽 레일 스테퍼(4스텝) — `DesignLeftRail` 변형; 라우트 `/projects/:projectId/finalize`; 설계 완료 "구현 단계로"에서 진입 | Frontend | 🔲 | FR-010 |
+| 9 | `FinalizePage` + 스텝 컴포넌트 4개 (`EvaluateStep`/`DoneStep`/`GapStep`/`ChecklistStep`) — Phase 5 `DesignPage` 카드 위저드 복제; `StepTransition`/`DesignStepFooter`/`Explainer` 재활용; 진입 시 자동 생성 | Frontend | ✅ | FR-001 |
+| 10 | 왼쪽 레일 스테퍼(4스텝) — `DesignLeftRail` 변형; 라우트 `/projects/:projectId/finalize`; 설계 완료 "구현 단계로"에서 진입 | Frontend | ✅ | FR-010 |
 
 ---
 
@@ -302,17 +305,18 @@ STEP 4(checklist) 완료 후:
 | Checklist → doc v3 | checklist 완료 후 자동 | doc v3 최종 생성 + 크레딧 차감 + status completed. 별도 Phase 전환 아닌 doc 업데이트 |
 | 평가/마무리 UI | **Phase 5 카드 위저드 복제** (`FinalizePage`), ChatCenter 아님 | 평가/완료조건/갭/체크리스트는 구조화 결과(점수표·체크리스트)라 채팅보다 카드가 적합. Phase 5와 시각·동작 일관성 유지(진입 시 자동 생성, 생성 중 네비 잠금, Explainer 유지). 기존 2026-05-25 ChatCenter 결정을 번복. 2026-06-04 결정 |
 | 설계 나중에 | V2로 연기 | 복잡성 추가 (프로젝트 상태 추적, 재진입 흐름) |
+| status 강등 방지 (2026-06-08) | `design-decision`은 프로젝트가 이미 `completed`면 변경 없이 그대로 반환 | 완료된 킥오프가 설계→마무리 건너뛰기 전환이 `design-decision`을 재호출할 때 `evaluating`으로 강등(또는 크레딧 재청구)되면 안 됨 |
 
 ---
 
 ## 완료 기준
 
-- [ ] 설계 완료 후 (또는 건너뛰기 후) evaluate 스텝이 자동으로 시작
-- [ ] 4개 스텝 (evaluate → done → gap → checklist) 모두 채팅 기반 인터뷰로 동작
-- [ ] 각 스텝이 `load_skill()` 사용 (하드코딩 아님)
-- [ ] checklist 완료 시 doc v3 생성 + 크레딧 차감 + status `completed`
-- [ ] 왼쪽 레일 스테퍼가 4개 스텝 표시 (evaluate → done → gap → checklist)
-- [ ] 평가/마무리 진행에 따라 스텝 진행률 정확히 업데이트
+- [x] 설계 완료 후 (또는 건너뛰기 후) evaluate 스텝이 자동으로 시작
+- [x] 4개 스텝 (evaluate → done → gap → checklist) 모두 채팅 기반 인터뷰로 동작
+- [x] 각 스텝이 `load_skill()` 사용 (하드코딩 아님)
+- [x] checklist 완료 시 doc v3 생성 + 크레딧 차감 + status `completed`
+- [x] 왼쪽 레일 스테퍼가 4개 스텝 표시 (evaluate → done → gap → checklist)
+- [x] 평가/마무리 진행에 따라 스텝 진행률 정확히 업데이트
 
 ---
 
@@ -325,3 +329,5 @@ STEP 4(checklist) 완료 후:
 | 2026-05-25 | Phase 5 → Phase 6 번호 변경. Phase Complete 모달 삭제. 플로우 재작성: Phase 5(설계) 완료 후 또는 설계 건너뛰기 시 실행. STEP 12-15 → 1-4. checklist 완료 후 Phase 7 자동 전환 |
 | 2026-05-26 | Phase 7 점진적 생성 반영: checklist 완료 → doc v3 생성 + 크레딧 차감 + status completed. "Phase 7 전환" → "doc 업데이트" 개념으로 변경. 과금 정책 반영 (횟수제 크레딧) |
 | 2026-06-04 | 구현 계획 확정, 상태 → 진행 중. **UI 결정 번복: ChatCenter 재활용 → Phase 5 카드 위저드(`FinalizePage`)**. 계획: 새 `finalize_sessions` 테이블(마이그레이션 008), 새 `finalize.py` 라우터(`/api/finalize`, `design.py` 복제), 스킬 4개 웹앱용 JSON 출력 **재작성**(하네스 원본 복사 아님), design.py JSON 헬퍼 공용 모듈화, doc_engine v3 확장, checklist 완료 시 크레딧 차감 + status `completed`. 구현 순서: 스킬 → 마이그레이션 → 헬퍼 추출 → finalize.py → doc v3 → FinalizePage → 연결 |
+| 2026-06-08 | 버그 수정 (설계→마무리 전환). `set_design_decision`이 프로젝트가 이미 `completed`면 아무 변경 없이 반환 (status 강등·크레딧 재청구 없음) — 새 평가-건너뛰기 경로가 완료 프로젝트를 `evaluating`으로 강등시키던 문제 해결. Phase 5 전환 수정(`goToEvaluation`, `resumeRoute`, DesignPage 완료 가드)과 연계. 강등됐던 테스트 프로젝트 1건 복구. |
+| 2026-06-08 | **Phase 6 구현 완료, 상태 → 완료** (커밋 `aea8d05`). 백엔드: `finalize.py`(`/api/finalize`, STEP_CONFIG = evaluate→done→gap→checklist), design.py에서 `_shared.py` 헬퍼 추출, 스킬 4개 재작성(`kickoff-evaluate/done/gap/checklist.md`), 마이그레이션 `008_finalize_sessions.sql`, `doc_engine.generate_final_document`(doc v3). 프론트엔드: `FinalizePage` + `EvaluateStep`/`DoneStep`/`GapStep`/`ChecklistStep`/`FinalizeComplete`/`FinalizeLeftRail`/`FinalizeStates`. Deliverable #2(reference 파일)는 N/A 처리 — 스킬이 self-contained. 남은 작업: E2E 테스트 |

@@ -26,6 +26,13 @@ function formatDate(iso: string) {
   })
 }
 
+// Resume into the correct phase based on project status.
+function resumeRoute(project: Project): string {
+  if (project.status === 'designing') return `/projects/${project.id}/design`
+  if (project.status === 'evaluating' || project.status === 'completed') return `/projects/${project.id}/finalize`
+  return `/projects/${project.id}/interview`
+}
+
 export default function MyProjectsPage() {
   const navigate = useNavigate()
   const { user, refetchProfile } = useAuthContext()
@@ -227,13 +234,7 @@ export default function MyProjectsPage() {
                 <div>
                   <div
                     className="font-semibold text-text hover:text-accent cursor-pointer transition-colors"
-                    onClick={() => {
-                      if (project.status === 'designing') {
-                        navigate(`/projects/${project.id}/design`)
-                      } else {
-                        navigate(`/projects/${project.id}/interview`)
-                      }
-                    }}
+                    onClick={() => navigate(resumeRoute(project))}
                   >
                     {project.name}
                   </div>
@@ -291,6 +292,17 @@ export default function MyProjectsPage() {
                           className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
                         >
                           설계 이어하기
+                        </button>
+                      )}
+                      {(project.status === 'evaluating' || project.status === 'completed') && (
+                        <button
+                          onClick={() => {
+                            setMenuOpenId(null)
+                            navigate(`/projects/${project.id}/finalize`)
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
+                        >
+                          {project.status === 'completed' ? '결과 보기' : '평가 이어하기'}
                         </button>
                       )}
                       <button
