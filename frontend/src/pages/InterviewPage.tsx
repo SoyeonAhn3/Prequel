@@ -516,7 +516,7 @@ export default function InterviewPage() {
           sending={sending}
           userInitial={userInitial}
         />
-        <RightPanel captured={insights} totalExpected={progress.total} lastSavedLabel={lastSavedLabel} />
+        <RightPanel captured={insights} totalExpected={progress.total} lastSavedLabel={lastSavedLabel} projectId={projectId} />
       </div>
     </div>
   )

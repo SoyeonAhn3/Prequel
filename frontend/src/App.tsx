@@ -9,6 +9,7 @@ import MyProjectsPage from './pages/MyProjectsPage'
 import InterviewPage from './pages/InterviewPage'
 import DesignPage from './pages/DesignPage'
 import FinalizePage from './pages/FinalizePage'
+import DocumentPreviewPage from './pages/DocumentPreviewPage'
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/projects/:projectId/interview" element={<InterviewPage />} />
             <Route path="/projects/:projectId/design" element={<DesignPage />} />
             <Route path="/projects/:projectId/finalize" element={<FinalizePage />} />
+            <Route path="/projects/:projectId/document" element={<DocumentPreviewPage />} />
           </Route>
 
           {/* Default */}

@@ -277,7 +277,7 @@ export default function FinalizePage() {
   if (screen.kind === 'complete') {
     return (
       <Frame>
-        <FinalizeComplete session={session} onNext={() => navigate('/projects')} />
+        <FinalizeComplete session={session} onNext={() => navigate(`/projects/${projectId}/document`)} />
       </Frame>
     )
   }

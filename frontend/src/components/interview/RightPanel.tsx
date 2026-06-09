@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { FileText, Eye, Lock } from 'lucide-react'
 import Badge from '../common/Badge'
 import type { CapturedInsight } from './types'
@@ -6,9 +7,11 @@ interface RightPanelProps {
   captured: CapturedInsight[]
   totalExpected?: number
   lastSavedLabel?: string
+  projectId?: string
 }
 
-export default function RightPanel({ captured, totalExpected, lastSavedLabel }: RightPanelProps) {
+export default function RightPanel({ captured, totalExpected, lastSavedLabel, projectId }: RightPanelProps) {
+  const navigate = useNavigate()
   const completedCount = captured.filter((c) => !c.pending).length
 
   return (
@@ -93,7 +96,9 @@ export default function RightPanel({ captured, totalExpected, lastSavedLabel }: 
 
       {/* Document preview button */}
       <button
-        className="w-full mt-4 px-3 py-2.5 bg-surface text-accent font-semibold rounded-[9px] cursor-pointer flex items-center justify-center gap-2 text-[12.5px] hover:bg-accent-soft transition-colors"
+        onClick={() => projectId && navigate(`/projects/${projectId}/document`)}
+        disabled={!projectId}
+        className="w-full mt-4 px-3 py-2.5 bg-surface text-accent font-semibold rounded-[9px] cursor-pointer flex items-center justify-center gap-2 text-[12.5px] hover:bg-accent-soft transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)' }}
       >
         <Eye size={13} />

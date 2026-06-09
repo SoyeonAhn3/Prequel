@@ -12,6 +12,32 @@ from fastapi import HTTPException
 from app.core.supabase import get_supabase
 
 
+DESIGN_STEP_COLS = ("requirements", "architecture", "data_model", "ai_workflow")
+FINALIZE_STEP_COLS = ("evaluation", "done_criteria", "gaps", "checklist")
+
+
+def session_content_score(session: dict, columns: tuple[str, ...]) -> int:
+    """Count how many of the named step columns are populated (non-empty)."""
+    return sum(1 for col in columns if session.get(col))
+
+
+def pick_canonical_session(sessions: list[dict], columns: tuple[str, ...]) -> dict | None:
+    """From a project's session rows, return the one holding the most step
+    content. Ties resolve to the most recently created. Returns None if empty.
+
+    A project can accumulate duplicate session rows (a completed session that a
+    later step re-forked). Readers AND the get-or-create path both use this so
+    they converge on the same canonical row instead of whichever happens to be
+    newest — which may be a mostly-empty duplicate.
+    """
+    if not sessions:
+        return None
+    return max(
+        sessions,
+        key=lambda s: (session_content_score(s, columns), s.get("created_at") or ""),
+    )
+
+
 def get_interview_context(project_id: str) -> str:
     """Latest completed interview as a markdown context block. Raises 400 if none."""
     sb = get_supabase()
@@ -56,13 +82,12 @@ def get_design_context(project_id: str) -> str:
         .select("*")
         .eq("project_id", project_id)
         .order("created_at", desc=True)
-        .limit(1)
         .execute()
     )
-    if not result.data:
+    s = pick_canonical_session(result.data, DESIGN_STEP_COLS)
+    if not s:
         return ""
 
-    s = result.data[0]
     parts = []
 
     reqs = s.get("requirements")

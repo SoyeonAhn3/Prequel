@@ -1,9 +1,13 @@
+import json
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api._shared import (
+    DESIGN_STEP_COLS,
     get_interview_context as _get_interview_context,
     parse_json_response as _parse_json_response,
+    pick_canonical_session,
 )
 from app.core.claude_client import chat
 from app.core.harness_loader import load_skill
@@ -20,19 +24,40 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/api/design", tags=["design"])
 
 
+def _coerce_ai_workflow(value):
+    """Older rows stored ai_workflow as a JSON string; the schema expects an
+    object. Parse it back (falling back to a summary-only object) so reads don't
+    fail validation."""
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            return {"summary": value}
+    return value
+
+
 def _get_or_create_session(project_id: str, user_id: str) -> dict:
+    """Return the project's canonical design session, creating one only if none
+    exists yet.
+
+    Reuses the session holding the most step content (see pick_canonical_session).
+    Previously this reused only sessions with status == "in_progress"; because the
+    ai-workflow step flips status to "completed", re-entering design afterwards
+    found no in_progress row and inserted a fresh, mostly-empty session — stranding
+    the real data in an older row that readers then ignored. Use
+    DELETE /design/session/{id} to start over from scratch.
+    """
     sb = get_supabase()
-    result = (
+    existing = (
         sb.table("design_sessions")
         .select("*")
         .eq("project_id", project_id)
-        .eq("status", "in_progress")
         .order("created_at", desc=True)
-        .limit(1)
         .execute()
     )
-    if result.data:
-        return result.data[0]
+    canonical = pick_canonical_session(existing.data, DESIGN_STEP_COLS)
+    if canonical:
+        return canonical
 
     project = (
         sb.table("projects")
@@ -66,7 +91,7 @@ def _session_to_out(session: dict) -> DesignSessionOut:
         requirements=session.get("requirements"),
         architecture=session.get("architecture"),
         data_model=session.get("data_model"),
-        ai_workflow=session.get("ai_workflow"),
+        ai_workflow=_coerce_ai_workflow(session.get("ai_workflow")),
         arch_templates=session.get("arch_templates"),
         status=session.get("status", "in_progress"),
     )
@@ -95,13 +120,13 @@ async def get_design_session(
         .select("*")
         .eq("project_id", project_id)
         .order("created_at", desc=True)
-        .limit(1)
         .execute()
     )
-    if not result.data:
+    canonical = pick_canonical_session(result.data, DESIGN_STEP_COLS)
+    if not canonical:
         raise HTTPException(status_code=404, detail="Design session not found")
 
-    return _session_to_out(result.data[0])
+    return _session_to_out(canonical)
 
 
 @router.delete("/session/{project_id}")

@@ -52,6 +52,26 @@ async def list_projects(user: dict = Depends(get_current_user)):
     return result.data
 
 
+@router.get("/{project_id}", response_model=ProjectOut)
+async def get_project(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+):
+    sb = get_supabase()
+    result = (
+        sb.table("projects")
+        .select("*")
+        .eq("id", project_id)
+        .eq("user_id", user["id"])
+        .is_("deleted_at", "null")
+        .maybe_single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return result.data
+
+
 @router.post("", response_model=ProjectOut, status_code=201)
 async def create_project(
     body: ProjectCreate,
@@ -161,8 +181,9 @@ async def generate_doc(
     project_id: str,
     user: dict = Depends(get_current_user),
 ):
-    _check_credits(user)
-
+    # No credit charge: credits are consumed at interview/design start, and the
+    # live document (preview + Markdown export) is assembled from session data —
+    # this endpoint only (re)generates the optional AI-narrative kickoff_doc.
     sb = get_supabase()
     project = (
         sb.table("projects")
@@ -191,7 +212,6 @@ async def generate_doc(
     doc_text, usage = generate_kickoff_document(project.data, session.data[0])
 
     sb.table("projects").update({"kickoff_doc": doc_text}).eq("id", project_id).execute()
-    _increment_credits(user["id"])
 
     logger.info(
         "kickoff_doc_generated",

@@ -10,9 +10,11 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api._shared import (
+    FINALIZE_STEP_COLS,
     get_design_context,
     get_interview_context,
     parse_json_response,
+    pick_canonical_session,
 )
 from app.core.claude_client import chat
 from app.core.doc_engine import generate_final_document
@@ -64,18 +66,25 @@ def _verify_project(sb, project_id: str, user_id: str) -> dict:
 
 
 def _get_or_create_finalize_session(project_id: str) -> dict:
+    """Return the project's canonical finalize session, creating one only if none
+    exists yet.
+
+    Reuses the session holding the most step content (see pick_canonical_session)
+    so re-running a step updates the existing row instead of forking a new one. The
+    checklist step flips status to "completed", which the old in_progress-only
+    filter could not reuse — the same duplicate-row bug fixed in design.
+    """
     sb = get_supabase()
-    result = (
+    existing = (
         sb.table("finalize_sessions")
         .select("*")
         .eq("project_id", project_id)
-        .eq("status", "in_progress")
         .order("created_at", desc=True)
-        .limit(1)
         .execute()
     )
-    if result.data:
-        return result.data[0]
+    canonical = pick_canonical_session(existing.data, FINALIZE_STEP_COLS)
+    if canonical:
+        return canonical
 
     new_session = (
         sb.table("finalize_sessions")
@@ -228,12 +237,12 @@ async def get_finalize_session(project_id: str, user: dict = Depends(get_current
         .select("*")
         .eq("project_id", project_id)
         .order("created_at", desc=True)
-        .limit(1)
         .execute()
     )
-    if not result.data:
+    canonical = pick_canonical_session(result.data, FINALIZE_STEP_COLS)
+    if not canonical:
         raise HTTPException(status_code=404, detail="Finalize session not found")
-    return _finalize_to_out(result.data[0])
+    return _finalize_to_out(canonical)
 
 
 @router.put("/{step}/{session_id}", response_model=FinalizeSessionOut)
