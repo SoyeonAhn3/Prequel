@@ -23,6 +23,33 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/design", tags=["design"])
 
+# BL-001: detect when the user has NOT committed to a specific AI model/vendor so
+# the design steps don't silently concretize an example (e.g. "GPT-4 같은") into a
+# locked decision. A line that mentions a model/vendor AND a deferral cue counts.
+_MODEL_TOKENS = ("모델", "llm", "gpt", "claude", "gemini", "ai api", "ai 모델",
+                 "ai/ml", "ai 분석", "ai 도구", "vendor", "벤더")
+_DEFER_TOKENS = ("추후", "미정", "나중", "아직", "결정 안", "정하지", "정할",
+                 "추천 받", "추천받", "결정하지", "고민", "모르")
+# A stored model value that itself reads as "undecided" — don't lock these either.
+_UNDECIDED_MARKERS = ("추후", "미정", "tbd", "미확정", "결정")
+
+
+def _model_undecided(context: str) -> bool:
+    """True if the interview context shows the AI model/vendor is still open."""
+    low = (context or "").lower()
+    for line in low.splitlines():
+        if any(m in line for m in _MODEL_TOKENS) and any(d in line for d in _DEFER_TOKENS):
+            return True
+    return False
+
+
+def _looks_undecided(model: str) -> bool:
+    low = (model or "").lower()
+    return any(mk in low for mk in _UNDECIDED_MARKERS)
+
+
+_UNDECIDED_MODEL = "추후 결정"
+
 
 def _coerce_ai_workflow(value):
     """Older rows stored ai_workflow as a JSON string; the schema expects an
@@ -402,12 +429,22 @@ async def generate_architecture(
                 f"이 조합을 기반으로 아키텍처를 설계하세요."
             )
 
+    ai_model_note = ""
+    if _model_undecided(context):
+        ai_model_note = (
+            "\n\n## AI 모델 미확정 (중요)\n"
+            "사용자가 사용할 AI 모델/벤더를 아직 확정하지 않았습니다(인터뷰에서 '추후 결정'). "
+            "AI/ML 관련 컴포넌트의 technology에 특정 모델/벤더(GPT-4, Claude 등)를 단정하지 말고 "
+            "'LLM API (모델 추후 결정)'처럼 미확정 상태로 표기하세요. "
+            "사용자가 예시로 든 모델명을 결정으로 간주하지 마세요."
+        )
+
     proj = project.data
     user_message = (
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
         f"설명: {proj.get('description', '')}\n\n"
-        f"{context}{requirements_text}{template_text}"
+        f"{context}{requirements_text}{template_text}{ai_model_note}"
     )
 
     system = [{"type": "text", "text": skill_text, "cache_control": {"type": "ephemeral"}}]
@@ -618,8 +655,20 @@ async def generate_ai_workflow(
             f"- {e['name']}: {e['description']}" for e in dm.get("entities", [])
         )
 
+    # BL-001: only lock a model that the USER actually confirmed. If the interview
+    # shows the model is still open, or the inherited value itself reads as
+    # undecided, keep it undecided instead of cementing an example as a decision.
+    undecided = _model_undecided(context) or _looks_undecided(arch_ai_model)
+
     ai_constraint = ""
-    if arch_ai_model:
+    if undecided:
+        ai_constraint = (
+            f"\n\n## AI 모델 미확정 (중요)\n"
+            f"사용자가 사용할 AI 모델/벤더를 아직 확정하지 않았습니다. "
+            f"model 필드에 특정 모델/벤더(GPT-4, Claude 등)를 단정하지 말고 '{_UNDECIDED_MODEL}'으로 두세요. "
+            f"model_version은 빈 문자열로 두세요. 사용자가 예시로 든 모델명을 결정으로 간주하지 마세요."
+        )
+    elif arch_ai_model:
         ai_constraint = (
             f"\n\n## 확정된 AI 모델 (변경 금지)\n"
             f"이전 단계(아키텍처)에서 AI 모델은 '{arch_ai_model}'(으)로 이미 결정되었습니다. "
@@ -642,8 +691,8 @@ async def generate_ai_workflow(
 
     ai_workflow = {
         "summary": parsed.get("summary", ""),
-        "model": parsed.get("model") or arch_ai_model or "",
-        "model_version": parsed.get("model_version", ""),
+        "model": _UNDECIDED_MODEL if undecided else (parsed.get("model") or arch_ai_model or ""),
+        "model_version": "" if undecided else parsed.get("model_version", ""),
         "task": parsed.get("task", "AI 처리"),
         "inputs": parsed.get("inputs", []),
         "outputs": parsed.get("outputs", []),

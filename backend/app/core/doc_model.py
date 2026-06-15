@@ -53,12 +53,9 @@ def _classify_insight(label: str) -> str:
     return "기타"
 
 
-def profile_md(project: dict, insights: list[dict]) -> str:
-    lines = ["| 항목 | 내용 |", "|---|---|", f"| 프로젝트명 | {_cell(project.get('name'))} |"]
-    if project.get("project_type"):
-        lines.append(f"| 유형 | {_cell(project['project_type'])} |")
-    lines.append(f"| 언어 | {_cell(project.get('language', 'ko'))} |")
-
+def _profile_grouped(project: dict, insights: list[dict]):
+    """Shared profile extraction used by both the markdown and the data view, so
+    they never drift. Returns (lead_sentence, [(group_header, [values])])."""
     # Lead sentence: project description, else an overview-ish insight.
     lead = (project.get("description") or "").strip()
     if not lead:
@@ -67,10 +64,8 @@ def profile_md(project: dict, insights: list[dict]) -> str:
             if label.startswith("핵심 기능") or "서비스 형태" in label:
                 lead = (ins.get("value") or "").strip()
                 break
-    if lead:
-        lines += ["", f"> {lead}"]
 
-    # Group insights into categories (dict preserves the order above).
+    # Group insights into categories (dict preserves the _PROFILE_GROUPS order).
     groups: dict[str, list[str]] = {h: [] for h, _ in _PROFILE_GROUPS}
     groups["기타"] = []
     seen = set()
@@ -84,13 +79,37 @@ def profile_md(project: dict, insights: list[dict]) -> str:
         seen.add(val)
         groups[_classify_insight(label)].append(val)
 
-    for header, vals in groups.items():
-        if not vals:
-            continue
+    ordered = [(h, v) for h, v in groups.items() if v]
+    return lead, ordered
+
+
+def profile_md(project: dict, insights: list[dict]) -> str:
+    lines = ["| 항목 | 내용 |", "|---|---|", f"| 프로젝트명 | {_cell(project.get('name'))} |"]
+    if project.get("project_type"):
+        lines.append(f"| 유형 | {_cell(project['project_type'])} |")
+    lines.append(f"| 언어 | {_cell(project.get('language', 'ko'))} |")
+
+    lead, groups = _profile_grouped(project, insights)
+    if lead:
+        lines += ["", f"> {lead}"]
+    for header, vals in groups:
         lines += ["", f"**{header}**", ""]
         lines += [f"- {v}" for v in vals]
 
     return "\n".join(lines).strip()
+
+
+def profile_data(project: dict, insights: list[dict]) -> dict:
+    lead, groups = _profile_grouped(project, insights)
+    return {
+        "meta": {
+            "name": project.get("name") or "",
+            "project_type": project.get("project_type") or "",
+            "language": project.get("language", "ko"),
+        },
+        "lead": lead,
+        "groups": [{"label": h, "items": v} for h, v in groups],
+    }
 
 
 def features_md(requirements: list[dict] | None) -> str:
@@ -231,6 +250,117 @@ def dod_md(done_criteria: dict | None, gaps: dict | None, checklist: dict | None
     return "\n".join(lines).strip()
 
 
+# ─── Per-section structured data (Phase 7a dashboard view) ─
+# These mirror the *_md builders' data sources but return the raw structures so
+# the frontend can render dashboard blocks (stat strips, tables, meters, bands)
+# instead of flattened markdown. The markdown export is unaffected.
+
+def features_data(requirements: list[dict] | None) -> dict:
+    reqs = requirements or []
+    order = {"must": 0, "should": 1, "could": 2}
+    rs = sorted(reqs, key=lambda r: order.get((r.get("priority") or "").lower(), 9))
+    items = [{
+        "priority": (r.get("priority") or "").upper(),
+        "text": r.get("text", ""),
+        "acceptance_criteria": r.get("acceptance_criteria") or "",
+    } for r in rs]
+    counts = {"MUST": 0, "SHOULD": 0, "COULD": 0}
+    for it in items:
+        if it["priority"] in counts:
+            counts[it["priority"]] += 1
+    return {"requirements": items, "counts": counts}
+
+
+def architecture_data(arch: dict | None) -> dict:
+    arch = arch or {}
+    comps = [{
+        "name": c.get("name", ""),
+        "technology": c.get("technology") or "",
+        "description": c.get("description") or "",
+    } for c in (arch.get("components") or [])]
+    return {
+        "components": comps,
+        "tech_stack": dict(arch.get("tech_stack") or {}),
+        "integration_notes": arch.get("integration_notes") or "",
+        "has_mermaid": bool(arch.get("mermaid_code")),
+    }
+
+
+def data_model_data(dm: dict | None) -> dict:
+    dm = dm or {}
+    entities = []
+    for e in dm.get("entities") or []:
+        entities.append({
+            "name": e.get("name", ""),
+            "description": e.get("description") or "",
+            "fields": [{
+                "name": f.get("name", ""),
+                "type": f.get("type") or "",
+                "constraints": f.get("constraints") or "",
+                "description": f.get("description") or "",
+            } for f in (e.get("fields") or [])],
+        })
+    return {"entities": entities, "relationships": list(dm.get("relationships") or [])}
+
+
+def ai_workflow_data(value) -> dict:
+    aw = _coerce_ai_workflow(value)
+    if not aw:
+        return {}
+    return {
+        "summary": aw.get("summary") or "",
+        "model": aw.get("model") or "",
+        "model_version": aw.get("model_version") or "",
+        "task": aw.get("task") or "",
+        "inputs": [{"name": i.get("name", ""), "description": i.get("description", "")}
+                   for i in (aw.get("inputs") or [])],
+        "outputs": [{"name": o.get("name", ""), "description": o.get("description", ""),
+                     "format": o.get("format") or ""} for o in (aw.get("outputs") or [])],
+        "fallbacks": [{"condition": f.get("condition", ""), "action": f.get("action", "")}
+                      for f in (aw.get("fallbacks") or [])],
+        "monitoring": list(aw.get("monitoring") or []),
+    }
+
+
+def evaluation_data(ev: dict | None) -> dict:
+    ev = ev or {}
+    dims = []
+    for d in ev.get("dimensions") or []:
+        if d.get("applicable") is False:
+            continue
+        dims.append({
+            "name": d.get("name", ""),
+            "level": (d.get("level") or "").lower(),
+            "score": d.get("score"),
+            "comment": d.get("comment") or "",
+        })
+    return {
+        "overall_level": (ev.get("overall_level") or "").lower(),
+        "recommendation": ev.get("recommendation") or "",
+        "dimensions": dims,
+    }
+
+
+def dod_data(done_criteria: dict | None, gaps: dict | None, checklist: dict | None) -> dict:
+    criteria = [{
+        "category": c.get("category") or "",
+        "text": c.get("text", ""),
+        "measurable": bool(c.get("measurable")),
+    } for c in ((done_criteria or {}).get("criteria") or [])]
+    gp = [{
+        "severity": (g.get("severity") or "").lower(),
+        "type": g.get("type") or "",
+        "issue": g.get("issue") or "",
+        "suggestion": g.get("suggestion") or "",
+    } for g in ((gaps or {}).get("gaps") or [])]
+    items = [{
+        "area": it.get("area") or "",
+        "task": it.get("task", ""),
+        "done": bool(it.get("done")),
+    } for it in ((checklist or {}).get("items") or [])]
+    return {"criteria": criteria, "gaps": gp, "checklist": items}
+
+
 # ─── Section assembly ─────────────────────────────────────
 
 def build_sections(
@@ -250,28 +380,40 @@ def build_sections(
     design = design or {}
     finalize = finalize or {}
 
+    arch = design.get("architecture")
+    dm = design.get("data_model")
+    aw = design.get("ai_workflow")
+    reqs = design.get("requirements")
+    ev = finalize.get("evaluation")
+    dc, gaps, checklist = finalize.get("done_criteria"), finalize.get("gaps"), finalize.get("checklist")
+
     specs = [
-        ("profile", "프로젝트 프로필", interview_done or bool(insights), profile_md(project, insights)),
-        ("features", "기능 정의", bool(design.get("requirements")), features_md(design.get("requirements"))),
-        ("architecture", "시스템 구조",
-         bool((design.get("architecture") or {}).get("components")), architecture_md(design.get("architecture"))),
-        ("data", "데이터 구조",
-         bool((design.get("data_model") or {}).get("entities")), data_model_md(design.get("data_model"))),
-        ("ai", "AI 흐름", bool(design.get("ai_workflow")), ai_workflow_md(design.get("ai_workflow"))),
-        ("evaluation", "정직한 평가", bool(finalize.get("evaluation")), evaluation_md(finalize.get("evaluation"))),
-        ("dod", "완료 조건",
-         bool(finalize.get("done_criteria") or finalize.get("gaps") or finalize.get("checklist")),
-         dod_md(finalize.get("done_criteria"), finalize.get("gaps"), finalize.get("checklist"))),
+        ("profile", "프로젝트 프로필", interview_done or bool(insights),
+         profile_md(project, insights), profile_data(project, insights)),
+        ("features", "기능 정의", bool(reqs),
+         features_md(reqs), features_data(reqs)),
+        ("architecture", "시스템 구조", bool((arch or {}).get("components")),
+         architecture_md(arch), architecture_data(arch)),
+        ("data", "데이터 구조", bool((dm or {}).get("entities")),
+         data_model_md(dm), data_model_data(dm)),
+        ("ai", "AI 흐름", bool(aw),
+         ai_workflow_md(aw), ai_workflow_data(aw)),
+        ("evaluation", "정직한 평가", bool(ev),
+         evaluation_md(ev), evaluation_data(ev)),
+        ("dod", "완료 조건", bool(dc or gaps or checklist),
+         dod_md(dc, gaps, checklist), dod_data(dc, gaps, checklist)),
     ]
 
     sections = []
-    for sid, title, present, content in specs:
+    for sid, title, present, content, data in specs:
         complete = bool(present and content and content.strip())
         sections.append({
             "id": sid,
             "title": title,
+            "kind": sid,
             "status": "complete" if complete else "empty",
             "content": content if complete else "",
+            "data": data if complete else None,
         })
     return sections
 

@@ -130,7 +130,7 @@ prequel/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── interview/         # Interview UI — LeftRail, ChatCenter, RightPanel, AiMark
-│   │   │   ├── viewer/            # Result viewer — card UI + Mermaid
+│   │   │   ├── viewer/            # Doc preview — dashboard blocks (blocks.tsx, DocSections.tsx)
 │   │   │   ├── projects/          # New project modal, delete confirm
 │   │   │   ├── admin/             # Admin dashboard
 │   │   │   ├── auth/              # Login / signup
@@ -165,7 +165,7 @@ prequel/
 │   ├── Phase4_InterviewPipeline.md # ✅ AI interview pipeline (core)
 │   ├── Phase5_Design.md           # ✅ Design phase (How) — 9-screen wizard
 │   ├── Phase6_EvalFinalize.md     # ✅ Evaluation & finalization
-│   ├── Phase7_DocGeneration.md    # 🔲 Document preview & generation
+│   ├── Phase7_DocGeneration.md    # 🟡 Document preview & generation (7a done, Mermaid 7b left)
 │   ├── Phase8_AdminFeatures.md    # 🔲 Admin & supporting features
 │   └── Phase9_IntegrationDeploy.md # 🔲 i18n, testing & deployment
 ├── .env.example
@@ -206,7 +206,7 @@ Payment integration is planned for MVP-2.
 | Phase 4: Interview Pipeline | ✅ Done | Backend API (6 endpoints), 3-column chat UI, type detection, pause/resume, design-decision UI — all 29 deliverables (test 28/28) |
 | Phase 5: Design (How) | ✅ Done | 9-screen guided wizard (requirements → architecture → data model → AI workflow), dynamic design pipeline, interview insights persistence |
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
-| Phase 7: Doc Preview & Generation | 🔲 Not Started | Progressive live document preview (doc v1 → v2 → v3), result viewer |
+| Phase 7: Doc Preview & Generation | 🟡 In Progress (7a) | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. 7b Mermaid SVG remaining. Note: progressive v1→v2→v3 generation dropped in favor of live assembly |
 | Phase 8: Admin & Supporting | 🔲 Not Started | Admin dashboard, announcements, token logging, rate limiting |
 | Phase 9: i18n, Testing & Deploy | 🔲 Not Started | Multilingual UI, landing page, E2E testing, Netlify + Railway deploy |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
@@ -251,7 +251,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-6 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization); Phase 7-9 (doc preview, admin, deploy) not started
+- **Early development** — Phase 1-6 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization); Phase 7 in progress (7a doc preview + Markdown export done, 7b Mermaid diagrams left); Phase 8-9 (admin, deploy) not started
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2

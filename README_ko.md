@@ -130,7 +130,7 @@ prequel/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── interview/         # 인터뷰 UI — LeftRail, ChatCenter, RightPanel, AiMark
-│   │   │   ├── viewer/            # 결과 뷰어 — 카드 UI + Mermaid
+│   │   │   ├── viewer/            # 문서 미리보기 — 대시보드 블록 (blocks.tsx, DocSections.tsx)
 │   │   │   ├── projects/          # 새 프로젝트 모달, 삭제 확인
 │   │   │   ├── admin/             # Admin 대시보드
 │   │   │   ├── auth/              # 로그인/회원가입
@@ -162,10 +162,12 @@ prequel/
 │   ├── Phase1_ProjectSetup.md     # ✅ 프로젝트 셋업 & 인프라
 │   ├── Phase2_AuthSystem.md       # ✅ 인증 & 사용자 시스템
 │   ├── Phase3_ProjectManagement.md # ✅ 프로젝트 CRUD & 쿼터
-│   ├── Phase4_InterviewPipeline.md # 🚧 AI 인터뷰 파이프라인 (핵심)
-│   ├── Phase5_DocGeneration.md    # 🔲 문서 생성 & 결과 뷰어
-│   ├── Phase6_AdminFeatures.md    # 🔲 Admin & 부가 기능
-│   └── Phase7_IntegrationDeploy.md # 🔲 다국어, 테스트 & 배포
+│   ├── Phase4_InterviewPipeline.md # ✅ AI 인터뷰 파이프라인 (핵심)
+│   ├── Phase5_Design.md           # ✅ 설계 단계 (How) — 9화면 위저드
+│   ├── Phase6_EvalFinalize.md     # ✅ 평가 & 마무리
+│   ├── Phase7_DocGeneration.md    # 🟡 문서 미리보기 & 생성 (7a 완료, Mermaid 7b 남음)
+│   ├── Phase8_AdminFeatures.md    # 🔲 Admin & 부가 기능
+│   └── Phase9_IntegrationDeploy.md # 🔲 다국어, 테스트 & 배포
 ├── .env.example
 └── README.md
 ```
@@ -201,10 +203,12 @@ prequel/
 | Phase 1: 프로젝트 셋업 | ✅ 완료 | FastAPI/React 스캐폴드, Supabase 6 테이블 + RLS, Alembic, 하네스 동기화 |
 | Phase 2: 인증 시스템 | ✅ 완료 | OAuth (Google/GitHub), JWT 미들웨어, RBAC, 로그인/랜딩 페이지 (ui-reference), 슬레이트 블루 디자인 시스템 |
 | Phase 3: 프로젝트 관리 | ✅ 완료 | 프로젝트 CRUD API, 무료 쿼터 검증, 내 프로젝트 페이지 (스탯카드, 필터, 검색, 테이블), 생성 모달, 삭제 모달 |
-| Phase 4: 인터뷰 파이프라인 | 🚧 진행 중 | 백엔드 API 완료 (6개 엔드포인트), 채팅 UI 껍데기 완료, 프론트↔백 연결 대기 |
-| Phase 5: 문서 생성 | 🔲 미시작 | doc_engine, Mermaid 다이어그램, 결과 뷰어 |
-| Phase 6: Admin 기능 | 🔲 미시작 | Admin 대시보드, 공지사항, Rate Limiting |
-| Phase 7: 통합 & 배포 | 🔲 미시작 | 다국어, E2E 테스트, Netlify + Railway 배포 |
+| Phase 4: 인터뷰 파이프라인 | ✅ 완료 | 백엔드 API (6개 엔드포인트), 3컬럼 채팅 UI, 유형 감지, 일시정지/이어하기, 설계 결정 UI — 산출물 29개 (테스트 28/28) |
+| Phase 5: 설계 (How) | ✅ 완료 | 9화면 가이드 위저드 (요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우), 동적 설계 파이프라인, 인터뷰 인사이트 영속화 |
+| Phase 6: 평가 & 마무리 | ✅ 완료 | `finalize.py` API (평가 → 완료조건 → 갭 → 체크리스트), 스킬 4종 재작성, 마이그레이션 008, doc v3 엔진, FinalizePage 카드 위저드 — E2E 테스트 대기 |
+| Phase 7: 문서 미리보기 & 생성 | 🟡 진행 중 (7a) | 읽을 때 조립 방식 (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2컬럼 TOC + 완성도 + Markdown 다운로드). **대시보드 요약 섹션 렌더링** — 섹션 `kind`별 빌딩블록(스탯 스트립 / 표+chip / 미터 / 레이어 밴드 / 콜아웃), markdown 내보내기 불변. 7b Mermaid SVG 남음. 참고: 점진적 v1→v2→v3 생성은 실시간 조립으로 폐기 |
+| Phase 8: Admin 기능 | 🔲 미시작 | Admin 대시보드, 공지사항, 토큰 로깅, Rate Limiting |
+| Phase 9: 다국어·테스트·배포 | 🔲 미시작 | 다국어 UI, 랜딩 페이지, E2E 테스트, Netlify + Railway 배포 |
 | MVP-2 (5개 기능) | 📋 예정 | 결제 + 토큰 추적 + 비용 미터 + 갤러리 + 모델 라우팅 |
 | v2 | 📋 Planned | 갭 분석, DOCX 내보내기, 공유 링크 |
 
@@ -247,7 +251,7 @@ prequel/
 
 ## 한계점
 
-- **초기 개발 단계** — Phase 1-3 완료, Phase 4 진행 중 (백엔드 API 완료, 채팅 UI 껍데기 완료, 프론트↔백 연결 대기)
+- **초기 개발 단계** — Phase 1-6 완료 (셋업, 인증, 프로젝트 관리, 인터뷰 파이프라인, 설계, 평가/마무리), Phase 7 진행 중 (7a 문서 미리보기 + Markdown 내보내기 완료, 7b Mermaid 다이어그램 남음), Phase 8-9 (Admin, 배포) 미시작
 - **데스크탑 전용** — 태블릿은 MVP-2, 모바일은 미지원
 - **언어 고정** — 프로젝트 언어(ko/en)는 생성 시 고정, 변경하려면 새 프로젝트 생성 필요
 - **MVP-1에 결제 없음** — Free 2회 소진 후 유료 전환 불가 (MVP-2까지)

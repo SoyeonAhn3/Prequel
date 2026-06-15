@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Download, FileText, Loader2 } from 'lucide-react'
 import { apiFetch, apiDownload } from '../lib/api'
-import Markdown from '../components/common/Markdown'
+import DocSectionBody from '../components/viewer/DocSections'
 
 // 7a (structured): the preview renders a server-assembled document model. Each
 // section's status comes straight from whether its backing step data exists —
-// no markdown parsing, no guessing which sections are present.
+// no markdown parsing, no guessing which sections are present. Section bodies
+// render as dashboard-summary blocks (DocSectionBody), keyed by `kind`.
 
 type SectionStatus = 'complete' | 'empty'
 
 interface DocSection {
   id: string
   title: string
+  kind: string
   status: SectionStatus
   content: string
+  data: any | null
 }
 
 interface DocModel {
@@ -129,7 +132,7 @@ export default function DocumentPreviewPage() {
   return (
     <div className="h-screen flex bg-bg">
       {/* LEFT — TOC + completeness */}
-      <aside className="w-[280px] border-r border-border bg-surface px-[18px] py-6 overflow-auto shrink-0">
+      <aside className="w-[308px] border-r border-border bg-surface px-[18px] py-6 overflow-auto shrink-0">
         <div className="text-[11px] font-mono text-text-subtle mb-1.5" style={{ letterSpacing: 0.4 }}>
           PROJECT
         </div>
@@ -226,7 +229,7 @@ export default function DocumentPreviewPage() {
 
         {/* Document body */}
         <div className="flex-1 overflow-auto">
-          <div className="max-w-[840px] mx-auto px-12 pt-10 pb-16">
+          <div className="max-w-[1210px] mx-auto px-12 pt-10 pb-16">
             {/* Header */}
             <div className="mb-9">
               <div className="flex items-center gap-2 text-[11.5px] text-text-subtle font-mono mb-3" style={{ letterSpacing: 0.4 }}>
@@ -286,7 +289,7 @@ export default function DocumentPreviewPage() {
                   </div>
 
                   {s.status === 'complete' ? (
-                    <Markdown>{s.content}</Markdown>
+                    <DocSectionBody section={s} />
                   ) : (
                     <div className="px-6 py-7 text-center bg-surface rounded-xl" style={{ border: '1px dashed var(--color-border)' }}>
                       <div className="text-[13px] font-semibold text-text mb-1">아직 작성되지 않았어요</div>
