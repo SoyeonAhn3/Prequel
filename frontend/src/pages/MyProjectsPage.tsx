@@ -305,6 +305,17 @@ export default function MyProjectsPage() {
                           {project.status === 'completed' ? '결과 보기' : '평가 이어하기'}
                         </button>
                       )}
+                      {project.status === 'completed' && (
+                        <button
+                          onClick={() => {
+                            setMenuOpenId(null)
+                            navigate(`/projects/${project.id}/document`)
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
+                        >
+                          문서 보기
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setMenuOpenId(null)

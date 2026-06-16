@@ -1,4 +1,5 @@
 import json
+import re
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -50,17 +51,37 @@ def _looks_undecided(model: str) -> bool:
 
 _UNDECIDED_MODEL = "추후 결정"
 
+# Detect the architecture component that IS the AI/ML model/service so its
+# technology can seed the AI-workflow model. Short latin tokens MUST match on a
+# word boundary — a bare "ai" substring matched "t[ai]lwind"/"r[ai]lway" and
+# wrongly cemented the frontend stack as the AI model (it picked the first hit).
+_AI_COMPONENT_RE = re.compile(r"\b(?:ai|ml|gpt|claude|llm)\b")
+_AI_COMPONENT_KO = ("모델", "추천", "분석", "임베딩")
+
+
+def _is_ai_component(blob: str) -> bool:
+    low = blob.lower()
+    return bool(_AI_COMPONENT_RE.search(low)) or any(k in low for k in _AI_COMPONENT_KO)
+
 
 def _coerce_ai_workflow(value):
     """Older rows stored ai_workflow as a JSON string; the schema expects an
     object. Parse it back (falling back to a summary-only object) so reads don't
-    fail validation."""
-    if isinstance(value, str):
+    fail validation. Some rows are double-encoded, so json.loads can yield a
+    str/list — and a few are double-encoded (json.dumps applied twice). Decode
+    repeatedly until we reach a dict so schema validation never sees a bare str."""
+    for _ in range(3):
+        if not isinstance(value, str):
+            break
         try:
-            return json.loads(value)
+            value = json.loads(value)
         except (json.JSONDecodeError, ValueError):
             return {"summary": value}
-    return value
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        return {"summary": value}
+    return {}
 
 
 def _get_or_create_session(project_id: str, user_id: str) -> dict:
@@ -645,8 +666,8 @@ async def generate_ai_workflow(
             f"- {c['name']} ({c['technology']}): {c['description']}" for c in arch.get("components", [])
         )
         for c in arch.get("components", []):
-            blob = f"{c.get('name', '')} {c.get('technology', '')} {c.get('role', '')}".lower()
-            if any(k in blob for k in ("ai", "ml", "gpt", "claude", "llm", "모델", "추천", "분석")):
+            blob = f"{c.get('name', '')} {c.get('technology', '')} {c.get('role', '')}"
+            if _is_ai_component(blob):
                 arch_ai_model = c.get("technology", "")
                 break
     if session.get("data_model"):

@@ -220,6 +220,16 @@ function AiFlowBlock({ data }: { data: any }) {
   const fallbacks: any[] = data.fallbacks ?? []
   const monitoring: string[] = data.monitoring ?? []
   const model = [data.model, data.model_version].filter(Boolean).join(' ')
+
+  // Legacy rows stored the whole AI workflow as one markdown blob in `summary`
+  // (no structured fields). Render it as a plain document instead of a dashboard
+  // with a misleading all-zero stat strip.
+  const hasStructured =
+    inputs.length || outputs.length || fallbacks.length || monitoring.length || model || data.task
+  if (!hasStructured) {
+    return <Markdown>{data.summary || ''}</Markdown>
+  }
+
   return (
     <>
       <StatStrip
@@ -236,7 +246,11 @@ function AiFlowBlock({ data }: { data: any }) {
           {data.task && <Chip tone="neutral">작업 · {data.task}</Chip>}
         </div>
       )}
-      {data.summary && <Callout label="개요">{data.summary}</Callout>}
+      {data.summary && (
+        <Callout label="개요">
+          <Markdown>{data.summary}</Markdown>
+        </Callout>
+      )}
       {inputs.length > 0 && (
         <>
           <SubLabel>입력</SubLabel>

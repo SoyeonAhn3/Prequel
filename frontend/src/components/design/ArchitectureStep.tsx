@@ -20,7 +20,7 @@ function getRoleColor(role: string) {
   if (/data|db|저장|데이터|supabase|postgres|mysql/.test(r))
     return { bg: 'bg-green-soft', text: 'text-green' }
   if (/ai|ml|claude|llm|추천|분석/.test(r))
-    return { bg: 'bg-red-soft', text: 'text-red' }
+    return { bg: 'bg-amber-soft', text: 'text-amber' }
   if (/외부|external|slack|알림|연동|third/.test(r))
     return { bg: 'bg-surface-alt', text: 'text-text-muted' }
   return { bg: 'bg-surface-alt', text: 'text-text-muted' }
@@ -35,7 +35,7 @@ function getCompColor(name: string, technology: string, role: string) {
   if (/data|db|저장|데이터|supabase|postgres|mysql/.test(combined))
     return { numBg: 'bg-green-soft', numText: 'text-green', roleBg: 'bg-green-soft', roleText: 'text-green' }
   if (/ai|ml|claude|llm|추천|분석/.test(combined))
-    return { numBg: 'bg-red-soft', numText: 'text-red', roleBg: 'bg-red-soft', roleText: 'text-red' }
+    return { numBg: 'bg-amber-soft', numText: 'text-amber', roleBg: 'bg-amber-soft', roleText: 'text-amber' }
   if (/외부|external|slack|알림|연동|third/.test(combined))
     return { numBg: 'bg-surface-alt', numText: 'text-text-muted', roleBg: 'bg-surface-alt', roleText: 'text-text-muted' }
   return { numBg: 'bg-surface-alt', numText: 'text-text-muted', roleBg: 'bg-surface-alt', roleText: 'text-text-muted' }
@@ -284,20 +284,15 @@ function DynamicArchDiagram({ components }: { components: ArchComponent[] }) {
           const bx = b.cx - BOX_W / 2
           const by = b.cy - BOX_H / 2
           const name = b.comp.name.length > 16 ? b.comp.name.slice(0, 15) + '…' : b.comp.name
-          const tech = b.comp.technology?.length > 18 ? b.comp.technology.slice(0, 17) + '…' : b.comp.technology
+          const role = b.comp.role.length > 18 ? b.comp.role.slice(0, 17) + '…' : b.comp.role
           return (
             <g key={i} transform={`translate(${bx} ${by})`}>
               <rect width={BOX_W} height={BOX_H} rx="10" fill={col.fill} stroke={col.stroke} />
-              <text x={BOX_W / 2} y={22} fontSize="11" fontWeight="700" textAnchor="middle" fill={col.titleFill} style={{ fontFamily: 'var(--font-sans)' }}>
+              <text x={BOX_W / 2} y={24} fontSize="11" fontWeight="700" textAnchor="middle" fill={col.titleFill} style={{ fontFamily: 'var(--font-sans)' }}>
                 {name}
               </text>
-              {tech && (
-                <text x={BOX_W / 2} y={38} fontSize="9" textAnchor="middle" fill={col.textFill} style={{ fontFamily: 'var(--font-mono)' }}>
-                  {tech}
-                </text>
-              )}
-              <text x={BOX_W / 2} y={tech ? 50 : 38} fontSize="9" textAnchor="middle" fill={col.textFill} style={{ fontFamily: 'var(--font-sans)' }}>
-                {b.comp.role.length > 18 ? b.comp.role.slice(0, 17) + '…' : b.comp.role}
+              <text x={BOX_W / 2} y={40} fontSize="9" textAnchor="middle" fill={col.textFill} style={{ fontFamily: 'var(--font-sans)' }}>
+                {role}
               </text>
             </g>
           )

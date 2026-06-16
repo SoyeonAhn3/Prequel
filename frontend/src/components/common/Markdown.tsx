@@ -56,10 +56,25 @@ export default function Markdown({ children, className = '' }: MarkdownProps) {
           p: ({ children }) => (
             <p className="my-1.5 leading-relaxed">{children}</p>
           ),
-          code: ({ children }) => (
-            <code className="px-1.5 py-0.5 bg-surface-alt rounded text-[12px] font-mono text-accent-deep">
+          // Fenced/indented code blocks (incl. ASCII diagrams) come through as
+          // <pre><code>. react-markdown v10 dropped the `inline` prop, so detect
+          // a block by its language class or a multi-line body; only inline code
+          // gets the pill styling. Block layout/whitespace is owned by <pre>.
+          code: ({ className, children }) => {
+            const isBlock =
+              /language-/.test(className || '') || String(children).includes('\n')
+            return isBlock ? (
+              <code className="font-mono text-[12px] text-text whitespace-pre">{children}</code>
+            ) : (
+              <code className="px-1.5 py-0.5 bg-surface-alt rounded text-[12px] font-mono text-accent-deep">
+                {children}
+              </code>
+            )
+          },
+          pre: ({ children }) => (
+            <pre className="my-2 overflow-x-auto rounded-lg border border-border bg-surface-alt p-3 text-[12px] leading-relaxed whitespace-pre">
               {children}
-            </code>
+            </pre>
           ),
           blockquote: ({ children }) => (
             <blockquote className="border-l-2 border-accent pl-3 my-2 text-text-muted italic">

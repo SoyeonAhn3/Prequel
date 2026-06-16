@@ -11,13 +11,22 @@ import re
 
 
 def _coerce_ai_workflow(value):
-    """ai_workflow is a dict, but some legacy rows stored it as a JSON string."""
-    if isinstance(value, str):
+    """ai_workflow should be a dict, but some legacy rows stored it as a JSON
+    string — and a few are double-encoded (json.dumps applied twice), so one
+    decode yields a str that is itself a JSON object. Decode repeatedly until we
+    reach a dict (or can't), so downstream .get() calls are always safe."""
+    for _ in range(3):
+        if not isinstance(value, str):
+            break
         try:
-            return json.loads(value)
+            value = json.loads(value)
         except (json.JSONDecodeError, ValueError):
             return {"summary": value}
-    return value if isinstance(value, dict) else {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        return {"summary": value}
+    return {}
 
 
 def _cell(value) -> str:
