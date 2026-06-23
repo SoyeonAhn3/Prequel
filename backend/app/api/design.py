@@ -11,6 +11,7 @@ from app.api._shared import (
     pick_canonical_session,
 )
 from app.core.claude_client import chat
+from app.core.usage import record_token_usage
 from app.core.harness_loader import load_skill
 from app.core.supabase import get_supabase
 from app.middleware.auth import get_current_user
@@ -246,6 +247,7 @@ async def generate_requirements(
     session["requirements"] = requirements
     session["current_step"] = "requirements"
 
+    record_token_usage(user["id"], body.project_id, usage)
     logger.info(
         "requirements_generated",
         project_id=body.project_id,
@@ -400,6 +402,7 @@ async def generate_arch_templates(
         "arch_templates": templates,
     }).eq("id", session["id"]).execute()
 
+    record_token_usage(user["id"], body.project_id, usage)
     logger.info(
         "arch_templates_generated",
         project_id=body.project_id,
@@ -489,6 +492,7 @@ async def generate_architecture(
     session["architecture"] = architecture
     session["current_step"] = "architecture"
 
+    record_token_usage(user["id"], body.project_id, usage)
     logger.info(
         "architecture_generated",
         project_id=body.project_id,
@@ -591,6 +595,7 @@ async def generate_data_model(
     session["data_model"] = data_model
     session["current_step"] = "data-model"
 
+    record_token_usage(user["id"], body.project_id, usage)
     logger.info(
         "data_model_generated",
         project_id=body.project_id,
@@ -731,6 +736,7 @@ async def generate_ai_workflow(
     session["current_step"] = "ai-workflow"
     session["status"] = "completed"
 
+    record_token_usage(user["id"], body.project_id, usage)
     logger.info(
         "ai_workflow_generated",
         project_id=body.project_id,

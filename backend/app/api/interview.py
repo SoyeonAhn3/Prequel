@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.supabase import get_supabase
 from app.core.claude_client import chat
+from app.core.usage import record_token_usage
 from app.core.prompt_manager import (
     INTERVIEW_STEPS,
     build_system_prompt,
@@ -264,6 +265,7 @@ async def start_interview(
     session = result.data[0]
     session["_insights"] = insights
     _save_session(session["id"], {"_insights": insights})
+    record_token_usage(user["id"], body.project_id, usage, session_id=session["id"])
 
     if project.get("project_type") is None and parsed.get("insights"):
         type_insight = next(
@@ -382,6 +384,7 @@ async def submit_answer(
     session["_insights"] = all_insights
     session["token_used"] = total_tokens
 
+    record_token_usage(user["id"], session["project_id"], usage, session_id=body.session_id)
     logger.info(
         "answer_submitted",
         session_id=body.session_id,

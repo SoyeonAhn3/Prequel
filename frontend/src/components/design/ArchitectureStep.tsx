@@ -11,21 +11,6 @@ interface ArchitectureStepProps {
   onLoadTemplates: () => void
 }
 
-function getRoleColor(role: string) {
-  const r = role.toLowerCase()
-  if (/front|화면|ui|웹|react|next|vue/.test(r))
-    return { bg: 'bg-accent-soft', text: 'text-accent' }
-  if (/back|서버|api|server|fastapi|node|python/.test(r))
-    return { bg: 'bg-amber-soft', text: 'text-amber' }
-  if (/data|db|저장|데이터|supabase|postgres|mysql/.test(r))
-    return { bg: 'bg-green-soft', text: 'text-green' }
-  if (/ai|ml|claude|llm|추천|분석/.test(r))
-    return { bg: 'bg-amber-soft', text: 'text-amber' }
-  if (/외부|external|slack|알림|연동|third/.test(r))
-    return { bg: 'bg-surface-alt', text: 'text-text-muted' }
-  return { bg: 'bg-surface-alt', text: 'text-text-muted' }
-}
-
 function getCompColor(name: string, technology: string, role: string) {
   const combined = `${name} ${technology} ${role}`.toLowerCase()
   if (/front|화면|ui|웹|react|next|vue/.test(combined))
@@ -214,7 +199,7 @@ function DynamicArchDiagram({ components }: { components: ArchComponent[] }) {
 
   const colX: number[] = []
   let x = PADDING
-  for (const layer of orderedLayers) {
+  for (let i = 0; i < orderedLayers.length; i++) {
     colX.push(x)
     x += BOX_W + COL_GAP
   }

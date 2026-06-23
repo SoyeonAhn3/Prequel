@@ -347,7 +347,6 @@ export default function DesignPage() {
   const currentStepDef = DESIGN_STEPS.find((s) => s.id === screen.stepId)!
   const header = STEP_HEADERS[screen.stepId]
   const isFirstStep = DESIGN_STEPS[0].id === screen.stepId
-  const isLastStep = DESIGN_STEPS[DESIGN_STEPS.length - 1].id === screen.stepId
   const currentStepIdx = DESIGN_STEPS.findIndex((s) => s.id === screen.stepId)
   const totalQ = DESIGN_STEPS.length + 1
   const currentQ = currentStepIdx + 1

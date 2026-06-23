@@ -67,7 +67,7 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
     const newEntity: DataEntity = {
       name: name.trim(),
       description: '',
-      fields: [{ name: 'id', type: 'uuid', constraints: 'PK' }],
+      fields: [{ name: 'id', type: 'uuid', description: '', constraints: 'PK' }],
     }
     const updated = {
       ...session,
@@ -84,7 +84,7 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
     const constraints = nullable ? '' : 'NOT_NULL'
     const entities = dataModel.entities.map((e, i) => {
       if (i !== entityIdx) return e
-      return { ...e, fields: [...e.fields, { name: fieldName.trim(), type: fieldType || 'text', constraints }] }
+      return { ...e, fields: [...e.fields, { name: fieldName.trim(), type: fieldType || 'text', description: '', constraints }] }
     })
     const updated = {
       ...session,

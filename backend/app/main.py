@@ -11,6 +11,7 @@ from app.api.interview import router as interview_router
 from app.api.design import router as design_router
 from app.api.finalize import router as finalize_router
 from app.api.export import router as export_router
+from app.api.announcements import router as announcements_router
 
 structlog.configure(
     processors=[
@@ -57,6 +58,7 @@ app.include_router(interview_router)
 app.include_router(design_router)
 app.include_router(finalize_router)
 app.include_router(export_router)
+app.include_router(announcements_router)
 
 
 @app.get("/health")

@@ -6,6 +6,8 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import MyProjectsPage from './pages/MyProjectsPage'
+import NoticesPage from './pages/NoticesPage'
+import AdminPage from './pages/AdminPage'
 import InterviewPage from './pages/InterviewPage'
 import DesignPage from './pages/DesignPage'
 import FinalizePage from './pages/FinalizePage'
@@ -25,6 +27,8 @@ function App() {
           <Route element={<AuthGuard />}>
             <Route element={<Layout />}>
               <Route path="/projects" element={<MyProjectsPage />} />
+              <Route path="/notices" element={<NoticesPage />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Route>
             <Route path="/projects/:projectId/interview" element={<InterviewPage />} />
             <Route path="/projects/:projectId/design" element={<DesignPage />} />

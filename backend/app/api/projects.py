@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import settings
 from app.core.doc_engine import generate_kickoff_document
+from app.core.usage import record_token_usage
 from app.core.supabase import get_supabase
 from app.middleware.auth import get_current_user
 from app.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate, DesignDecisionRequest
@@ -213,6 +214,7 @@ async def generate_doc(
 
     sb.table("projects").update({"kickoff_doc": doc_text}).eq("id", project_id).execute()
 
+    record_token_usage(user["id"], project_id, usage)
     logger.info(
         "kickoff_doc_generated",
         project_id=project_id,

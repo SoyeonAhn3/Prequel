@@ -17,6 +17,7 @@ from app.api._shared import (
     pick_canonical_session,
 )
 from app.core.claude_client import chat
+from app.core.usage import record_token_usage
 from app.core.doc_engine import generate_final_document
 from app.core.harness_loader import load_skill
 from app.core.supabase import get_supabase
@@ -152,6 +153,7 @@ def _finalize_complete(sb, project: dict, project_id: str, session: dict) -> Non
     ).eq("id", session["id"]).execute()
     session["status"] = "completed"
 
+    record_token_usage(project["user_id"], project_id, usage)
     logger.info(
         "finalize_completed",
         project_id=project_id,
@@ -195,6 +197,7 @@ def _generate(step: str, body: FinalizeGenerateRequest, user: dict) -> FinalizeS
     if step == "checklist":
         _finalize_complete(sb, project, body.project_id, session)
 
+    record_token_usage(user["id"], body.project_id, usage)
     logger.info(
         "finalize_step_generated",
         step=step,

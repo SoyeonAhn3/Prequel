@@ -60,7 +60,7 @@ export default function TopBar() {
 
       {/* Nav tabs */}
       <nav className="flex gap-1">
-        {NAV_TABS.map((t) => {
+        {[...NAV_TABS, ...(user?.role === 'admin' ? [{ label: '관리자', path: '/admin' }] : [])].map((t) => {
           const isActive = activePath.startsWith(t.path)
           return (
             <Link

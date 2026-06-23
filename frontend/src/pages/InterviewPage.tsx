@@ -134,7 +134,7 @@ export default function InterviewPage() {
   const [decidingDesign, setDecidingDesign] = useState(false)
 
   const startTimeRef = useRef(Date.now())
-  const timerRef = useRef<ReturnType<typeof setInterval>>()
+  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const answerCountRef = useRef(0)
   const lastActivityRef = useRef(Date.now())
   const typeConfirmedRef = useRef(false)
