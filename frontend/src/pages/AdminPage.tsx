@@ -7,12 +7,13 @@ import {
   getAdminStats,
   listAdminUsers,
   listActivityLogs,
+  getTokenUsage,
   suspendUser,
   unsuspendUser,
   deleteUser,
   restoreUser,
 } from '../lib/admin'
-import type { AdminStats, AdminUser, ActivityLog } from '../lib/admin'
+import type { AdminStats, AdminUser, ActivityLog, TokenUsageStats } from '../lib/admin'
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -44,6 +45,74 @@ function planTone(plan: string): 'accent' | 'amber' | 'neutral' {
   return 'neutral'
 }
 
+const USAGE_SEGMENTS = [
+  { key: 'input', label: 'input', cls: 'bg-accent' },
+  { key: 'output', label: 'output', cls: 'bg-green' },
+  { key: 'cache_creation', label: 'cache_creation', cls: 'bg-amber' },
+  { key: 'cache_read', label: 'cache_read', cls: 'bg-text-muted' },
+] as const
+
+function mmdd(iso: string) {
+  const [, m, d] = iso.split('-')
+  return `${parseInt(m, 10)}/${parseInt(d, 10)}`
+}
+
+function TokenUsageChart({ data }: { data: TokenUsageStats }) {
+  const max = Math.max(1, ...data.series.map((d) => d.total))
+  const step = Math.max(1, Math.ceil(data.series.length / 7))
+  const lowCache = data.cache_read_pct < 30
+
+  return (
+    <>
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-text-muted">
+        {USAGE_SEGMENTS.map((s) => (
+          <span key={s.key} className="flex items-center gap-1">
+            <span className={`inline-block w-2.5 h-2.5 rounded-sm ${s.cls}`} />
+            {s.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Stacked bars */}
+      <div className="flex items-end gap-1 h-44">
+        {data.series.map((d) => (
+          <div
+            key={d.date}
+            className="flex-1 min-w-0 flex flex-col-reverse rounded-sm overflow-hidden"
+            style={{ height: `${(d.total / max) * 100}%` }}
+            title={`${mmdd(d.date)} · 총 ${formatNum(d.total)} (in ${formatNum(d.input)} / out ${formatNum(d.output)} / 캐시생성 ${formatNum(d.cache_creation)} / 캐시읽기 ${formatNum(d.cache_read)})`}
+          >
+            {USAGE_SEGMENTS.map((s) => (
+              <div
+                key={s.key}
+                className={s.cls}
+                style={{ height: d.total ? `${(d[s.key] / d.total) * 100}%` : '0%' }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* X-axis labels */}
+      <div className="flex gap-1 mt-1.5">
+        {data.series.map((d, i) => (
+          <div key={d.date} className="flex-1 min-w-0 text-center text-[10px] text-text-subtle font-mono">
+            {i % step === 0 ? mmdd(d.date) : ''}
+          </div>
+        ))}
+      </div>
+
+      {/* Summary */}
+      <div className="mt-3 text-xs text-text-muted">
+        총 <span className="font-semibold text-text">{formatNum(data.totals.total)}</span> 토큰 · 캐시읽기{' '}
+        <span className={lowCache ? 'text-amber font-semibold' : 'text-text'}>{data.cache_read_pct}%</span>
+        {lowCache && <span className="text-amber"> ⚠ 낮음 (BL-003)</span>}
+      </div>
+    </>
+  )
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuthContext()
 
@@ -54,6 +123,8 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [usage, setUsage] = useState<TokenUsageStats | null>(null)
+  const [usageDays, setUsageDays] = useState(14)
 
   async function load() {
     setLoading(true)
@@ -77,6 +148,13 @@ export default function AdminPage() {
   useEffect(() => {
     if (user?.role === 'admin') load()
   }, [user?.role])
+
+  // 토큰 사용량 차트는 별도 로드 — 기간 토글 시 차트만 다시 가져온다.
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      getTokenUsage(usageDays).then(setUsage).catch(() => setUsage(null))
+    }
+  }, [user?.role, usageDays])
 
   // 라우트 가드: 관리자가 아니면 내 프로젝트로.
   if (!authLoading && user && user.role !== 'admin') {
@@ -137,6 +215,35 @@ export default function AdminPage() {
                 <div className="text-[11.5px] text-text-subtle font-mono mt-1">{k.sub}</div>
               </div>
             ))}
+          </div>
+
+          {/* Token usage chart */}
+          <div className="bg-surface border border-border rounded-xl p-5 mb-6">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[13.5px] font-semibold">토큰 사용량</span>
+              <div className="flex gap-1">
+                {[14, 30].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setUsageDays(d)}
+                    className={`px-2.5 py-1 rounded-md text-xs cursor-pointer ${
+                      usageDays === d ? 'bg-bg text-text font-medium' : 'text-text-muted hover:text-text'
+                    }`}
+                  >
+                    {d}일
+                  </button>
+                ))}
+              </div>
+            </div>
+            {usage ? (
+              usage.totals.total === 0 ? (
+                <p className="text-xs text-text-muted py-10 text-center">집계된 토큰 사용량이 없습니다.</p>
+              ) : (
+                <TokenUsageChart data={usage} />
+              )
+            ) : (
+              <p className="text-xs text-text-muted py-10 text-center">불러오는 중...</p>
+            )}
           </div>
 
           {/* User management table */}

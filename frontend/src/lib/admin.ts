@@ -56,3 +56,23 @@ export async function listActivityLogs(limit = 50): Promise<ActivityLog[]> {
   const res = await apiFetch<{ logs: ActivityLog[] }>(`/admin/logs?limit=${limit}`)
   return res.logs
 }
+
+export interface TokenUsageDay {
+  date: string
+  input: number
+  output: number
+  cache_read: number
+  cache_creation: number
+  total: number
+}
+
+export interface TokenUsageStats {
+  days: number
+  series: TokenUsageDay[]
+  totals: { input: number; output: number; cache_read: number; cache_creation: number; total: number }
+  cache_read_pct: number
+}
+
+export async function getTokenUsage(days = 14): Promise<TokenUsageStats> {
+  return apiFetch<TokenUsageStats>(`/admin/token-usage?days=${days}`)
+}

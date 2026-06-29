@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import MyProjectsPage from './pages/MyProjectsPage'
 import NoticesPage from './pages/NoticesPage'
+import GuidePage from './pages/GuidePage'
 import AdminPage from './pages/AdminPage'
 import InterviewPage from './pages/InterviewPage'
 import DesignPage from './pages/DesignPage'
@@ -28,6 +29,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/projects" element={<MyProjectsPage />} />
               <Route path="/notices" element={<NoticesPage />} />
+              <Route path="/guide" element={<GuidePage />} />
               <Route path="/admin" element={<AdminPage />} />
             </Route>
             <Route path="/projects/:projectId/interview" element={<InterviewPage />} />

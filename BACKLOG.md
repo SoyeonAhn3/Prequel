@@ -53,3 +53,87 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 ### 해결 방향(택1)
 - (A) `backend/skills`를 단일 진실 공급원으로 확정하고 `sync_harness.py` 및 README의 동기화 서술 제거/수정.
 - (B) `.claude/skills`의 API용 변형을 별도 디렉터리로 정리하고 sync 대상을 그쪽으로 한정.
+
+---
+
+## BL-003 · 프롬프트 캐싱이 작동 안 함 (인터뷰 토큰 과소비) 🟡
+
+**상태**: 조사 완료·미착수 (2026-06-29). 코드 미수정.
+**발견일**: 2026-06-29
+**관련 영역**: `backend/app/core/prompt_manager.py`, `backend/app/api/interview.py`, `backend/app/core/claude_client.py` (부차: `design.py`, `doc_engine.py`)
+**대표 사례**: 새 프로젝트를 인터뷰 step4(데이터 소스)까지 진행 → 21회 호출·73,120 토큰. 모델 `claude-sonnet-4-6`. 비용 약 $0.31(≈430원).
+
+### 문제
+73.1K 토큰 분해 시 **cache_creation(13,268) > cache_read(5,952)** — 캐시를 *만들기만* 하고 거의 *못 읽음*. 즉 프롬프트 캐싱이 사실상 작동하지 않아 input 45,752 토큰(전체 63%)이 대부분 풀 가격으로 나감. 캐싱이 제대로 되면 이 입력의 상당 부분이 cache_read(입력단가의 0.1배)로 전환되어 흐름 비용이 체감상 절반 이하로 떨어져야 함. (절대 비용은 작으나, 사용자 스케일 시 누적 비효율.)
+
+> 캐싱 원리: 프롬프트는 **prefix 바이트 완전 일치**일 때만 캐시 재사용됨. breakpoint 앞부분이 1바이트라도 바뀌면 그 뒤 전부 무효화.
+
+### 근본 원인 (인과 사슬)
+**원인 ① (최대 원인) — 인터뷰 시스템 프롬프트의 캐시 블록 안에 매 턴 바뀌는 내용이 박힘.**
+- `prompt_manager.build_system_prompt`: `cache_control: ephemeral`이 `blocks[0]`(=`base`)에 붙음(`prompt_manager.py:131-137`). 그런데 `base` 안에 **누적되는 `insights`**(`:112-115`)와 `project_type`(`:109-110`)이 포함됨.
+- 답변마다 인사이트가 쌓여 `base` 텍스트가 매번 달라짐 → 캐시 prefix가 매 호출 무효화 → 매번 cache write, cross-call read = 0. → **`cache_creation > cache_read`의 직접 원인.**
+
+**원인 ② — 가장 큰 안정 콘텐츠(스킬 지시문)가 유일한 breakpoint 뒤에 있어 아예 캐시 안 됨.**
+- `step_content`(=`extract_step`로 뽑은 인터뷰 스킬 섹션)는 `blocks[1]`, 즉 캐시 breakpoint *뒤*에 위치(`:139-143`, cache_control 없음) → 절대 캐시되지 않음. 한 step 내 여러 턴에서 동일한데도 매번 풀 가격 재처리.
+
+**원인 ③ — 메시지(대화 이력)에 캐시 breakpoint 없음 + `compress_history`가 캐싱과 상충.**
+- `interview.py:335`의 `chat()` 호출은 messages에 cache_control을 붙이지 않음.
+- `compress_history`(`prompt_manager.py:43-62`, keep_recent=6)는 6턴 초과 시 오래된 메시지를 매번 1개 요약 메시지로 *재작성* → 메시지 prefix가 매 호출 달라짐 → 메시지 캐싱 원천 불가. (input 토큰은 줄지만 캐싱은 못 함 — 트레이드오프)
+
+**원인 ④ (구조 부차) — `base` 내부에 안정/휘발 콘텐츠가 섞임.**
+- `base` 순서: 규칙(안정) → project_name → project_type → insights(휘발) → 응답형식 JSON 스펙(안정). 안정 콘텐츠가 휘발 콘텐츠 양옆에 흩어져, breakpoint를 잘 둬도 안정부만 독립 캐시하기 어려움.
+
+**원인 ⑤ (캐싱 외 효율) — 호출 수 21 + 출력 형식 비대.**
+- 매 턴 JSON 객체(message+insights+example_answers+topics+importance) 출력, max_tokens=2048 → 출력 토큰 부풀음. step4까지 21회 호출(평균 3,500토큰/호출).
+
+**설계·문서 경로는 구조가 더 나음(영향 작음):**
+- `design.py:235` 등: `system=[스킬텍스트만]`(순수 안정), 휘발 내용은 user_message에 둠 → 구조 OK. 단 각 설계 단계는 **1회성(one-shot) 생성**이고 단계별 스킬이 달라 cross-call 캐시 효과는 작음(같은 단계 5분내 재생성 때만 도움).
+- `doc_engine.py:83`: 캐시 블록에 `생성일: {today}` 포함 → 날짜 바뀌면 무효화(경미). 문서 생성도 1회성이라 영향 작음.
+
+### 해결 방향
+**A. 인터뷰 시스템 프롬프트 재구조화 (핵심·최대 효과)** — `build_system_prompt`를 prefix 안정 순서로:
+  1. **캐시 블록 1** = 전 인터뷰 동안 불변인 것만: 역할 + 규칙 + 응답형식 JSON 스펙 + project_name + project_type. 여기에 `cache_control`.
+  2. **캐시 블록 2** = `step_content`(현재 단계 스킬 섹션). 여기에도 `cache_control`(2번째 breakpoint). → 한 step 내 모든 턴에서 read 적중.
+  3. **`insights`(누적)는 breakpoint 뒤** 별도 system 블록(캐시 X)으로 분리하거나 마지막 user 메시지로 이동 → 안정 prefix 보존.
+**B. 메시지 캐싱(선택)** — `compress_history` 재검토. 캐싱을 살리려면 압축 대신 마지막 assistant 턴 끝에 breakpoint를 두고 이력 유지 + 토큰이 정말 문제일 때만 더 큰 임계에서 압축. 트레이드오프 측정 후 결정.
+**C. 효과 검증** — 수정 후 동일 인터뷰 재현 → `response.usage`에서 **cache_read >> cache_creation** 및 풀가격 input 급감 확인. cache_read가 여전히 0이면 silent invalidator 잔존 → 두 호출의 렌더된 prompt 바이트 diff로 추적.
+**D. 부차** — design/doc는 현 구조 유지(영향 작음). 여력 시 `doc_engine`의 `생성일`만 캐시 블록 밖으로(경미 개선).
+
+### 완료 조건
+동일 step4 인터뷰 재현 시 캐시 적중률 `cache_read / (input + cache_read + cache_creation)` 유의미 상승 + 풀가격 input 토큰 대폭 감소. (Phase 8 S4/S5/S6와 독립된 최적화 항목.)
+
+> 갱신(2026-06-29): S4 토큰 차트가 캐시읽기 비율(<30% 시 "⚠ 낮음(BL-003)")을 표시 → 이 수정의 **측정 도구**로 활용. 수정 전후를 `/admin` 차트로 비교 가능.
+
+---
+
+## BL-004 · 개발 인증 우회 시 활동 로그 행위자가 항상 `dev@localhost` (정상 동작, 배포 시 검증) 🟢
+
+**상태**: 정상 동작 확인(2026-06-29) — 버그 아님. **실제 사용자 귀속 검증은 배포 시로 연기.** 사전 준비(rodion admin 승격) 완료.
+**발견일**: 2026-06-29
+**관련 영역**: `backend/app/middleware/auth.py`, `backend/app/core/activity.py`, `.env`(`DEV_BYPASS_AUTH`/`VITE_DEV_BYPASS_AUTH`), `users` 테이블
+**대표 사례**: 프론트에서 rodion(rodion45673@gmail.com)으로 로그인한 상태로 공지 삭제 → 활동 로그 actor가 `dev@localhost`로 기록됨.
+
+### 현상
+로그인 계정은 rodion인데 활동 로그의 행위자(actor_email)가 `dev@localhost`로 찍힘. 또한 role=user인 rodion이 관리자 화면·삭제 동작에 접근됨.
+
+### 원인 (정상 동작)
+- `.env`에 **`DEV_BYPASS_AUTH=true`(백엔드)·`VITE_DEV_BYPASS_AUTH=true`(프론트)** 가 켜져 있음.
+- `auth.py:get_current_user`의 첫 분기(`:44~45`): 우회 ON이면 **토큰을 검증하지 않고** `_DEV_MOCK_USER`(`dev@localhost`, role=admin)를 무조건 반환. → 누가 로그인했든 백엔드는 dev 사용자로 처리.
+- `record_activity`(`activity.py`)는 전달받은 actor를 그대로 기록할 뿐 → **코드 정상.** dev@localhost가 찍히는 건 우회 모드의 의도된 결과.
+- 프론트도 우회 ON이라 rodion(user)이 관리자 UI에 접근 가능했던 것(권한 버그 아님).
+
+### 운영 환경(우회 OFF)에서의 올바른 동작
+- `get_current_user`(`:47~78`)가 실제 Supabase 토큰 검증 → **실제 로그인 관리자**를 식별 → 로그에 진짜 이메일 기록.
+- 비-admin은 `require_admin`(`:82`)에서 **403**으로 차단 → admin 동작 자체 불가.
+
+### 사전 준비 (완료)
+- **rodion role을 user→admin으로 승격**(2026-06-29, `users` 테이블 직접 UPDATE, id `142c47ae-7f85-4a94-9de5-835355464689`). 배포 검증 시 rodion으로 admin 동작을 테스트할 수 있게 하기 위함. (불필요해지면 user로 원복 가능)
+
+### 배포 시 검증 체크리스트
+1. `.env`에서 `DEV_BYPASS_AUTH=false` + `VITE_DEV_BYPASS_AUTH=false`로 변경.
+2. 백엔드 수동 재시작 + 프론트 새로고침.
+3. rodion(현재 admin)으로 **실제 로그인** → 공지 작성/삭제 → 활동 로그에 `rodion45673@gmail.com`로 기록되는지 확인.
+4. 비-admin 계정으로 admin 동작 시도 → 403 차단 확인.
+5. (선택) 테스트 후 rodion을 user로 원복할지 검토.
+
+> 결론: 현재 로컬에서 모든 활동 로그가 `dev@localhost`로 나오는 것은 정상. 실제 귀속은 우회를 끈 배포 환경에서만 확인 가능.

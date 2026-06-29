@@ -77,6 +77,63 @@ async def list_logs(
     return {"logs": result.data}
 
 
+@router.get("/token-usage")
+async def token_usage_timeseries(
+    days: int = Query(14, ge=1, le=90),
+    _admin: dict = Depends(require_admin),
+):
+    """일별 토큰 사용량 시계열(캐시 포함). 집계는 /stats와 동일하게 앱에서 수행(MVP 규모)."""
+    sb = get_supabase()
+
+    # 구간: 오늘 포함 최근 N일 (UTC 기준).
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=days - 1)
+    cutoff = datetime(start.year, start.month, start.day, tzinfo=timezone.utc).isoformat()
+
+    rows = (
+        sb.table("token_usage")
+        .select("input_tokens, output_tokens, cache_read, cache_creation, created_at")
+        .gte("created_at", cutoff)
+        .execute()
+        .data
+    )
+
+    # 구간 내 모든 날짜를 0으로 초기화 → 빈 날도 연속 막대로 표시.
+    buckets: dict[str, dict] = {}
+    for i in range(days):
+        d = (start + timedelta(days=i)).isoformat()
+        buckets[d] = {"date": d, "input": 0, "output": 0, "cache_read": 0, "cache_creation": 0}
+
+    for r in rows:
+        d = (r.get("created_at") or "")[:10]
+        b = buckets.get(d)
+        if b is None:
+            continue
+        b["input"] += r.get("input_tokens") or 0
+        b["output"] += r.get("output_tokens") or 0
+        b["cache_read"] += r.get("cache_read") or 0
+        b["cache_creation"] += r.get("cache_creation") or 0
+
+    series = []
+    totals = {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0}
+    for d in sorted(buckets):
+        b = buckets[d]
+        b["total"] = b["input"] + b["output"] + b["cache_read"] + b["cache_creation"]
+        series.append(b)
+        for k in totals:
+            totals[k] += b[k]
+
+    grand_total = sum(totals.values())
+    cache_read_pct = round(totals["cache_read"] / grand_total * 100, 1) if grand_total else 0.0
+
+    return {
+        "days": days,
+        "series": series,
+        "totals": {**totals, "total": grand_total},
+        "cache_read_pct": cache_read_pct,
+    }
+
+
 @router.get("/users")
 async def list_users(
     offset: int = Query(0, ge=0),
