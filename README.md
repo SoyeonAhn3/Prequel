@@ -207,7 +207,7 @@ Payment integration is planned for MVP-2.
 | Phase 5: Design (How) | ✅ Done | 9-screen guided wizard (requirements → architecture → data model → AI workflow), dynamic design pipeline, interview insights persistence |
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
 | Phase 7: Doc Preview & Generation | 🟡 In Progress (7a) | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. 7b Mermaid SVG remaining. Note: progressive v1→v2→v3 generation dropped in favor of live assembly |
-| Phase 8: Admin & Supporting | 🔲 Not Started | Admin dashboard, announcements, token logging, rate limiting |
+| Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. Follow-ups logged: BL-003 (prompt caching), BL-004 (dev-bypass log attribution) |
 | Phase 9: i18n, Testing & Deploy | 🔲 Not Started | Multilingual UI, landing page, E2E testing, Netlify + Railway deploy |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
@@ -251,7 +251,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-6 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization); Phase 7 in progress (7a doc preview + Markdown export done, 7b Mermaid diagrams left); Phase 8-9 (admin, deploy) not started
+- **Early development** — Phase 1-6 and 8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, admin & supporting features); Phase 7 in progress (7a doc preview + Markdown export done, 7b Mermaid diagrams left); Phase 9 (i18n, testing, deploy) not started
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2

@@ -2,8 +2,12 @@ import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
+from app.core.ratelimit import limiter
 from app.api.users import router as users_router
 from app.api.admin import router as admin_router
 from app.api.projects import router as projects_router
@@ -42,6 +46,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# 레이트 리밋: limiter 등록 + 429 핸들러.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# 미들웨어 순서 주의: 나중에 add 한 것이 더 바깥(outermost).
+# SlowAPI를 먼저(안쪽), CORS를 나중에(바깥쪽) 추가해야 429 응답에도
+# CORS 헤더가 붙어 브라우저가 에러 본문을 읽을 수 있다.
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS.split(","),

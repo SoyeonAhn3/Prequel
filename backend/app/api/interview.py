@@ -2,10 +2,11 @@ import json
 from datetime import datetime, timezone
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.supabase import get_supabase
 from app.core.claude_client import chat
+from app.core.ratelimit import limiter
 from app.core.usage import record_token_usage
 from app.core.prompt_manager import (
     INTERVIEW_STEPS,
@@ -185,7 +186,9 @@ def _save_session(session_id: str, updates: dict):
 
 
 @router.post("/start", response_model=InterviewResponse)
+@limiter.limit("20/minute")
 async def start_interview(
+    request: Request,
     body: InterviewStartRequest,
     user: dict = Depends(get_current_user),
 ):
@@ -291,7 +294,9 @@ async def start_interview(
 
 
 @router.post("/answer", response_model=InterviewResponse)
+@limiter.limit("20/minute")
 async def submit_answer(
+    request: Request,
     body: InterviewAnswerRequest,
     user: dict = Depends(get_current_user),
 ):
