@@ -88,7 +88,13 @@ def build_system_prompt(
 
     lang_instruction = "한국어로 대화합니다." if language == "ko" else "Communicate in English."
 
-    base = (
+    # ── Cache block 1 · STABLE for the whole interview ──────────────────────
+    # Role + rules + project meta + response-format spec. None of this changes
+    # turn-to-turn, so it forms a byte-identical cache prefix that later calls
+    # can reuse (cache_read instead of full-price input). Volatile `insights`
+    # used to live in the middle of this block, which invalidated the cache
+    # every answer — they are now a separate uncached block at the end (BL-003).
+    stable = (
         f"당신은 Prequel의 AI 인터뷰어입니다. "
         f"프로젝트 킥오프 문서에 필요한 정보를 수집하기 위해 사용자에게 구조화된 질문을 합니다.\n\n"
         f"규칙:\n"
@@ -107,14 +113,9 @@ def build_system_prompt(
     )
 
     if project_type:
-        base += f"감지된 유형: {project_type}\n"
+        stable += f"감지된 유형: {project_type}\n"
 
-    if insights:
-        base += "\n수집된 정보:\n"
-        for ins in insights:
-            base += f"- {ins['label']}: {ins['value']}\n"
-
-    base += (
+    stable += (
         "\n응답 형식:\n"
         "반드시 아래 JSON 객체만 출력하세요. JSON 앞뒤에 어떤 텍스트도, 코드 펜스(```)도 붙이지 마세요.\n"
         '{\n'
@@ -131,15 +132,32 @@ def build_system_prompt(
     blocks = [
         {
             "type": "text",
-            "text": base,
+            "text": stable,
             "cache_control": {"type": "ephemeral"},
         },
     ]
 
+    # ── Cache block 2 · STABLE within a step ────────────────────────────────
+    # The current step's skill section is identical across every turn of that
+    # step. Giving it its own cache breakpoint means it is cached (previously it
+    # sat *after* the only breakpoint, so it was never cached at all — BL-003).
     if step_content:
         blocks.append({
             "type": "text",
             "text": f"\n현재 단계 지시사항:\n{step_content}",
+            "cache_control": {"type": "ephemeral"},
+        })
+
+    # ── Block 3 · VOLATILE (uncached) ───────────────────────────────────────
+    # Insights accumulate with every answer. Kept AFTER the cache breakpoints so
+    # the growing list never invalidates the stable prefix above.
+    if insights:
+        collected = "\n수집된 정보:\n"
+        for ins in insights:
+            collected += f"- {ins['label']}: {ins['value']}\n"
+        blocks.append({
+            "type": "text",
+            "text": collected,
         })
 
     return blocks

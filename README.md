@@ -30,8 +30,8 @@ User enters project idea
   → AI detects project type (1 of 7 categories)
     → Structured interview: common questions + type-specific questions
       → Progress bar tracks completion status
-        → Kickoff document generated (Markdown sections + Mermaid diagram)
-          → Result viewer: card UI + architecture diagram (SVG)
+        → Kickoff document generated (Markdown sections)
+          → Result viewer: dashboard-summary card UI
 ```
 
 **Pause & resume**: Sessions auto-save on every answer. Close the browser, come back later — pick up from the last question.
@@ -43,7 +43,6 @@ User enters project idea
 | React (Vite) | Frontend SPA | Lightweight, clear separation from backend, fast HMR |
 | TailwindCSS | Styling | Utility-first rapid prototyping, small bundle |
 | react-i18next | Multilingual (ko/en) | JSON key separation, runtime language switching |
-| Mermaid.js | Architecture diagrams | Open-source text-to-SVG, rendered in browser |
 | FastAPI | Backend API | Claude SDK Python-first, Pydantic validation, auto OpenAPI |
 | Supabase | DB + Auth + RLS | PostgreSQL + OAuth + Row-Level Security, all-in-one free tier |
 | Claude API | AI interview + doc generation | Reuses harness skill prompts, Prompt Caching (90% cost cut) |
@@ -56,7 +55,7 @@ User enters project idea
 |---|---|---|
 | Project idea (free text) | Type detection (7 categories) | Detected type + user confirmation |
 | User answers per question | Structured Q&A via skill prompts | Next question tailored to project type |
-| Full interview data | Document generation + diagram synthesis | Kickoff doc (Markdown) + Mermaid code |
+| Full interview data | Document generation | Kickoff doc (Markdown) |
 
 ### Prompt Architecture
 
@@ -151,11 +150,11 @@ prequel/
 │   │   ├── models/                # SQLAlchemy (6 tables)
 │   │   ├── schemas/               # Pydantic request/response
 │   │   └── middleware/            # Auth, Rate Limiting, CORS
-│   ├── skills/                    # Harness skill .md (build-time copy)
-│   ├── references/                # Harness reference files (build-time copy)
+│   ├── skills/                    # Runtime AI prompts (.md) — single source of truth
+│   ├── references/                # Reference files for prompts
 │   └── tests/
 ├── scripts/
-│   └── sync_harness.py            # Sync harness skills → backend/
+│   └── sync_harness.py            # ⛔ Deprecated (BL-002) — backend/skills is the source of truth
 ├── supabase/
 │   └── migrations/                # SQL migration files (001~005)
 ├── Phase/
@@ -165,8 +164,8 @@ prequel/
 │   ├── Phase4_InterviewPipeline.md # ✅ AI interview pipeline (core)
 │   ├── Phase5_Design.md           # ✅ Design phase (How) — 9-screen wizard
 │   ├── Phase6_EvalFinalize.md     # ✅ Evaluation & finalization
-│   ├── Phase7_DocGeneration.md    # 🟡 Document preview & generation (7a done, Mermaid 7b left)
-│   ├── Phase8_AdminFeatures.md    # 🔲 Admin & supporting features
+│   ├── Phase7_DocGeneration.md    # ✅ Document preview & generation (Markdown export; Mermaid out of scope)
+│   ├── Phase8_AdminFeatures.md    # ✅ Admin & supporting features
 │   └── Phase9_IntegrationDeploy.md # 🔲 i18n, testing & deployment
 ├── .env.example
 └── README.md
@@ -180,7 +179,7 @@ prequel/
 | 2 | Login / Signup | OAuth (Google + GitHub) |
 | 3 | My Projects | Project list + management |
 | 4 | Interview (Chat UI) | Core — structured Q&A with progress bar |
-| 5 | Result Viewer | Kickoff document cards + Mermaid diagram |
+| 5 | Result Viewer | Kickoff document dashboard-summary cards |
 | 6 | Admin Dashboard | User/token/cost management + announcements |
 | 7 | User Guide | How-to + FAQ |
 | 8 | Announcements | Updates + patch notes |
@@ -206,7 +205,7 @@ Payment integration is planned for MVP-2.
 | Phase 4: Interview Pipeline | ✅ Done | Backend API (6 endpoints), 3-column chat UI, type detection, pause/resume, design-decision UI — all 29 deliverables (test 28/28) |
 | Phase 5: Design (How) | ✅ Done | 9-screen guided wizard (requirements → architecture → data model → AI workflow), dynamic design pipeline, interview insights persistence |
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
-| Phase 7: Doc Preview & Generation | 🟡 In Progress (7a) | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. 7b Mermaid SVG remaining. Note: progressive v1→v2→v3 generation dropped in favor of live assembly |
+| Phase 7: Doc Preview & Generation | ✅ Done | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. Note: progressive v1→v2→v3 generation dropped in favor of live assembly; **Mermaid diagram rendering removed from scope** |
 | Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. Follow-ups logged: BL-003 (prompt caching), BL-004 (dev-bypass log attribution) |
 | Phase 9: i18n, Testing & Deploy | 🔲 Not Started | Multilingual UI, landing page, E2E testing, Netlify + Railway deploy |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
@@ -216,7 +215,7 @@ Payment integration is planned for MVP-2.
 
 | Phase | Status | Link |
 |---|---|---|
-| Phase 3: Project Management | 🟡 Partial (2/12 Pass) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
+| Phase 3: Project Management | ✅ Pass (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 
 ## Roadmap
 
@@ -227,7 +226,6 @@ Payment integration is planned for MVP-2.
 | AI structured interview | Chat-based Q&A using harness skill prompts |
 | Project type detection | Auto-detect 1 of 7 project types from user input |
 | Kickoff doc generation | Markdown document with section-based card UI preview |
-| Architecture diagram | Auto-generated Mermaid.js diagram, SVG rendering |
 | OAuth + Admin | Google/GitHub login, admin dashboard for user/announcement management |
 | Multilingual UI | Korean + English, fixed per project at creation |
 | Progress visualization | Step progress bar showing interview completion |
@@ -251,11 +249,11 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-6 and 8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, admin & supporting features); Phase 7 in progress (7a doc preview + Markdown export done, 7b Mermaid diagrams left); Phase 9 (i18n, testing, deploy) not started
+- **Early development** — Phase 1-8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, doc preview + Markdown export, admin & supporting features); Phase 9 (i18n, testing, deploy) not started
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2
-- **Harness sync** — Skill files must be manually synced via `sync_harness.py` when updated
+- **Runtime skills** — `backend/skills/` is the single source of truth for AI prompts; edit those files directly. `.claude/skills/` is the separate dev harness (CLI) and is not synced to runtime
 
 ---
 

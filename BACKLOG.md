@@ -4,9 +4,9 @@
 
 ---
 
-## BL-001 · 설계 단계가 "미확정 AI 모델"을 임의로 확정함 🟡
+## BL-001 · 설계 단계가 "미확정 AI 모델"을 임의로 확정함 ✅
 
-**상태**: 코드·프롬프트 수정 완료 (2026-06-15). 신규 생성부터 적용. 기존 데이터 보정은 미결.
+**상태**: ✅ 완료 (2026-07-01). 코드·프롬프트 수정 완료(2026-06-15), 신규 생성부터 정상 적용. 기존 오염 데이터 1회성 보정은 **하지 않기로 결정** → 종료.
 **발견일**: 2026-06-15
 **관련 영역**: `backend/app/api/design.py`, `backend/skills/design-architecture.md`, `backend/skills/design-ai-workflow.md`
 **대표 사례**: "등기부등본 AI 해석기" 프로젝트 → AI 흐름에 `모델 · OpenAI GPT-4 / gpt-4o`로 표기됨
@@ -33,14 +33,14 @@
 
 ⚠️ **`sync_harness.py` 실행 금지** — `.claude/skills/*/SKILL.md`는 런타임용 API 프롬프트와 **완전히 다른 옛 CLI 워크플로우 버전**이라, 동기화하면 런타임 프롬프트를 덮어써 망가뜨림. 런타임 파일(`backend/skills/*.md`)만 직접 수정함. (→ BL-002 참고)
 
-### 미결정 사항
-- 기존 "등기부등본 AI 해석기" 프로젝트 데이터(`design_sessions.ai_workflow.model = "OpenAI GPT-4"`, 아키텍처 AI 컴포넌트 technology): 근본 수정은 신규 생성부터 적용됨. 기존 건은 (1) 설계 재생성 또는 (2) 1회 수동 보정 필요 — 진행 여부 결정 대기.
+### 미결정 사항 → ✅ 종결 (2026-07-01)
+- 기존 "등기부등본 AI 해석기" 프로젝트 데이터(`design_sessions.ai_workflow.model = "OpenAI GPT-4"`, 아키텍처 AI 컴포넌트 technology)의 1회성 보정은 **하지 않기로 결정**. 근본 수정이 신규 생성부터 적용되므로, 기존 오염 건은 사용자가 해당 프로젝트 설계를 재생성하면 자연 교정됨. 별도 마이그레이션/수동 보정 없이 BL-001 종료.
 
 ---
 
-## BL-002 · `.claude/skills`와 `backend/skills` 불일치 (sync_harness 무용/위험) 🟡
+## BL-002 · `.claude/skills`와 `backend/skills` 불일치 (sync_harness 무용/위험) ✅
 
-**상태**: 발견 (2026-06-15)
+**상태**: ✅ 완료 (2026-07-01, 방향 A) — `sync_harness.py` 무력화 + 문서 정정.
 **관련 영역**: `scripts/sync_harness.py`, `.claude/skills/*`, `backend/skills/*`, README
 
 ### 문제
@@ -51,14 +51,36 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 즉 런타임 프롬프트는 `.claude/skills`에서 생성된 게 아니라 별도 수기 관리되어 디버전됨. `sync_harness.py`를 돌리면 런타임 프롬프트가 옛 CLI 버전으로 덮여 **AI 인터뷰/설계가 깨짐**.
 
 ### 해결 방향(택1)
-- (A) `backend/skills`를 단일 진실 공급원으로 확정하고 `sync_harness.py` 및 README의 동기화 서술 제거/수정.
+- (A) `backend/skills`를 단일 진실 공급원으로 확정하고 `sync_harness.py` 및 README의 동기화 서술 제거/수정. ← **채택**
 - (B) `.claude/skills`의 API용 변형을 별도 디렉터리로 정리하고 sync 대상을 그쪽으로 한정.
+
+### 적용한 수정 (2026-07-01, 방향 A)
+- **`scripts/sync_harness.py`를 실행 거부 스텁으로 교체.** 이제 실행하면 경고 출력 후 `exit(1)` — backend/skills 삭제·덮어쓰기 불가. (삭제 대신 스텁으로 남겨 폐기 사유 기록 + 재생성 방지.)
+- **코드 전수 점검으로 확인된 실제 피해**: sync는 `backend/skills/*` 전체를 `unlink` 후 `.claude` 버전으로 복사. 특히 `backend/skills/kickoff-document.md`는 `.claude`에 대응 폴더가 없어 **삭제만 되고 복구 안 됨** → `doc_engine.load_skill("kickoff-document")` 즉사. (인터뷰·설계·마무리 프롬프트도 옛 CLI 버전으로 덮여 깨짐.)
+- **원본 검증**: `backend/skills` 18개 + `backend/references` 7개 모두 git 추적 중(gitignore 무관) → 단일 원본으로 안전.
+- **문서 정정**: README(영/한)의 프로젝트 구조 주석(`backend/skills`·`references`·`sync_harness.py`)과 한계점의 "하네스 동기화" 항목을 "backend/skills가 단일 원본·직접 수정 / `.claude/skills`는 별도 개발용 하네스"로 수정.
+- **결정 확정**: 런타임은 `backend/skills/`의 스킬만 사용. `.claude/skills/`(개발용 하네스)는 런타임과 무관하며 손대지 않음.
 
 ---
 
 ## BL-003 · 프롬프트 캐싱이 작동 안 함 (인터뷰 토큰 과소비) 🟡
 
-**상태**: 조사 완료·미착수 (2026-06-29). 코드 미수정.
+**상태**: **코드 수정 완료 (2026-07-01, 방향 A)** — 라이브 효과 검증만 남음.
+
+### 적용한 수정 (2026-07-01, 방향 A · 시스템 프롬프트 재구조화)
+`build_system_prompt`(`prompt_manager.py`)를 캐시 friendly 구조로 재배치. 시그니처·반환 타입(list[dict]) 불변이라 호출부(`interview.py` 2곳) 영향 없음.
+- **캐시 블록 1** (`cache_control`) = 인터뷰 내내 불변인 것만: 역할 + 규칙 + project_name/type + 응답형식 JSON 스펙.
+- **캐시 블록 2** (`cache_control`, 2번째 breakpoint) = `step_content`(현재 단계 스킬 섹션). 기존엔 유일 breakpoint *뒤*라 아예 캐시 안 됐음(원인 ②) → 이제 한 step 내 모든 턴에서 read 적중.
+- **블록 3** (캐시 X) = 누적 `insights`를 breakpoint *뒤* 별도 블록으로 분리. 매 답변마다 커지지만 앞의 안정 prefix를 더 이상 무효화하지 않음(원인 ① 해소).
+- 로컬 구조 검증: 같은 step 두 턴에서 블록0·블록1 바이트 동일, 블록2(insights)만 변화, breakpoint 2개 확인.
+- 미적용(차기): 원인 ③ 메시지 캐싱(`compress_history`와 상충) / 원인 ⑤ 출력 형식 축소 — 효과 측정 후 판단.
+
+### 적용 범위 & 후속 단계 현황 (2026-07-01 코드 전수 점검)
+`cache_control` 관점에서 백엔드 전체를 grep 점검한 결과:
+- **인터뷰 + AI 제안** (`interview.py` → `build_system_prompt`): 유일하게 캐싱이 *깨져* 있던 곳 + **멀티턴**(세션당 수십 호출)이라 이득 최대 → **이번에 수정(✅).**
+- **설계 4종** (`design.py:235/474/578/712`) + **마무리** (`finalize.py:187`): 이미 `system=[skill_text + cache_control]` 구조로 캐싱 적용됨. 휘발 내용은 user_message에 둬서 구조 정상. 단 각 단계가 **원샷(1회 생성)**이라 cross-call 이득은 원래 작음 → 손댈 필요 낮음.
+- **문서 생성** (`doc_engine.py:70-93`): 캐시 블록에 `생성일:{today}`(매일 무효화) + `skill_text`(문서 구조 가이드)가 breakpoint *뒤*라 미캐시 — 인터뷰 옛 버그와 같은 패턴. 단 원샷이라 영향 작음 → 선택적 개선(D).
+- **결론**: 후속 단계는 "미적용"이 아니라 "이미 기본 캐싱 + 원샷이라 추가 이득 작음". 추가 개발 우선순위 낮음.
 **발견일**: 2026-06-29
 **관련 영역**: `backend/app/core/prompt_manager.py`, `backend/app/api/interview.py`, `backend/app/core/claude_client.py` (부차: `design.py`, `doc_engine.py`)
 **대표 사례**: 새 프로젝트를 인터뷰 step4(데이터 소스)까지 진행 → 21회 호출·73,120 토큰. 모델 `claude-sonnet-4-6`. 비용 약 $0.31(≈430원).

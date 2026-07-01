@@ -1,63 +1,37 @@
 """
-sync_harness.py — 하네스 스킬 .md + Reference 파일을 backend/로 복사
+sync_harness.py — DEPRECATED (BL-002, 2026-07-01). 실행하지 마세요.
 
-Usage:
-    python scripts/sync_harness.py [harness_skills_path]
+배경
+    원래 이 스크립트는 `.claude/skills/`(이 저장소의 개발용 Claude Code 하네스,
+    옛 CLI 워크플로우)를 `backend/skills/`(런타임 API 프롬프트)로 복사하도록
+    설계됐습니다. 그러나 두 디렉토리는 내용이 완전히 다른 별개의 것으로 갈라졌습니다:
 
-Default harness path: .claude/skills/
+      - .claude/skills/  = 개발용 하네스 (슬래시 커맨드 · CLI 워크플로우)
+      - backend/skills/  = 런타임이 load_skill()로 읽는 API용 프롬프트 (단일 원본)
+
+    이 스크립트를 실행하면 backend/skills/*.md 를 전부 삭제한 뒤 .claude 버전으로
+    덮어써, 인터뷰·설계·마무리 프롬프트가 깨지고 backend 전용 파일
+    (예: kickoff-document.md — .claude 에 대응 폴더 없음)은 영구 삭제됩니다.
+
+결정 (BL-002)
+    backend/skills/ 를 단일 진실 공급원(single source of truth)으로 확정.
+    스킬을 수정하려면 backend/skills/*.md 를 직접 편집하세요. 동기화 단계는 없습니다.
+
+이 파일은 삭제하지 않고 스텁으로 남겨 둡니다 — 왜 폐기됐는지 기록을 보존하고,
+누군가 동일한 동기화 스크립트를 다시 만드는 것을 막기 위함입니다.
 """
 
-import shutil
 import sys
-from pathlib import Path
-
-BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend"
-DEFAULT_HARNESS = Path(__file__).resolve().parent.parent / ".claude" / "skills"
 
 
-def sync(harness_path: Path):
-    skills_dest = BACKEND_DIR / "skills"
-    refs_dest = BACKEND_DIR / "references"
-
-    skills_dest.mkdir(exist_ok=True)
-    refs_dest.mkdir(exist_ok=True)
-
-    # Clear existing
-    for f in skills_dest.glob("*.md"):
-        f.unlink()
-    for f in refs_dest.glob("*.md"):
-        f.unlink()
-
-    skill_count = 0
-    ref_count = 0
-
-    for skill_dir in harness_path.iterdir():
-        if not skill_dir.is_dir():
-            continue
-
-        # Copy skill index/SKILL.md
-        for name in ["index.md", "SKILL.md"]:
-            src = skill_dir / name
-            if src.exists():
-                dest = skills_dest / f"{skill_dir.name}.md"
-                shutil.copy2(src, dest)
-                skill_count += 1
-                break
-
-        # Copy reference files
-        ref_dir = skill_dir / "references"
-        if ref_dir.exists():
-            for ref_file in ref_dir.glob("*.md"):
-                dest = refs_dest / f"{skill_dir.name}_{ref_file.name}"
-                shutil.copy2(ref_file, dest)
-                ref_count += 1
-
-    print(f"Synced {skill_count} skills, {ref_count} references to backend/")
+def main() -> int:
+    sys.stderr.write(
+        "sync_harness.py 는 폐기되었습니다 (BL-002).\n"
+        "backend/skills/ 가 런타임 스킬의 단일 원본입니다 — 직접 수정하세요.\n"
+        "이 스크립트는 backend/skills 를 삭제·덮어써 AI 기능을 깨뜨리므로 실행을 거부합니다.\n"
+    )
+    return 1
 
 
 if __name__ == "__main__":
-    harness_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_HARNESS
-    if not harness_path.exists():
-        print(f"Harness path not found: {harness_path}")
-        sys.exit(1)
-    sync(harness_path)
+    sys.exit(main())

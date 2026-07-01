@@ -1,8 +1,8 @@
-# Phase 7 — Document Preview & Generation `🟡 In Progress (7a done)`
+# Phase 7 — Document Preview & Generation `✅ Done`
 
 > A live kickoff-document preview that is **assembled on read** from the project's structured session data — it always reflects the current state of the interview, design, and finalize steps without any pre-generation or storage.
 
-**Status**: 🟡 In Progress — 7a (preview + Markdown export) done; 7b (Mermaid diagrams) remaining
+**Status**: ✅ Done — preview + Markdown export shipped; Mermaid diagrams (7b) **removed from scope**
 **Prerequisites**: Phase 4 (interview insights), Phase 5 (design), Phase 6 (finalize)
 
 ---
@@ -54,7 +54,7 @@ GET /export/markdown → same _load_sections() → sections_to_markdown()
 | 8 | Action bar — "DOCUMENT PREVIEW" header + "실시간 업데이트" indicator + Markdown download button | Frontend | ✅ | FR-004 |
 | 9 | Empty states — empty document ("아직 문서가 준비되지 않았어요") + per-section "아직 작성되지 않았어요" | Frontend | ✅ | FR-003 |
 | 10 | RightPanel "문서 미리보기" button → DocumentPreviewPage; route `/projects/:projectId/document` | Frontend | ✅ | FR-003 |
-| 11 | **Mermaid.js SVG rendering** (architecture / ERD diagrams) | Frontend | 🔲 7b | FR-005 |
+| 11 | ~~**Mermaid.js SVG rendering** (architecture / ERD diagrams)~~ | Frontend | ⛔ Out of scope | FR-005 |
 | 12 | Per-section `kind` + structured `data` exposed via `/document-model` (markdown `content` & export unchanged) | Backend | ✅ 2026-06-15 | FR-003 |
 | 13 | Dashboard-summary section rendering — building blocks A–E (stat strip / data table+chips / meter row / layer band / callout), one renderer per `kind` | Frontend | ✅ 2026-06-15 | FR-003 |
 
@@ -156,7 +156,7 @@ Section bodies render as **dashboard-summary blocks** instead of raw markdown. T
 | Filename encoding | ASCII `filename` + UTF-8 `filename*` | Header values are latin-1; non-ASCII names need `filename*` |
 | Share feature | None | V2 (with link sharing + permissions) |
 | Empty-doc handling | On the preview page, not the entry button | Single place to explain "nothing yet"; button stays simple |
-| Mermaid rendering | Browser Mermaid.js (7b) | No server, open-source, text→SVG |
+| Mermaid rendering | ⛔ Removed from scope | Dashboard-summary blocks already convey architecture/data; Mermaid deferred out of MVP |
 | Section rendering | Dashboard-summary blocks from structured `data` (not raw markdown) | Better readability; markdown `content` & export stay unchanged for download |
 
 ---
@@ -169,7 +169,7 @@ Section bodies render as **dashboard-summary blocks** instead of raw markdown. T
 - [x] Preview page: TOC + completeness card + section cards render
 - [x] Empty document + empty section states render
 - [x] RightPanel "문서 미리보기" → preview page
-- [ ] **Mermaid diagrams render as SVG in the architecture / data sections (7b)**
+- ~~Mermaid diagrams render as SVG in the architecture / data sections (7b)~~ — **removed from scope**
 
 ---
 
@@ -182,15 +182,16 @@ Section bodies render as **dashboard-summary blocks** instead of raw markdown. T
 | 2026-05-26 | Full restructure: single-shot → progressive generation (v1/v2/v3). PDF export removed (V2). Share feature removed (V2). UI based on screen-document-preview.jsx |
 | 2026-06-15 | **Doc synced to shipped code (Phase 7a).** Progressive generation / `doc_version` / auto-triggers **dropped** in favor of on-read assembly (`doc_model.build_sections`). Endpoints corrected to `GET /document-model` + `GET /export/markdown`. Sections are 2-state (complete/empty). RightPanel button always navigates. Only Mermaid (7b) remains |
 | 2026-06-15 | **Dashboard summary view.** Section bodies render as building blocks (stat / table+chips / meter / band / callout) from per-section `kind`+`data` exposed by `/document-model`; markdown `content` & MD export unchanged. Added `blocks.tsx` + `DocSections.tsx`; Pretendard/JetBrains Mono loaded. Mermaid still 7b |
+| 2026-07-01 | **Phase 7 closed.** Mermaid diagram rendering (7b) **removed from scope** — live preview + Markdown export satisfy MVP-1. Phase 7 marked ✅ Done |
 
 ---
 ---
 
-# Phase 7 — 문서 미리보기 & 생성 `🟡 진행 중 (7a 완료)`
+# Phase 7 — 문서 미리보기 & 생성 `✅ 완료`
 
 > 프로젝트의 구조화된 세션 데이터에서 **읽을 때마다 실시간으로 조립**되는 라이브 킥오프 문서 미리보기 — 사전 생성·저장 없이 인터뷰/설계/마무리 단계의 현재 상태를 항상 반영한다.
 
-**상태**: 🟡 진행 중 — 7a(미리보기 + Markdown 내보내기) 완료, 7b(Mermaid 다이어그램) 남음
+**상태**: ✅ 완료 — 미리보기 + Markdown 내보내기 완료; Mermaid 다이어그램(7b)은 **스코프 제외**
 **선행 조건**: Phase 4(인터뷰 인사이트), Phase 5(설계), Phase 6(마무리)
 
 ---
@@ -242,7 +243,7 @@ GET /export/markdown → 동일한 _load_sections() → sections_to_markdown()
 | 8 | 액션바 — "DOCUMENT PREVIEW" 헤더 + "실시간 업데이트" 표시 + Markdown 다운로드 버튼 | Frontend | ✅ | FR-004 |
 | 9 | 빈 상태 — 빈 문서("아직 문서가 준비되지 않았어요") + 섹션별 "아직 작성되지 않았어요" | Frontend | ✅ | FR-003 |
 | 10 | RightPanel "문서 미리보기" 버튼 → DocumentPreviewPage; 라우트 `/projects/:projectId/document` | Frontend | ✅ | FR-003 |
-| 11 | **Mermaid.js SVG 렌더링** (아키텍처 / ERD 다이어그램) | Frontend | 🔲 7b | FR-005 |
+| 11 | ~~**Mermaid.js SVG 렌더링** (아키텍처 / ERD 다이어그램)~~ | Frontend | ⛔ 스코프 제외 | FR-005 |
 | 12 | 섹션별 `kind` + 구조화 `data`를 `/document-model`로 노출 (markdown `content`·내보내기 불변) | Backend | ✅ 2026-06-15 | FR-003 |
 | 13 | 대시보드 요약 섹션 렌더링 — 빌딩블록 A~E (스탯 스트립 / 데이터표+chip / 미터행 / 레이어 밴드 / 콜아웃), `kind`별 렌더러 1개 | Frontend | ✅ 2026-06-15 | FR-003 |
 
@@ -344,7 +345,7 @@ GET /export/markdown → 동일한 _load_sections() → sections_to_markdown()
 | 파일명 인코딩 | ASCII `filename` + UTF-8 `filename*` | 헤더 값은 latin-1; 비ASCII 이름은 `filename*` 필요 |
 | 공유 기능 | 없음 | V2 (링크 공유 + 권한 관리와 함께) |
 | 빈 문서 처리 | 진입 버튼이 아닌 미리보기 페이지에서 | "아직 없음"을 한 곳에서 설명, 버튼은 단순 유지 |
-| Mermaid 렌더링 | 브라우저 Mermaid.js (7b) | 서버 불필요, 오픈소스, 텍스트→SVG |
+| Mermaid 렌더링 | ⛔ 스코프 제외 | 대시보드 요약 블록이 이미 아키텍처/데이터를 전달; Mermaid는 MVP 밖으로 연기 |
 | 섹션 렌더링 | 구조화 `data` 기반 대시보드 블록(원시 markdown 아님) | 가독성 향상; 다운로드용 markdown `content`·내보내기는 불변 |
 
 ---
@@ -357,7 +358,7 @@ GET /export/markdown → 동일한 _load_sections() → sections_to_markdown()
 - [x] 미리보기 페이지: TOC + 완성도 카드 + 섹션 카드 렌더
 - [x] 빈 문서 + 빈 섹션 상태 렌더
 - [x] RightPanel "문서 미리보기" → 미리보기 페이지
-- [ ] **아키텍처 / 데이터 섹션에서 Mermaid 다이어그램이 SVG로 렌더 (7b)**
+- ~~아키텍처 / 데이터 섹션에서 Mermaid 다이어그램이 SVG로 렌더 (7b)~~ — **스코프 제외**
 
 ---
 
@@ -370,3 +371,4 @@ GET /export/markdown → 동일한 _load_sections() → sections_to_markdown()
 | 2026-05-26 | 전면 재구조화: 단발 생성 → 점진적 생성(v1/v2/v3). PDF 내보내기 삭제(V2). 공유 기능 삭제(V2). screen-document-preview.jsx 기반 UI |
 | 2026-06-15 | **문서를 실제 코드(Phase 7a)에 맞게 동기화.** 점진적 생성 / `doc_version` / 자동 트리거를 읽을 때 조립(`doc_model.build_sections`)으로 **폐기·대체**. 엔드포인트를 `GET /document-model` + `GET /export/markdown`으로 정정. 섹션은 2상태(complete/empty). RightPanel 버튼은 항상 이동. Mermaid(7b)만 남음 |
 | 2026-06-15 | **대시보드 요약 뷰.** 섹션 본문을 `/document-model`이 노출하는 섹션별 `kind`+`data` 기반 빌딩블록(스탯 / 표+chip / 미터 / 밴드 / 콜아웃)으로 렌더링; markdown `content`·MD 내보내기는 불변. `blocks.tsx` + `DocSections.tsx` 추가; Pretendard/JetBrains Mono 로드. Mermaid는 7b 유지 |
+| 2026-07-01 | **Phase 7 종료.** Mermaid 다이어그램 렌더링(7b) **스코프 제외** — 실시간 미리보기 + Markdown 내보내기로 MVP-1 충족. Phase 7 ✅ 완료 처리 |
