@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 
@@ -75,7 +75,9 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="text-[12px] text-text-subtle">
-          &copy; 2026 Prequel &middot; 이용약관 &middot; 개인정보처리방침
+          &copy; 2026 Prequel &middot;{' '}
+          <Link to="/terms" className="underline hover:text-text transition-colors">이용약관</Link> &middot;{' '}
+          <Link to="/privacy" className="underline hover:text-text transition-colors">개인정보처리방침</Link>
         </div>
       </div>
 
@@ -115,8 +117,8 @@ export default function LoginPage() {
 
           {/* Terms notice */}
           <div className="mt-8 px-4 py-3.5 bg-surface-alt rounded-[10px] text-[12.5px] text-text-muted leading-relaxed">
-            계속하면 <span className="text-text underline cursor-pointer">이용약관</span> 및{' '}
-            <span className="text-text underline cursor-pointer">개인정보처리방침</span>에
+            계속하면 <Link to="/terms" className="text-text underline hover:text-accent-deep transition-colors">이용약관</Link> 및{' '}
+            <Link to="/privacy" className="text-text underline hover:text-accent-deep transition-colors">개인정보처리방침</Link>에
             동의하는 것으로 간주됩니다.
           </div>
 

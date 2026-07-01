@@ -15,7 +15,7 @@ export default function LandingPage() {
         <div className="flex-1" />
         <div className="flex items-center gap-6">
           <Link to="/guide" className="text-[13.5px] text-text-muted hover:text-text transition-colors">가이드</Link>
-          <Link to="/announcements" className="text-[13.5px] text-text-muted hover:text-text transition-colors">공지사항</Link>
+          <Link to="/notices" className="text-[13.5px] text-text-muted hover:text-text transition-colors">공지사항</Link>
           <Link to="/login" className="text-[13.5px] text-text-muted hover:text-text transition-colors">로그인</Link>
           <Link
             to="/login"
@@ -57,7 +57,11 @@ export default function LandingPage() {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
-            <button className="px-6 py-3 bg-surface border border-border text-text-muted text-[15px] font-medium rounded-lg hover:bg-surface-alt transition-colors cursor-pointer">
+            <button
+              disabled
+              title="준비 중입니다 (MVP-2)"
+              className="px-6 py-3 bg-surface border border-border text-text-subtle text-[15px] font-medium rounded-lg opacity-60 cursor-not-allowed"
+            >
               샘플 결과 보기
             </button>
           </div>
@@ -127,6 +131,16 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border">
+        <div className="max-w-[1280px] mx-auto px-14 h-16 flex items-center gap-5 text-[12.5px] text-text-subtle">
+          <span>&copy; 2026 Prequel</span>
+          <Link to="/terms" className="hover:text-text transition-colors">이용약관</Link>
+          <Link to="/privacy" className="hover:text-text transition-colors">개인정보처리방침</Link>
+          <Link to="/guide" className="hover:text-text transition-colors">가이드</Link>
+        </div>
+      </footer>
     </div>
   )
 }

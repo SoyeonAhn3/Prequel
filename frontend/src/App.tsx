@@ -13,6 +13,8 @@ import InterviewPage from './pages/InterviewPage'
 import DesignPage from './pages/DesignPage'
 import FinalizePage from './pages/FinalizePage'
 import DocumentPreviewPage from './pages/DocumentPreviewPage'
+import TermsPage from './pages/TermsPage'
+import PrivacyPage from './pages/PrivacyPage'
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           {/* Protected */}
           <Route element={<AuthGuard />}>

@@ -65,7 +65,7 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ## BL-003 · 프롬프트 캐싱이 작동 안 함 (인터뷰 토큰 과소비) 🟡
 
-**상태**: **코드 수정 완료 (2026-07-01, 방향 A)** — 라이브 효과 검증만 남음.
+**상태**: 🟡 구조 수정 완료(방향 A) — **단, Phase 1 측정 결과 캐시 prefix가 1024 토큰 미만이라 캐싱 미작동.** 실제 절감은 방향 B(메시지 이력 캐싱) 필요.
 
 ### 적용한 수정 (2026-07-01, 방향 A · 시스템 프롬프트 재구조화)
 `build_system_prompt`(`prompt_manager.py`)를 캐시 friendly 구조로 재배치. 시그니처·반환 타입(list[dict]) 불변이라 호출부(`interview.py` 2곳) 영향 없음.
@@ -81,6 +81,25 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 - **설계 4종** (`design.py:235/474/578/712`) + **마무리** (`finalize.py:187`): 이미 `system=[skill_text + cache_control]` 구조로 캐싱 적용됨. 휘발 내용은 user_message에 둬서 구조 정상. 단 각 단계가 **원샷(1회 생성)**이라 cross-call 이득은 원래 작음 → 손댈 필요 낮음.
 - **문서 생성** (`doc_engine.py:70-93`): 캐시 블록에 `생성일:{today}`(매일 무효화) + `skill_text`(문서 구조 가이드)가 breakpoint *뒤*라 미캐시 — 인터뷰 옛 버그와 같은 패턴. 단 원샷이라 영향 작음 → 선택적 개선(D).
 - **결론**: 후속 단계는 "미적용"이 아니라 "이미 기본 캐싱 + 원샷이라 추가 이득 작음". 추가 개발 우선순위 낮음.
+
+### Phase 1 측정 결과 (2026-07-01, 무료 `count_tokens` · 모델 claude-sonnet-4-6)
+`build_system_prompt`의 캐시 대상 prefix(block1+block2) 토큰 실측:
+
+| step | block1 | 캐시 prefix(block1+2) | 전체 system | 판정 |
+|---|---|---|---|---|
+| 0 | 729 | **1002** | 1067 | ❌ < 1024 |
+| 3 | 729 | **868** | 933 | ❌ < 1024 |
+| 9 | 729 | **914** | 979 | ❌ < 1024 |
+
+- **핵심 발견**: 캐시 prefix가 **868~1002 토큰**으로 Sonnet 최소 캐시 크기 **1024 미달** → `cache_control`이 무시되어 **캐싱 자체가 안 걸림**. 방향 A(시스템 프롬프트 재구조화)는 구조적으로 정답(insights 무효화 버그 제거·회귀 없음)이나, **그것만으로는 절감 효과 없음**.
+- **역설**: 옛 코드는 insights가 캐시 블록 안에 쌓여 크기를 1024 위로 채워 캐시가 *생성*은 됐으나 매 턴 무효화되어 못 읽음(낭비). 새 코드는 prefix가 고정 ~900토큰이라 아예 미생성 — 낭비되던 cache_write 프리미엄(25%)은 사라졌으나 목표 절감은 미달성.
+- **무료 검증 이득**: Phase 2(유료 실호출) 전에 count_tokens(무과금)로 판정 → 헛돈 방지.
+
+### 다음 단계 (방향 B · 메시지 이력 캐싱)
+토큰 대부분은 system이 아니라 **대화 이력(messages)** 에 있고 턴이 쌓이며 금방 1024를 넘음. 실제 절감은:
+1. 캐시 breakpoint를 **마지막 메시지**(system 아님)에 부여 → system+messages 전체 prefix가 캐시됨.
+2. `compress_history`(매 턴 이력 재작성 → prefix 불안정)를 재설계 — 압축 임계 상향 or 안정 prefix + 말미 breakpoint.
+   → 토큰 절감(압축) ↔ 캐싱(prefix 유지) 트레이드오프 측정 후 결정.
 **발견일**: 2026-06-29
 **관련 영역**: `backend/app/core/prompt_manager.py`, `backend/app/api/interview.py`, `backend/app/core/claude_client.py` (부차: `design.py`, `doc_engine.py`)
 **대표 사례**: 새 프로젝트를 인터뷰 step4(데이터 소스)까지 진행 → 21회 호출·73,120 토큰. 모델 `claude-sonnet-4-6`. 비용 약 $0.31(≈430원).
@@ -159,3 +178,24 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 5. (선택) 테스트 후 rodion을 user로 원복할지 검토.
 
 > 결론: 현재 로컬에서 모든 활동 로그가 `dev@localhost`로 나오는 것은 정상. 실제 귀속은 우회를 끈 배포 환경에서만 확인 가능.
+
+---
+
+## BL-005 · 법적 페이지 컴플라이언스 후속 (정식 오픈·유료 전환 전) 🟡
+
+**상태**: 발견 (2026-07-01). Phase 9 Step 1에서 약관·개인정보 초안 작성하며 도출. 배포/정식 오픈 전 처리.
+**관련 영역**: `frontend/src/content/legal.ts`, `frontend/src/pages/{Terms,Privacy}Page.tsx`, `backend/app/api/admin.py`(`soft_delete_user`), 결제(MVP-2)
+
+### (a) 임시값 → 실제 정보 반영
+- **개인정보 보호책임자**: 현재 "Prequel"(임시). 법적으로는 **실명 기재 원칙** → 정식 오픈 전 실명·직책 반영.
+- **연락처 이메일**: `support@prequel.io`는 **현재 실제 수신되지 않는 주소**. 실수신 가능한 메일로 교체 필요 (약관·개인정보·로그인 화면 공통).
+
+### (b) 개인정보 완전 파기(hard delete) 기능
+- 현재 계정 삭제(`admin.py:soft_delete_user`)는 **soft delete**(`deleted_at` 타임스탬프)만 수행 → 개인정보가 DB에 그대로 잔존, `restore_user`로 복구도 됨.
+- 개인정보처리방침의 "파기" 완전 이행을 위해 **물리적 삭제 또는 익명화** 기능 필요. 현재 방침은 "완전 파기는 support 이메일로 요청"으로 우회 표기해 둠.
+- 이용자 셀프 계정 삭제 UI 없음(관리자만 가능) → 정식 오픈 시 셀프 삭제/요청 창구 검토.
+
+### (c) 유료 전환(MVP-2) 시 법적 요건
+- 결제 도입 시 **사업자등록·통신판매업 신고·사업자정보 표시**(전자상거래법) 의무화 → 약관/방침에 상호·사업자번호·주소 추가.
+- 국외 이전(Anthropic·Supabase 미국)은 현재 **고지**만 함 → 정식 서비스는 회원가입 시 **국외이전 명시적 동의** 절차 권장.
+- (선택) 만 14세 미만 이용 제한 문구 추가 검토.
