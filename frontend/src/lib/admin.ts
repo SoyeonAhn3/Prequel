@@ -13,7 +13,7 @@ export interface AdminUser {
   email: string
   display_name: string | null
   role: string
-  free_used: number
+  credits_used: number
   plan: string
   suspended_at: string | null
   deleted_at: string | null

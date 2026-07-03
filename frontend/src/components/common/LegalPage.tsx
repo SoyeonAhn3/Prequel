@@ -25,7 +25,7 @@ export default function LegalPage({ title, content }: LegalPageProps) {
       {/* Content */}
       <main className="max-w-[820px] mx-auto px-8 py-14">
         <h1 className="text-[28px] font-bold tracking-tight text-text mb-8">{title}</h1>
-        <div className="bg-surface border border-border rounded-xl p-8">
+        <div className="bg-surface border border-border rounded-xl p-8 text-[13px]">
           <Markdown>{content}</Markdown>
         </div>
         <div className="mt-8">

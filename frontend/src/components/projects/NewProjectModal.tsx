@@ -44,7 +44,7 @@ export default function NewProjectModal({ isQuotaExceeded, onClose, onCreate }: 
             <div className="bg-red-soft rounded-xl p-4">
               <p className="text-sm font-semibold text-red">무료 횟수를 모두 사용했습니다</p>
               <p className="text-xs text-text-muted mt-1">
-                무료 플랜은 2회까지 킥오프를 생성할 수 있습니다. 유료 플랜으로 업그레이드하면 월 10~30회 사용 가능합니다.
+                무료 플랜은 설계 단계를 2회까지 진행할 수 있습니다. (프로젝트 생성·인터뷰는 무제한) 유료 플랜으로 업그레이드하면 월 10~30회 이용 가능합니다.
               </p>
             </div>
             <div className="flex justify-end mt-4">

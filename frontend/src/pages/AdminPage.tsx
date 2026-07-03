@@ -285,7 +285,7 @@ export default function AdminPage() {
                     <div className="font-mono text-[11.5px] text-text-muted truncate">{u.email}</div>
                     <div><Tag tone={planTone(u.plan)}>{u.plan.toUpperCase()}</Tag></div>
                     <div className="font-mono text-xs text-text-muted">
-                      {u.plan === 'free' ? `${u.free_used}/2` : '—'}
+                      {u.plan === 'free' ? `${u.credits_used}/2` : '—'}
                     </div>
                     <div className="font-mono text-xs text-text-subtle">{formatDate(u.created_at)}</div>
                     <div>

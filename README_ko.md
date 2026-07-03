@@ -42,7 +42,7 @@ AI가 생성한 텍스트가 아니라, AI의 질문을 통해 프로젝트 아�
 |---|---|---|
 | React (Vite) | 프론트엔드 SPA | 가볍고 백엔드와 역할 분리 명확, 빠른 HMR |
 | TailwindCSS | 스타일링 | 유틸리티 우선 빠른 프로토타이핑, 작은 번들 |
-| react-i18next | 다국어 (ko/en) | JSON 키 분리, 런타임 언어 전환 |
+| react-i18next | 다국어 (ko/en) — *예정, Phase 9 (아직 미설치)* | JSON 키 분리, 런타임 언어 전환 |
 | FastAPI | 백엔드 API | Claude SDK Python 우선 지원, Pydantic 검증, 자동 OpenAPI |
 | Supabase | DB + Auth + RLS | PostgreSQL + OAuth + 행 단위 보안, 올인원 Free 티어 |
 | Claude API | AI 인터뷰 + 문서 생성 | 하네스 스킬 프롬프트 재사용, Prompt Caching (90% 비용 절감) |
@@ -136,7 +136,7 @@ prequel/
 │   │   │   └── common/            # Badge, ProgressBar, Header, Footer
 │   │   ├── pages/                 # 라우트별 페이지 (8개 화면)
 │   │   ├── hooks/                 # useInterview, useAuth 등
-│   │   ├── i18n/                  # ko.json, en.json
+│   │   ├── i18n/                  # ko.json, en.json (예정 — Phase 9)
 │   │   └── lib/                   # API 클라이언트, Supabase 클라이언트
 │   └── package.json
 ├── backend/                       # FastAPI [Railway]
@@ -152,11 +152,11 @@ prequel/
 │   │   └── middleware/            # Auth, Rate Limiting, CORS
 │   ├── skills/                    # 런타임 AI 프롬프트 (.md) — 단일 원본
 │   ├── references/                # 프롬프트용 Reference 파일
-│   └── tests/
+│   └── tests/                     # (예정 — Phase 9)
 ├── scripts/
 │   └── sync_harness.py            # ⛔ 폐기 (BL-002) — backend/skills가 단일 원본
 ├── supabase/
-│   └── migrations/                # SQL 마이그레이션 파일 (001~005)
+│   └── migrations/                # SQL 마이그레이션 파일 (001~010)
 ├── Phase/
 │   ├── Phase1_ProjectSetup.md     # ✅ 프로젝트 셋업 & 인프라
 │   ├── Phase2_AuthSystem.md       # ✅ 인증 & 사용자 시스템
@@ -166,7 +166,7 @@ prequel/
 │   ├── Phase6_EvalFinalize.md     # ✅ 평가 & 마무리
 │   ├── Phase7_DocGeneration.md    # ✅ 문서 미리보기 & 생성 (Markdown 내보내기; Mermaid 스코프 제외)
 │   ├── Phase8_AdminFeatures.md    # ✅ Admin & 부가 기능
-│   └── Phase9_IntegrationDeploy.md # 🔲 다국어, 테스트 & 배포
+│   └── Phase9_IntegrationDeploy.md # 🚧 다국어, 테스트 & 배포 (Step 1 완료)
 ├── .env.example
 └── README.md
 ```
@@ -207,7 +207,7 @@ prequel/
 | Phase 6: 평가 & 마무리 | ✅ 완료 | `finalize.py` API (평가 → 완료조건 → 갭 → 체크리스트), 스킬 4종 재작성, 마이그레이션 008, doc v3 엔진, FinalizePage 카드 위저드 — E2E 테스트 대기 |
 | Phase 7: 문서 미리보기 & 생성 | ✅ 완료 | 읽을 때 조립 방식 (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2컬럼 TOC + 완성도 + Markdown 다운로드). **대시보드 요약 섹션 렌더링** — 섹션 `kind`별 빌딩블록(스탯 스트립 / 표+chip / 미터 / 레이어 밴드 / 콜아웃), markdown 내보내기 불변. 참고: 점진적 v1→v2→v3 생성은 실시간 조립으로 폐기; **Mermaid 다이어그램 렌더링은 스코프 제외** |
 | Phase 8: Admin & 부가 기능 | ✅ 완료 | Admin 대시보드(사용자 관리 + 토큰 사용량 차트 + 활동 로그), 공지 CRUD + 페이지, 호출별 토큰 로깅(캐시 포함), `slowapi` Rate Limiting(인터뷰 20/분, 일반 60/분), `structlog` JSON 로깅, 사용자 가이드 페이지. 후속: BL-003(프롬프트 캐싱), BL-004(dev 우회 로그 귀속) |
-| Phase 9: 다국어·테스트·배포 | 🔲 미시작 | 다국어 UI, 랜딩 페이지, E2E 테스트, Netlify + Railway 배포 |
+| Phase 9: 다국어·테스트·배포 | 🚧 진행 중 | **Step 1 완료**: 이용약관/개인정보 페이지(`/terms`, `/privacy`) + 랜딩 푸터·로그인 법적 링크. 잔여: 다국어 UI(i18n), 에러 처리, E2E 테스트, Netlify + Railway 배포 |
 | MVP-2 (5개 기능) | 📋 예정 | 결제 + 토큰 추적 + 비용 미터 + 갤러리 + 모델 라우팅 |
 | v2 | 📋 Planned | 갭 분석, DOCX 내보내기, 공유 링크 |
 
@@ -249,7 +249,7 @@ prequel/
 
 ## 한계점
 
-- **초기 개발 단계** — Phase 1-8 완료 (셋업, 인증, 프로젝트 관리, 인터뷰 파이프라인, 설계, 평가/마무리, 문서 미리보기 + Markdown 내보내기, Admin & 부가 기능), Phase 9 (다국어, 테스트, 배포) 미시작
+- **초기 개발 단계** — Phase 1-8 완료 (셋업, 인증, 프로젝트 관리, 인터뷰 파이프라인, 설계, 평가/마무리, 문서 미리보기 + Markdown 내보내기, Admin & 부가 기능), Phase 9 진행 중 (Step 1 — 법적 페이지·랜딩 푸터 완료; 다국어, 에러 처리, 테스트, 배포 잔여)
 - **데스크탑 전용** — 태블릿은 MVP-2, 모바일은 미지원
 - **언어 고정** — 프로젝트 언어(ko/en)는 생성 시 고정, 변경하려면 새 프로젝트 생성 필요
 - **MVP-1에 결제 없음** — Free 2회 소진 후 유료 전환 불가 (MVP-2까지)

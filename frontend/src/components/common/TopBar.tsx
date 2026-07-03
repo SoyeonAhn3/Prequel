@@ -32,7 +32,7 @@ export default function TopBar() {
   }
 
   const devBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
-  const freeUsed = user?.free_used ?? 0
+  const creditsUsed = user?.credits_used ?? 0
   const freeLimit = 2
 
   const initials = user?.display_name
@@ -94,7 +94,7 @@ export default function TopBar() {
               </span>
               <span className="inline-flex items-baseline gap-0.5 px-[9px] py-[3px] bg-surface rounded-full font-mono">
                 <span className="text-[13px] font-bold text-accent" style={{ letterSpacing: -0.3 }}>
-                  {freeLimit - freeUsed}
+                  {Math.max(0, freeLimit - creditsUsed)}
                 </span>
                 <span className="text-[10.5px] text-text-subtle">/{freeLimit}</span>
               </span>

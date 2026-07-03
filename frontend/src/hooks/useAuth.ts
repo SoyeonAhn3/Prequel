@@ -9,7 +9,7 @@ export interface UserProfile {
   display_name: string | null
   avatar_url: string | null
   role: string
-  free_used: number
+  credits_used: number
   plan: string
   plan_expires_at: string | null
   agreed_terms_at: string | null

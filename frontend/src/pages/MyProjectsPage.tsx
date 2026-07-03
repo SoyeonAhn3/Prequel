@@ -63,9 +63,9 @@ export default function MyProjectsPage() {
 
   const completedCount = projects.filter((p) => p.status === 'completed').length
   const inProgressCount = projects.filter((p) => p.status === 'in_progress').length
-  const freeUsed = user?.free_used ?? 0
+  const creditsUsed = user?.credits_used ?? 0
   const devBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
-  const remaining = devBypass ? 999 : Math.max(0, 2 - freeUsed)
+  const remaining = devBypass ? 999 : Math.max(0, 2 - creditsUsed)
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: '전체', count: projects.length },
@@ -85,7 +85,7 @@ export default function MyProjectsPage() {
     setDeleteTarget(null)
   }
 
-  const isQuotaExceeded = !devBypass && user?.plan === 'free' && freeUsed >= 2
+  const isQuotaExceeded = !devBypass && user?.plan === 'free' && creditsUsed >= 2
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -112,15 +112,15 @@ export default function MyProjectsPage() {
         {/* Quota */}
         <div className="flex-1 bg-surface border border-border rounded-xl p-4">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-text-muted">이번 달 사용</span>
+            <span className="text-xs text-text-muted">누적 사용</span>
             <Badge variant="accent" className="font-semibold">FREE</Badge>
           </div>
           <div className="flex items-baseline gap-1.5 mt-2">
-            <span className="text-[26px] font-bold tracking-tight">{freeUsed}</span>
+            <span className="text-[26px] font-bold tracking-tight">{creditsUsed}</span>
             <span className="text-sm text-text-subtle">/ 2 회</span>
           </div>
           <div className="h-1 bg-surface-alt rounded mt-2.5">
-            <div className="h-full bg-accent rounded transition-all" style={{ width: `${(freeUsed / 2) * 100}%` }} />
+            <div className="h-full bg-accent rounded transition-all" style={{ width: `${Math.min(creditsUsed / 2, 1) * 100}%` }} />
           </div>
         </div>
 

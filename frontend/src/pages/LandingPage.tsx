@@ -30,7 +30,7 @@ export default function LandingPage() {
       {/* Hero */}
       <div className="max-w-[1280px] mx-auto px-14 pt-[88px] flex gap-14">
         {/* Left content */}
-        <div className="flex-1 max-w-[540px] flex flex-col justify-center pb-[10%]" style={{ minHeight: 'calc(100vh - 64px - 88px)' }}>
+        <div className="flex-1 max-w-[540px] flex flex-col justify-center pb-[10%]" style={{ minHeight: 'calc(100vh - 64px - 88px - 65px)' }}>
           {/* Beta badge */}
           <div className="inline-flex items-center gap-1.5 py-[4px] pr-[9px] pl-[7px] bg-accent-soft rounded-full mb-[22px] w-fit">
             <span className="w-[6px] h-[6px] rounded-full bg-accent shrink-0" />

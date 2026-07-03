@@ -1,8 +1,8 @@
-# Phase 9 — i18n, Integration Testing & Deployment `🔲 Not Started`
+# Phase 9 — i18n, Integration Testing & Deployment `🚧 In Progress`
 
 > Apply multilingual support, build the landing page, conduct E2E testing, and deploy to production.
 
-**Status**: 🔲 Not Started
+**Status**: 🚧 In Progress — Step 1 (legal pages & landing footer) done
 **Prerequisites**: Phase 8 completion (Admin features, rate limiting, logging)
 
 ---
@@ -19,14 +19,24 @@ The final phase brings everything together. Apply `react-i18next` for Korean/Eng
 |---|---|---|---|---|
 | 1 | i18n setup — `ko.json`, `en.json`, runtime switching | Frontend | 🔲 | FR-009 |
 | 2 | Claude API prompt language parameter | Backend | 🔲 | FR-009 |
-| 3 | Landing page (service intro + "Get Started") | Frontend | 🔲 | — |
-| 4 | Terms of Service / Privacy Policy pages | Frontend | 🔲 | FR-018 |
+| 3 | Landing page (service intro + "Get Started") | Frontend | 🚧 | — |
+| 4 | Terms of Service / Privacy Policy pages | Frontend | ✅ | FR-018 |
 | 5 | Error handling integration (Claude API timeout → retry, Supabase outage → maintenance page) | Common | 🔲 | NFR-003 |
 | 6 | E2E demo scenario test (10 features sequential execution) | Common | 🔲 | DoD |
 | 7 | pytest backend coverage 60%+ on core logic | Backend | 🔲 | NFR-013 |
 | 8 | Deployment setup (Netlify + Railway, env vars, CI/CD) | Common | 🔲 | — |
 | 9 | CORS finalization (Netlify domain) | Backend | 🔲 | NFR-007 |
 | 10 | Production environment verification | Common | 🔲 | — |
+
+### Progress — Step 1 (2026-07-01, commit `3ca88ba`)
+
+Legal pages and landing polish shipped:
+
+- **Terms / Privacy** (`#4` ✅) — `pages/TermsPage.tsx`, `pages/PrivacyPage.tsx`, shared `components/common/LegalPage.tsx` layout, Korean content in `content/legal.ts` (Markdown-rendered). Reachable at `/terms`, `/privacy` without login.
+- **Landing page** (`#3` 🚧) — footer added with Terms/Privacy links; hero height adjusted so the footer shows without scrolling. Login page gained legal links + a consent notice.
+- Follow-up **BL-005**: legal pages carry placeholder contact/officer info — replace with real details before public launch.
+
+Remaining in Phase 9: i18n (`#1`, `#2`), error handling (`#5`), testing (`#6`, `#7`), deployment (`#8`–`#10`).
 
 ---
 
@@ -108,8 +118,8 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 
 - [ ] Korean ↔ English UI switching works on all pages
 - [ ] AI-generated content respects project language setting
-- [ ] Landing page accessible without login
-- [ ] Terms/Privacy pages accessible and linked from login
+- [x] Landing page accessible without login
+- [x] Terms/Privacy pages accessible and linked from login
 - [ ] E2E demo scenario (10 features) completes without errors
 - [ ] Backend core logic test coverage ≥ 60%
 - [ ] Production deployment live on custom domain
@@ -122,15 +132,16 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 | Date | Description |
 |---|---|
 | 2026-05-19 | Initial creation |
+| 2026-07-03 | Step 1 done — legal pages (Terms/Privacy) + landing footer & login legal links; status → In Progress |
 
 ---
 ---
 
-# Phase 9 — 다국어, 통합 테스트 & 배포 `🔲 미시작`
+# Phase 9 — 다국어, 통합 테스트 & 배포 `🚧 진행 중`
 
 > 다국어 지원 적용, 랜딩 페이지 구축, E2E 테스트 수행, 프로덕션 배포.
 
-**상태**: 🔲 미시작
+**상태**: 🚧 진행 중 — Step 1 (법적 페이지·랜딩 푸터) 완료
 **선행 조건**: Phase 8 완료 (Admin 기능, Rate Limiting, 로깅)
 
 ---
@@ -147,14 +158,24 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 |---|---|---|---|---|
 | 1 | i18n 적용 — `ko.json`, `en.json`, 런타임 전환 | Frontend | 🔲 | FR-009 |
 | 2 | Claude API 프롬프트 언어 파라미터 전달 | Backend | 🔲 | FR-009 |
-| 3 | 랜딩 페이지 (서비스 소개 + "시작하기") | Frontend | 🔲 | — |
-| 4 | 이용약관 / 개인정보처리방침 페이지 | Frontend | 🔲 | FR-018 |
+| 3 | 랜딩 페이지 (서비스 소개 + "시작하기") | Frontend | 🚧 | — |
+| 4 | 이용약관 / 개인정보처리방침 페이지 | Frontend | ✅ | FR-018 |
 | 5 | 에러 처리 통합 (Claude API 타임아웃 → 재시도, Supabase 장애 → 점검 안내) | 공통 | 🔲 | NFR-003 |
 | 6 | E2E 데모 시나리오 테스트 (10개 기능 순차 실행) | 공통 | 🔲 | DoD |
 | 7 | pytest 백엔드 핵심 로직 60%+ 커버리지 | Backend | 🔲 | NFR-013 |
 | 8 | 배포 설정 (Netlify + Railway, 환경 변수, CI/CD) | 공통 | 🔲 | — |
 | 9 | CORS 최종 설정 (Netlify 도메인) | Backend | 🔲 | NFR-007 |
 | 10 | 프로덕션 환경 검증 | 공통 | 🔲 | — |
+
+### 진행 상황 — Step 1 (2026-07-01, 커밋 `3ca88ba`)
+
+법적 페이지와 랜딩 다듬기 반영:
+
+- **이용약관 / 개인정보처리방침** (`#4` ✅) — `pages/TermsPage.tsx`, `pages/PrivacyPage.tsx`, 공용 `components/common/LegalPage.tsx` 레이아웃, 한국어 본문 `content/legal.ts`(Markdown 렌더링). 로그인 없이 `/terms`, `/privacy` 접근 가능.
+- **랜딩 페이지** (`#3` 🚧) — 약관·개인정보 링크가 담긴 푸터 추가, 히어로 높이 조정으로 스크롤 없이 푸터 노출. 로그인 페이지에 법적 링크·동의 안내문 추가.
+- 후속 **BL-005**: 법적 페이지의 연락처·책임자 정보가 임시값 — 정식 오픈 전 실제 정보로 교체 필요.
+
+Phase 9 잔여: i18n (`#1`, `#2`), 에러 처리 (`#5`), 테스트 (`#6`, `#7`), 배포 (`#8`~`#10`).
 
 ---
 
@@ -236,8 +257,8 @@ MVP-1의 10개 기능을 순서대로 커버하는 E2E 데모 시나리오:
 
 - [ ] 한국어 ↔ 영어 UI 전환이 모든 페이지에서 동작
 - [ ] AI 생성 콘텐츠가 프로젝트 언어 설정을 따름
-- [ ] 랜딩 페이지가 로그인 없이 접근 가능
-- [ ] 이용약관/개인정보처리방침 페이지 접근 가능 및 로그인에서 링크
+- [x] 랜딩 페이지가 로그인 없이 접근 가능
+- [x] 이용약관/개인정보처리방침 페이지 접근 가능 및 로그인에서 링크
 - [ ] E2E 데모 시나리오 (10개 기능) 에러 없이 완료
 - [ ] 백엔드 핵심 로직 테스트 커버리지 ≥ 60%
 - [ ] 커스텀 도메인에서 프로덕션 배포 완료
@@ -250,3 +271,4 @@ MVP-1의 10개 기능을 순서대로 커버하는 E2E 데모 시나리오:
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-19 | 최초 작성 |
+| 2026-07-03 | Step 1 완료 — 법적 페이지(약관/개인정보) + 랜딩 푸터·로그인 법적 링크; 상태 → 진행 중 |

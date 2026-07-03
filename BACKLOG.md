@@ -199,3 +199,54 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 - 결제 도입 시 **사업자등록·통신판매업 신고·사업자정보 표시**(전자상거래법) 의무화 → 약관/방침에 상호·사업자번호·주소 추가.
 - 국외 이전(Anthropic·Supabase 미국)은 현재 **고지**만 함 → 정식 서비스는 회원가입 시 **국외이전 명시적 동의** 절차 권장.
 - (선택) 만 14세 미만 이용 제한 문구 추가 검토.
+
+---
+
+## BL-006 · 크레딧(무료 2회) 표시·차감 로직 불일치 — 사용량이 항상 0/2로 표시됨 ✅
+
+**상태**: ✅ 완료 (2026-07-03). ①(a) 필드명 교체 + ②(c) 문구 정정 + ③(b) 중복 차감 가드 + ④(d) dev 카운트 0 리셋 모두 완료.
+**발견일**: 2026-07-03
+**관련 영역**: `frontend/src/hooks/useAuth.ts`, `pages/MyProjectsPage.tsx`, `components/common/TopBar.tsx`, `pages/AdminPage.tsx`, `lib/admin.ts`, `components/projects/NewProjectModal.tsx` / `backend/app/api/projects.py` / `supabase/migrations/006_design_sessions.sql`
+**대표 사례**: dev@localhost 계정 — 프로젝트 3개(완료 2·진행중 1), 실제 `credits_used=7`인데 화면엔 "이번 달 사용 **0/2** · **2회 남았어요**"로 표시.
+
+### 현재 과금 로직 (백엔드 설계 — 이 자체는 의도)
+- 크레딧 차감 시점 = **설계(How) 단계 진입 시 1회** (`POST /projects/{id}/design-decision`, decision="design" → `_check_credits` + `_increment_credits`, `projects.py:154-169`). 프로젝트 생성·인터뷰·설계 스킵·문서 생성은 차감 없음(생성은 개수 제한도 없음).
+- 한도: `PLAN_LIMITS = {free: 2, basic: 10, pro: 30, admin: 무제한}` (`projects.py:17`). free는 **계정 통산**(리셋 로직 없음), 월간은 유료 플랜 개념.
+
+### 문제 (4건)
+**(a) [핵심] 필드명 개명 미반영 — 프론트가 존재하지 않는 필드를 읽음.**
+마이그레이션 006이 `users.free_used` → `credits_used`로 개명(+CHECK 제약 교체), 백엔드는 스키마·로직 모두 이행 완료(`schemas/user.py:11`). 그러나 **프론트 5곳이 여전히 `free_used`를 참조** → API 응답에 없는 키라 `?? 0`으로 항상 0:
+- `useAuth.ts:12`(타입) / `MyProjectsPage.tsx:66`(0/2·남은 횟수 표시, `isQuotaExceeded` 항상 false → 생성 차단 무력화) / `TopBar.tsx:35` / `lib/admin.ts:16`(타입) / `AdminPage.tsx:288`(`${u.free_used}/2` → **"undefined/2"** 표시 추정)
+→ 실제 사용량이 화면에 나올 수 없는 구조. 무료 한도 소진 사용자도 계속 "2회 남음"으로 보임.
+
+**(b) 중복 차감 — 설계 재진입 시 매번 +1.**
+`design-decision`은 `status=="completed"`만 재차감을 막음(`projects.py:154`). **designing/evaluating 상태에서 다시 design 결정을 보내면 그때마다 `_increment_credits` 실행** → dev 계정 credits_used=7(프로젝트 3개 대비)의 원인. 프로젝트당 1회 차감 보장 없음.
+
+**(c) 문구·개념 불일치.**
+- `MyProjectsPage.tsx:115` "이번 달 사용" — free는 통산 2회라 "이번 달"이 부정확.
+- `NewProjectModal.tsx:47` "무료 플랜은 2회까지 킥오프를 **생성**할 수 있습니다" — 실제 차감·차단 지점은 생성이 아니라 **설계 진입**. 생성은 무제한.
+
+**(d) 체크/차감 비대칭 (기록용, 동작 특성).**
+`_check_credits`는 `DEV_BYPASS_AUTH=true` 또는 admin이면 통과(`projects.py:21-25`)하지만 `_increment_credits`는 **조건 없이 항상 실행**(`projects.py:169`) → dev/admin 모드에서 차단은 없는데 카운트만 쌓임. dev 계정 7이 커진 배경.
+
+### 해결 방향
+1. **(a) 프론트 5곳 `free_used` → `credits_used` 개명** — 타입+참조 일괄 교체. 표시·차단 즉시 복구. (최우선, 저위험)
+2. **(c) 문구 수정** — "이번 달 사용" → "사용한 킥오프"(또는 "크레딧") / NewProjectModal 안내를 "설계 단계 진입 시 1회 차감" 의미로 정정. 정책을 바꾸는 게 아니라 문구를 로직에 맞춤.
+3. **(b) 중복 차감 가드** — 프로젝트당 1회 차감 보장: designing/evaluating(=이미 차감된) 상태 재진입 시 차감 생략, 또는 projects에 `credit_charged_at` 기록 후 존재 시 스킵. 방식 결정 필요.
+4. **(d)는 수정 여부 선택** — dev 모드에서 increment도 스킵할지(카운트 오염 방지) 결정. dev 계정 `credits_used=7`은 테스트 잔여물 — 보정할지 BL-001처럼 방치할지 결정.
+
+### 적용한 수정 (2026-07-03, ①+②)
+- **①(a) 필드명 교체 완료** — 프론트 5곳 `free_used` → `credits_used`: `useAuth.ts`(타입)·`lib/admin.ts`(타입)·`MyProjectsPage.tsx`(로컬 변수 `freeUsed`→`creditsUsed` + 소스)·`TopBar.tsx`(동일)·`AdminPage.tsx`(`${u.credits_used}/2`). 이제 실측 사용량 표시·`isQuotaExceeded`·`remaining` 정상 동작. grep `free_used`/`freeUsed` 프론트 0건, `tsc -b` 0에러.
+- **방어 코드 추가** — `credits_used`가 한도(2)를 넘을 수 있어(③ 미수정 + dev 오염) 시각 요소 클램프: MyProjects 막대 `Math.min(creditsUsed/2, 1)*100%`, TopBar 잔여 `Math.max(0, freeLimit-creditsUsed)`. 큰 숫자 자체(예 dev 7)는 정직하게 그대로 표기.
+- **②(c) 문구 정정 완료** — MyProjects 쿼터 카드 라벨 "이번 달 사용" → **"누적 사용"**(free는 월간이 아니라 통산). NewProjectModal 안내 "2회까지 킥오프를 생성" → **"설계 단계를 2회까지 진행 (프로젝트 생성·인터뷰는 무제한)"**(차감 지점을 생성→설계 진입으로 정정).
+- **검증**: dev 계정(`credits_used=7`)에서 화면이 이제 "누적 사용 7/2·막대 100%·잔여 0/2·무료 소진 경고"로 실데이터 표시(과거 "0/2" 가짜값 해소). **7/2는 정상 — ③ 중복 차감 + dev 테스트 오염의 실측값.**
+
+### 적용한 수정 (2026-07-03, ③ 중복 차감 가드)
+- **마이그레이션**: `projects.credit_charged_at TIMESTAMPTZ` 추가 + 백필(`status='designing'`인 기존 프로젝트를 결제됨 처리). Supabase SQL Editor 수동 실행 완료.
+- **`projects.py` `set_design_decision`**: `charge = decision=="design" and not existing.credit_charged_at`. `charge`일 때만 `_check_credits`(검사)·`credit_charged_at` 기록·`_increment_credits`(+1). → **프로젝트당 1회 멱등 차감** + 재진입 시 검사/차감 모두 스킵(한도 소진자도 자기 설계 재진입 가능 — 증상 B 해소). `_check_credits`/`_increment_credits`는 여전히 유일 호출부.
+- **라이브 검증**(임시 프로젝트 생성→설계 2회→삭제): credits_used 7(생성 후 불변)→**8**(설계#1)→**8**(설계#2 불변)→삭제. 두 호출 다 HTTP 200. 가드 정상 동작 확인.
+- 참고: 프로젝트 삭제는 크레딧 환불 안 함(의도). 테스트로 dev credits_used 7→8, 테스트 프로젝트는 삭제됨.
+
+### 완료 조건
+- ~~AdminPage 실측 표시("undefined/2" 해소)~~ ✅ ① / ~~재진입 시 credits_used 불변~~ ✅ ③(검증) / ~~차단 로직 복구~~ ✅ ① / ~~"설계 2회 = credits 2" 등식~~ ✅ ③.
+- ~~(④) dev 계정 `credits_used` 오염값 정리~~ ✅ **0으로 리셋 완료**(2026-07-03, `users` 테이블 직접 UPDATE, id `0000…0000`). 기존 프로젝트의 `credit_charged_at` 도장은 유지되므로 재진입해도 재차감 없음 — 차감 흐름을 다시 테스트하려면 새 프로젝트 생성 필요.

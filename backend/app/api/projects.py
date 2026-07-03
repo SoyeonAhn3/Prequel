@@ -154,18 +154,26 @@ async def set_design_decision(
     if existing.data["status"] == "completed":
         return existing.data
 
-    if body.decision == "design":
+    # Charge a credit only the FIRST time this project enters design. Re-entry
+    # must not re-charge (idempotent per project) and must not be blocked by the
+    # quota check for a design the user already paid for.
+    charge = body.decision == "design" and not existing.data.get("credit_charged_at")
+
+    if charge:
         _check_credits(user)
 
     new_status = "designing" if body.decision == "design" else "evaluating"
+    updates: dict = {"status": new_status}
+    if charge:
+        updates["credit_charged_at"] = datetime.now(timezone.utc).isoformat()
     result = (
         sb.table("projects")
-        .update({"status": new_status})
+        .update(updates)
         .eq("id", project_id)
         .execute()
     )
 
-    if body.decision == "design":
+    if charge:
         _increment_credits(user["id"])
 
     logger.info(
@@ -173,6 +181,7 @@ async def set_design_decision(
         project_id=project_id,
         decision=body.decision,
         new_status=new_status,
+        charged=charge,
     )
     return result.data[0]
 
