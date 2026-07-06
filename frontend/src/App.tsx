@@ -15,36 +15,39 @@ import FinalizePage from './pages/FinalizePage'
 import DocumentPreviewPage from './pages/DocumentPreviewPage'
 import TermsPage from './pages/TermsPage'
 import PrivacyPage from './pages/PrivacyPage'
+import ErrorBoundary from './components/common/ErrorBoundary'
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
+        <ErrorBoundary>
+          <Routes>
+            {/* Public */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
 
-          {/* Protected */}
-          <Route element={<AuthGuard />}>
-            <Route element={<Layout />}>
-              <Route path="/projects" element={<MyProjectsPage />} />
-              <Route path="/notices" element={<NoticesPage />} />
-              <Route path="/guide" element={<GuidePage />} />
-              <Route path="/admin" element={<AdminPage />} />
+            {/* Protected */}
+            <Route element={<AuthGuard />}>
+              <Route element={<Layout />}>
+                <Route path="/projects" element={<MyProjectsPage />} />
+                <Route path="/notices" element={<NoticesPage />} />
+                <Route path="/guide" element={<GuidePage />} />
+                <Route path="/admin" element={<AdminPage />} />
+              </Route>
+              <Route path="/projects/:projectId/interview" element={<InterviewPage />} />
+              <Route path="/projects/:projectId/design" element={<DesignPage />} />
+              <Route path="/projects/:projectId/finalize" element={<FinalizePage />} />
+              <Route path="/projects/:projectId/document" element={<DocumentPreviewPage />} />
             </Route>
-            <Route path="/projects/:projectId/interview" element={<InterviewPage />} />
-            <Route path="/projects/:projectId/design" element={<DesignPage />} />
-            <Route path="/projects/:projectId/finalize" element={<FinalizePage />} />
-            <Route path="/projects/:projectId/document" element={<DocumentPreviewPage />} />
-          </Route>
 
-          {/* Default */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Default */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>
   )

@@ -1,8 +1,26 @@
 import { supabase } from './supabase'
 
+/**
+ * API 호출 실패를 나타내는 에러.
+ * status(HTTP 상태)와 retryable(재시도 가능 여부)을 함께 담아,
+ * 각 화면이 "재시도" 버튼을 띄울지 판단할 수 있게 한다.
+ */
+export class ApiError extends Error {
+  status: number
+  retryable: boolean
+
+  constructor(message: string, status: number, retryable = false) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.retryable = retryable
+  }
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
+  timeoutMs = 120000,
 ): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -15,14 +33,37 @@ export async function apiFetch<T = unknown>(
     headers['Authorization'] = `Bearer ${session.access_token}`
   }
 
-  const response = await fetch(`/api${path}`, { ...options, headers })
+  // 지정 시간(기본 120초) 안에 응답이 없으면 요청을 끊는다 — 무한 대기 방지.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: response.statusText }))
-    throw new Error(error.detail || `API error ${response.status}`)
+  try {
+    const response = await fetch(`/api${path}`, { ...options, headers, signal: controller.signal })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }))
+      throw new ApiError(
+        error.detail || `API error ${response.status}`,
+        response.status,
+        // 백엔드가 retryable을 주면 그 값을, 없으면 5xx는 재시도 가능으로 간주.
+        error.retryable ?? (response.status >= 500),
+      )
+    }
+
+    return response.json()
+  } catch (e) {
+    // 타임아웃으로 요청이 중단된 경우.
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new ApiError('요청 시간이 초과됐어요. 잠시 후 다시 시도해주세요.', 0, true)
+    }
+    // fetch 자체가 실패 = 네트워크 끊김/오프라인. 재시도 가능으로 처리.
+    if (e instanceof TypeError) {
+      throw new ApiError('네트워크 연결을 확인해주세요.', 0, true)
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
   }
-
-  return response.json()
 }
 
 /**

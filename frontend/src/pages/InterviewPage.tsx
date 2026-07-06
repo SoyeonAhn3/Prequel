@@ -3,6 +3,9 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { PenTool, FastForward } from 'lucide-react'
 import { useAuthContext } from '../contexts/AuthContext'
 import { apiFetch } from '../lib/api'
+import { useRetryable } from '../hooks/useRetryable'
+import ErrorBanner from '../components/common/ErrorBanner'
+import { saveDraft, loadDraft, clearDraft } from '../lib/interviewDraft'
 import LeftRail from '../components/interview/LeftRail'
 import ChatCenter from '../components/interview/ChatCenter'
 import RightPanel from '../components/interview/RightPanel'
@@ -126,12 +129,14 @@ export default function InterviewPage() {
   })
   const [project, setProject] = useState({ name: '', type: '', language: '' })
   const [sending, setSending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { error, retry, run, fail, clear } = useRetryable()
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [lastSavedLabel, setLastSavedLabel] = useState('방금 전')
   const [showInactiveWarning, setShowInactiveWarning] = useState(false)
   const [typeToConfirm, setTypeToConfirm] = useState<string | null>(null)
   const [decidingDesign, setDecidingDesign] = useState(false)
+  const [startAttempt, setStartAttempt] = useState(0)
+  const [isOnline, setIsOnline] = useState(true)
 
   const startTimeRef = useRef(Date.now())
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
@@ -230,9 +235,9 @@ export default function InterviewPage() {
       })
       navigate('/projects')
     } catch (e) {
-      setError(e instanceof Error ? e.message : '일시정지에 실패했습니다')
+      fail(e)
     }
-  }, [sessionId, navigate])
+  }, [sessionId, navigate, fail])
 
   // #11: 5-min inactivity auto-pause
   useEffect(() => {
@@ -258,68 +263,97 @@ export default function InterviewPage() {
     }
   }, [pageStatus, handlePause])
 
-  useEffect(() => {
+  const startInterview = useCallback(async () => {
     if (!projectId) return
-
-    async function init() {
-      try {
-        const projects = await apiFetch<Project[]>('/projects')
-        const proj = projects.find((p) => p.id === projectId)
-        if (proj) {
-          setProject({ name: proj.name, type: proj.project_type ?? '', language: proj.language })
-          if (proj.status === 'designing' || proj.status === 'evaluating') {
-            navigate('/projects')
-            return
-          }
-        }
-
-        const { session } = await apiFetch<{
-          session: { id: string; status: string; current_question: number } | null
-        }>(`/interview/session/${projectId}`)
-
-        if (session?.status === 'completed') {
-          answerCountRef.current = session.current_question
-          setStats((prev) => ({ ...prev, answerCount: session.current_question }))
-          setPageStatus('completed')
+    try {
+      const projects = await apiFetch<Project[]>('/projects')
+      const proj = projects.find((p) => p.id === projectId)
+      if (proj) {
+        setProject({ name: proj.name, type: proj.project_type ?? '', language: proj.language })
+        if (proj.status === 'designing' || proj.status === 'evaluating') {
+          navigate('/projects')
           return
         }
-
-        const res = await apiFetch<InterviewApiResponse>('/interview/start', {
-          method: 'POST',
-          body: JSON.stringify({ project_id: projectId }),
-        })
-        applyApiResponse(res)
-
-        startTimeRef.current = Date.now()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '인터뷰를 시작할 수 없습니다')
-        setPageStatus('error')
       }
-    }
 
-    init()
-  }, [projectId, applyApiResponse])
+      const { session } = await apiFetch<{
+        session: { id: string; status: string; current_question: number } | null
+      }>(`/interview/session/${projectId}`)
+
+      if (session?.status === 'completed') {
+        answerCountRef.current = session.current_question
+        setStats((prev) => ({ ...prev, answerCount: session.current_question }))
+        setPageStatus('completed')
+        return
+      }
+
+      const res = await apiFetch<InterviewApiResponse>('/interview/start', {
+        method: 'POST',
+        body: JSON.stringify({ project_id: projectId }),
+      })
+      applyApiResponse(res)
+
+      startTimeRef.current = Date.now()
+    } catch (e) {
+      // 재시도: 로딩 화면으로 되돌리고 startAttempt를 올려 아래 effect를 재실행한다.
+      fail(e, () => {
+        setPageStatus('loading')
+        clear()
+        setStartAttempt((n) => n + 1)
+      })
+      setPageStatus('error')
+    }
+  }, [projectId, navigate, applyApiResponse, clear, fail])
+
+  useEffect(() => {
+    startInterview()
+  }, [startInterview, startAttempt])
 
   const handleSend = useCallback(
     async (text: string) => {
-      if (!text.trim() || !sessionId || sending) return
+      const answer = text.trim()
+      if (!answer || !sessionId || sending) return
       setSending(true)
-      setError(null)
-
-      try {
-        const res = await apiFetch<InterviewApiResponse>('/interview/answer', {
-          method: 'POST',
-          body: JSON.stringify({ session_id: sessionId, answer: text.trim() }),
-        })
-        applyApiResponse(res)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '답변 전송에 실패했습니다')
-      } finally {
-        setSending(false)
-      }
+      // 후처리(applyApiResponse·초안 삭제)까지 run 안에 넣어야 재시도 시에도 반영된다.
+      await run(async () => {
+        try {
+          const res = await apiFetch<InterviewApiResponse>('/interview/answer', {
+            method: 'POST',
+            body: JSON.stringify({ session_id: sessionId, answer }),
+          })
+          applyApiResponse(res)
+          clearDraft(projectId) // 성공 → 미전송 임시저장 삭제
+        } catch (e) {
+          saveDraft(projectId, sessionId, answer) // 실패 → 답변 보존(오프라인 대비)
+          throw e // run이 에러+재시도를 세팅하도록 다시 던짐
+        }
+      })
+      setSending(false)
     },
-    [sessionId, sending, applyApiResponse],
+    [sessionId, sending, projectId, run, applyApiResponse],
   )
+
+  // 온·오프라인 상태 추적 (배너 표시용). online/offline 이벤트로만 갱신.
+  useEffect(() => {
+    const on = () => setIsOnline(true)
+    const off = () => setIsOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
+
+  // 재연결 시 임시저장된 미전송 답변을 자동 재전송
+  useEffect(() => {
+    const onOnline = () => {
+      const draft = loadDraft(projectId)
+      if (draft && draft.sessionId === sessionId) handleSend(draft.answer)
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [projectId, sessionId, handleSend])
 
   const handleDesignDecision = useCallback(async (decision: 'design' | 'skip') => {
     if (!projectId || decidingDesign) return
@@ -335,10 +369,10 @@ export default function InterviewPage() {
         navigate(`/projects/${projectId}/finalize`)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : '선택 저장에 실패했습니다')
+      fail(e)
       setDecidingDesign(false)
     }
-  }, [projectId, decidingDesign, navigate])
+  }, [projectId, decidingDesign, navigate, fail])
 
   const handleTypeConfirm = useCallback(async (confirmedType: string) => {
     typeConfirmedRef.current = true
@@ -374,12 +408,26 @@ export default function InterviewPage() {
       <div className="h-screen flex items-center justify-center bg-bg">
         <div className="text-center max-w-sm">
           <p className="text-sm text-red mb-4">{error}</p>
-          <button
-            onClick={() => navigate('/projects')}
-            className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg cursor-pointer border-none"
-          >
-            프로젝트 목록으로
-          </button>
+          <div className="flex items-center justify-center gap-2">
+            {retry && (
+              <button
+                onClick={retry}
+                className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg cursor-pointer border-none"
+              >
+                재시도
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/projects')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg cursor-pointer ${
+                retry
+                  ? 'bg-surface text-text border border-border'
+                  : 'bg-accent text-white border-none'
+              }`}
+            >
+              프로젝트 목록으로
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -457,16 +505,14 @@ export default function InterviewPage() {
         <span className="text-xs text-text-muted">{project.name}</span>
       </header>
 
-      {error && (
-        <div className="px-4 py-2 bg-red/10 text-red text-xs text-center border-b border-red/20">
-          {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-2 underline cursor-pointer bg-transparent border-none text-red text-xs"
-          >
-            닫기
-          </button>
+      {!isOnline && (
+        <div className="px-4 py-2 bg-amber/10 text-amber text-xs text-center border-b border-amber/20">
+          오프라인 상태예요. 답변은 임시 저장되고, 연결되면 자동으로 전송됩니다.
         </div>
+      )}
+
+      {error && (
+        <ErrorBanner message={error} onRetry={retry ?? undefined} onClose={clear} />
       )}
 
       {showInactiveWarning && (

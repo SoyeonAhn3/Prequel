@@ -166,7 +166,7 @@ prequel/
 │   ├── Phase6_EvalFinalize.md     # ✅ Evaluation & finalization
 │   ├── Phase7_DocGeneration.md    # ✅ Document preview & generation (Markdown export; Mermaid out of scope)
 │   ├── Phase8_AdminFeatures.md    # ✅ Admin & supporting features
-│   └── Phase9_IntegrationDeploy.md # 🚧 i18n, testing & deployment (Step 1 done)
+│   └── Phase9_IntegrationDeploy.md # 🚧 i18n, testing & deployment (Steps 1-2 done: legal + error handling)
 ├── .env.example
 └── README.md
 ```
@@ -207,7 +207,7 @@ Payment integration is planned for MVP-2.
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
 | Phase 7: Doc Preview & Generation | ✅ Done | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. Note: progressive v1→v2→v3 generation dropped in favor of live assembly; **Mermaid diagram rendering removed from scope** |
 | Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. Follow-ups logged: BL-003 (prompt caching), BL-004 (dev-bypass log attribution) |
-| Phase 9: i18n, Testing & Deploy | 🚧 In Progress | **Step 1 done**: Terms/Privacy pages (`/terms`, `/privacy`) + landing footer & login legal links. Remaining: multilingual UI (i18n), error handling, E2E testing, Netlify + Railway deploy |
+| Phase 9: i18n, Testing & Deploy | 🚧 In Progress | **Steps 1-2 done**: legal pages (`/terms`, `/privacy`) + landing footer & login legal links; **error handling integration (NFR-003)** — Claude timeout/retry → 503 friendly errors, `apiFetch` timeout + `ApiError`, retry buttons (4 screens), Error Boundary, interview offline draft/auto-resend. Remaining: multilingual UI (i18n), E2E testing, Netlify + Railway deploy |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
 
@@ -249,7 +249,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, doc preview + Markdown export, admin & supporting features); Phase 9 in progress (Step 1 — legal pages & landing footer done; i18n, error handling, testing, deploy remaining)
+- **Early development** — Phase 1-8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, doc preview + Markdown export, admin & supporting features); Phase 9 in progress (Steps 1-2 — legal pages, landing footer & error handling done; i18n, testing, deploy remaining)
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2

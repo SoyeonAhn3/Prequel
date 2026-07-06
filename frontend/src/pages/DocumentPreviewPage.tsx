@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Download, FileText, Loader2 } from 'lucide-react'
 import { apiFetch, apiDownload } from '../lib/api'
+import { useRetryable } from '../hooks/useRetryable'
+import ErrorBanner from '../components/common/ErrorBanner'
 import DocSectionBody from '../components/viewer/DocSections'
 
 // 7a (structured): the preview renders a server-assembled document model. Each
@@ -44,8 +46,9 @@ export default function DocumentPreviewPage() {
 
   const [model, setModel] = useState<DocModel | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const { error, retry, fail, clear } = useRetryable()
 
   useEffect(() => {
     let active = true
@@ -54,7 +57,14 @@ export default function DocumentPreviewPage() {
         const data = await apiFetch<DocModel>(`/projects/${projectId}/document-model`)
         if (active) setModel(data)
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : '문서를 불러오지 못했습니다')
+        // 재시도: 로딩 화면으로 되돌리고 loadAttempt를 올려 이 effect를 재실행.
+        if (active) {
+          fail(e, () => {
+            clear()
+            setLoading(true)
+            setLoadAttempt((n) => n + 1)
+          })
+        }
       } finally {
         if (active) setLoading(false)
       }
@@ -63,16 +73,16 @@ export default function DocumentPreviewPage() {
     return () => {
       active = false
     }
-  }, [projectId])
+  }, [projectId, loadAttempt, fail, clear])
 
   async function handleDownload() {
     if (!model) return
     setDownloading(true)
-    setError(null)
+    clear()
     try {
       await apiDownload(`/projects/${model.project.id}/export/markdown`, `${model.project.name}_kickoff.md`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : '다운로드에 실패했습니다 (문서가 아직 생성되지 않았을 수 있어요)')
+      fail(e)
     } finally {
       setDownloading(false)
     }
@@ -94,12 +104,22 @@ export default function DocumentPreviewPage() {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-3 text-text-muted">
         <div className="text-sm">{error ?? '프로젝트를 찾을 수 없습니다'}</div>
-        <button
-          onClick={() => navigate('/projects')}
-          className="px-4 py-2 text-[13px] font-semibold text-accent border border-accent/30 rounded-lg cursor-pointer hover:bg-accent-soft transition-colors"
-        >
-          내 프로젝트로
-        </button>
+        <div className="flex items-center gap-2">
+          {retry && (
+            <button
+              onClick={retry}
+              className="px-4 py-2 text-[13px] font-semibold text-white bg-accent rounded-lg cursor-pointer hover:opacity-90 transition-opacity border-none"
+            >
+              재시도
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/projects')}
+            className="px-4 py-2 text-[13px] font-semibold text-accent border border-accent/30 rounded-lg cursor-pointer hover:bg-accent-soft transition-colors"
+          >
+            내 프로젝트로
+          </button>
+        </div>
       </div>
     )
   }
@@ -224,7 +244,7 @@ export default function DocumentPreviewPage() {
         </div>
 
         {error && (
-          <div className="px-8 py-2 bg-red/10 text-red text-xs border-b border-red/20">{error}</div>
+          <ErrorBanner message={error} onRetry={retry ?? undefined} onClose={clear} />
         )}
 
         {/* Document body */}

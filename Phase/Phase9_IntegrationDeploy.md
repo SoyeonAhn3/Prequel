@@ -2,7 +2,7 @@
 
 > Apply multilingual support, build the landing page, conduct E2E testing, and deploy to production.
 
-**Status**: 🚧 In Progress — Step 1 (legal pages & landing footer) done
+**Status**: 🚧 In Progress — Step 1 (legal pages & landing footer) + Step 2 (error handling `#5`) done
 **Prerequisites**: Phase 8 completion (Admin features, rate limiting, logging)
 
 ---
@@ -21,7 +21,7 @@ The final phase brings everything together. Apply `react-i18next` for Korean/Eng
 | 2 | Claude API prompt language parameter | Backend | 🔲 | FR-009 |
 | 3 | Landing page (service intro + "Get Started") | Frontend | 🚧 | — |
 | 4 | Terms of Service / Privacy Policy pages | Frontend | ✅ | FR-018 |
-| 5 | Error handling integration (Claude API timeout → retry, Supabase outage → maintenance page) | Common | 🔲 | NFR-003 |
+| 5 | Error handling integration (Claude API timeout → retry, network drop → offline save) | Common | ✅ | NFR-003 |
 | 6 | E2E demo scenario test (10 features sequential execution) | Common | 🔲 | DoD |
 | 7 | pytest backend coverage 60%+ on core logic | Backend | 🔲 | NFR-013 |
 | 8 | Deployment setup (Netlify + Railway, env vars, CI/CD) | Common | 🔲 | — |
@@ -36,7 +36,20 @@ Legal pages and landing polish shipped:
 - **Landing page** (`#3` 🚧) — footer added with Terms/Privacy links; hero height adjusted so the footer shows without scrolling. Login page gained legal links + a consent notice.
 - Follow-up **BL-005**: legal pages carry placeholder contact/officer info — replace with real details before public launch.
 
-Remaining in Phase 9: i18n (`#1`, `#2`), error handling (`#5`), testing (`#6`, `#7`), deployment (`#8`–`#10`).
+Remaining in Phase 9: i18n (`#1`, `#2`), testing (`#6`, `#7`), deployment (`#8`–`#10`).
+
+### Progress — Step 2 (2026-07-06) — Error handling integration (`#5` ✅)
+
+End-to-end error handling shipped across backend and frontend:
+
+- **Backend friendly errors** — `core/claude_client.py`: 60s timeout + `max_retries=2` on the Anthropic client; SDK exceptions (`APITimeoutError`/`APIConnectionError`, `RateLimitError`, `APIStatusError`) converted to a domain `AIServiceError`. `main.py` global handler maps it to **503 + Korean message + `retryable: true`**.
+- **Frontend timeout & typed errors** — `lib/api.ts`: `apiFetch` gains a 120s `AbortController` timeout and throws `ApiError` (`status`/`retryable`); network failures (fetch `TypeError`) also surface as retryable.
+- **Retry buttons** — reusable `hooks/useRetryable.ts` + shared `components/common/ErrorBanner.tsx`, wired into the four AI-calling screens (Interview, Design, Finalize, Document). Retry re-runs the full operation (API call + post-processing).
+- **Error Boundary** — `components/common/ErrorBoundary.tsx` wraps `<Routes>` in `App.tsx`; a render crash shows a fallback instead of a white screen and logs the error.
+- **Interview offline resilience** — `lib/interviewDraft.ts` persists an unsent answer to `localStorage`; auto-resends on the `online` event; offline banner in `InterviewPage.tsx`.
+- Follow-up **BL-007**: duplicate-send risk on interview answers needs a server-side idempotency key.
+
+Verified: frontend `tsc -b` + production build pass; backend `py_compile` + in-process test confirming the `AIServiceError` → 503 mapping.
 
 ---
 
@@ -133,6 +146,7 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 |---|---|
 | 2026-05-19 | Initial creation |
 | 2026-07-03 | Step 1 done — legal pages (Terms/Privacy) + landing footer & login legal links; status → In Progress |
+| 2026-07-06 | Step 2 done — error handling integration (#5 ✅): backend 503/`AIServiceError`, frontend timeout/`ApiError` + retry buttons (4 screens), Error Boundary, interview offline draft/auto-resend. BL-007 logged. |
 
 ---
 ---
@@ -141,7 +155,7 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 
 > 다국어 지원 적용, 랜딩 페이지 구축, E2E 테스트 수행, 프로덕션 배포.
 
-**상태**: 🚧 진행 중 — Step 1 (법적 페이지·랜딩 푸터) 완료
+**상태**: 🚧 진행 중 — Step 1 (법적 페이지·랜딩 푸터) + Step 2 (에러 처리 `#5`) 완료
 **선행 조건**: Phase 8 완료 (Admin 기능, Rate Limiting, 로깅)
 
 ---
@@ -160,7 +174,7 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 | 2 | Claude API 프롬프트 언어 파라미터 전달 | Backend | 🔲 | FR-009 |
 | 3 | 랜딩 페이지 (서비스 소개 + "시작하기") | Frontend | 🚧 | — |
 | 4 | 이용약관 / 개인정보처리방침 페이지 | Frontend | ✅ | FR-018 |
-| 5 | 에러 처리 통합 (Claude API 타임아웃 → 재시도, Supabase 장애 → 점검 안내) | 공통 | 🔲 | NFR-003 |
+| 5 | 에러 처리 통합 (Claude API 타임아웃 → 재시도, 네트워크 끊김 → 오프라인 저장) | 공통 | ✅ | NFR-003 |
 | 6 | E2E 데모 시나리오 테스트 (10개 기능 순차 실행) | 공통 | 🔲 | DoD |
 | 7 | pytest 백엔드 핵심 로직 60%+ 커버리지 | Backend | 🔲 | NFR-013 |
 | 8 | 배포 설정 (Netlify + Railway, 환경 변수, CI/CD) | 공통 | 🔲 | — |
@@ -175,7 +189,20 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 - **랜딩 페이지** (`#3` 🚧) — 약관·개인정보 링크가 담긴 푸터 추가, 히어로 높이 조정으로 스크롤 없이 푸터 노출. 로그인 페이지에 법적 링크·동의 안내문 추가.
 - 후속 **BL-005**: 법적 페이지의 연락처·책임자 정보가 임시값 — 정식 오픈 전 실제 정보로 교체 필요.
 
-Phase 9 잔여: i18n (`#1`, `#2`), 에러 처리 (`#5`), 테스트 (`#6`, `#7`), 배포 (`#8`~`#10`).
+Phase 9 잔여: i18n (`#1`, `#2`), 테스트 (`#6`, `#7`), 배포 (`#8`~`#10`).
+
+### 진행 상황 — Step 2 (2026-07-06) — 에러 처리 통합 (`#5` ✅)
+
+백엔드·프론트 전반의 에러 처리 반영:
+
+- **백엔드 친절한 에러** — `core/claude_client.py`: Anthropic 클라이언트에 60초 타임아웃 + `max_retries=2`, SDK 예외(`APITimeoutError`/`APIConnectionError`, `RateLimitError`, `APIStatusError`)를 도메인 예외 `AIServiceError`로 변환. `main.py` 전역 핸들러가 **503 + 한국어 메시지 + `retryable: true`**로 매핑.
+- **프론트 타임아웃·타입 에러** — `lib/api.ts`: `apiFetch`에 120초 `AbortController` 타임아웃 + `ApiError`(`status`/`retryable`), 네트워크 실패(fetch `TypeError`)도 재시도 가능으로 처리.
+- **재시도 버튼** — 공용 `hooks/useRetryable.ts` + `components/common/ErrorBanner.tsx`를 AI 호출 4개 화면(인터뷰·설계·마감·문서)에 연결. 재시도는 API 호출+후처리 전체를 다시 실행.
+- **Error Boundary** — `components/common/ErrorBoundary.tsx`가 `App.tsx`에서 `<Routes>`를 감싸 렌더 크래시 시 흰 화면 대신 fallback + 에러 로깅.
+- **인터뷰 오프라인 대비** — `lib/interviewDraft.ts`로 미전송 답변을 `localStorage`에 저장, `online` 이벤트에 자동 재전송, `InterviewPage.tsx` 오프라인 배너.
+- 후속 **BL-007**: 인터뷰 답변 중복 전송 위험 → 서버측 멱등성 키 필요.
+
+검증: 프론트 `tsc -b` + 프로덕션 빌드 통과, 백엔드 `py_compile` + `AIServiceError` → 503 매핑 인프로세스 테스트 확인.
 
 ---
 
@@ -272,3 +299,4 @@ MVP-1의 10개 기능을 순서대로 커버하는 E2E 데모 시나리오:
 |---|---|
 | 2026-05-19 | 최초 작성 |
 | 2026-07-03 | Step 1 완료 — 법적 페이지(약관/개인정보) + 랜딩 푸터·로그인 법적 링크; 상태 → 진행 중 |
+| 2026-07-06 | Step 2 완료 — 에러 처리 통합(#5 ✅): 백엔드 503/`AIServiceError`, 프론트 타임아웃/`ApiError` + 재시도 버튼(4개 화면), Error Boundary, 인터뷰 오프라인 임시저장/자동 재전송. BL-007 등록. |

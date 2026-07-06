@@ -1,13 +1,15 @@
 import structlog
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
 from app.core.ratelimit import limiter
+from app.core.claude_client import AIServiceError
 from app.api.users import router as users_router
 from app.api.admin import router as admin_router
 from app.api.projects import router as projects_router
@@ -49,6 +51,17 @@ app = FastAPI(
 # 레이트 리밋: limiter 등록 + 429 핸들러.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(AIServiceError)
+async def ai_service_error_handler(request: Request, exc: AIServiceError):
+    # Claude 호출 실패(SDK 재시도 후) → 503 + 사용자용 메시지 + 재시도 가능 신호.
+    # CORS 미들웨어가 바깥(outermost)이라 이 응답에도 CORS 헤더가 붙는다.
+    return JSONResponse(
+        status_code=503,
+        content={"detail": str(exc), "retryable": True},
+    )
+
 
 # 미들웨어 순서 주의: 나중에 add 한 것이 더 바깥(outermost).
 # SlowAPI를 먼저(안쪽), CORS를 나중에(바깥쪽) 추가해야 429 응답에도

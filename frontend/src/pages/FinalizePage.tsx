@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
+import { useRetryable } from '../hooks/useRetryable'
+import ErrorBanner from '../components/common/ErrorBanner'
 import Frame from '../components/common/Frame'
 import FinalizeLeftRail from '../components/finalize/FinalizeLeftRail'
 import DesignStepHeader from '../components/design/DesignStepHeader'
@@ -100,7 +102,7 @@ export default function FinalizePage() {
   })
   const [session, setSession] = useState<FinalizeSession | null>(null)
   const [generating, setGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { error, retry, run, fail, clear } = useRetryable()
   const [lastSavedLabel, setLastSavedLabel] = useState('자동 저장됨')
 
   useEffect(() => {
@@ -154,8 +156,7 @@ export default function FinalizePage() {
   const handleGenerate = useCallback(async (step: FinalizeStepId) => {
     if (!projectId || generating) return
     setGenerating(true)
-    setError(null)
-    try {
+    await run(async () => {
       const res = await apiFetch<FinalizeSession>(`/finalize/${step}`, {
         method: 'POST',
         body: JSON.stringify({ project_id: projectId }),
@@ -163,12 +164,9 @@ export default function FinalizePage() {
       setSession(res)
       updateStepStatuses(res)
       setLastSavedLabel('방금 저장됨')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '생성에 실패했습니다')
-    } finally {
-      setGenerating(false)
-    }
-  }, [projectId, generating])
+    })
+    setGenerating(false)
+  }, [projectId, generating, run])
 
   const handleUpdateDone = useCallback(async (data: FinalizeSession['done_criteria']) => {
     if (!session || !data) return
@@ -181,9 +179,9 @@ export default function FinalizePage() {
       setSession(res)
       setLastSavedLabel('방금 저장됨')
     } catch (e) {
-      setError(e instanceof Error ? e.message : '저장에 실패했습니다')
+      fail(e)
     }
-  }, [session])
+  }, [session, fail])
 
   const handleNext = useCallback(() => {
     if (generating) return
@@ -312,12 +310,7 @@ export default function FinalizePage() {
           />
 
           {error && (
-            <div className="px-4 py-2 bg-red/10 text-red text-xs text-center border-b border-red/20">
-              {error}
-              <button type="button" onClick={() => setError(null)} className="ml-2 underline cursor-pointer bg-transparent border-none text-red text-xs">
-                닫기
-              </button>
-            </div>
+            <ErrorBanner message={error} onRetry={retry ?? undefined} onClose={clear} />
           )}
 
           <div className="flex-1 overflow-auto px-6 py-5">

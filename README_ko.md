@@ -166,7 +166,7 @@ prequel/
 │   ├── Phase6_EvalFinalize.md     # ✅ 평가 & 마무리
 │   ├── Phase7_DocGeneration.md    # ✅ 문서 미리보기 & 생성 (Markdown 내보내기; Mermaid 스코프 제외)
 │   ├── Phase8_AdminFeatures.md    # ✅ Admin & 부가 기능
-│   └── Phase9_IntegrationDeploy.md # 🚧 다국어, 테스트 & 배포 (Step 1 완료)
+│   └── Phase9_IntegrationDeploy.md # 🚧 다국어, 테스트 & 배포 (Step 1-2 완료: 법적 + 에러 처리)
 ├── .env.example
 └── README.md
 ```
@@ -207,7 +207,7 @@ prequel/
 | Phase 6: 평가 & 마무리 | ✅ 완료 | `finalize.py` API (평가 → 완료조건 → 갭 → 체크리스트), 스킬 4종 재작성, 마이그레이션 008, doc v3 엔진, FinalizePage 카드 위저드 — E2E 테스트 대기 |
 | Phase 7: 문서 미리보기 & 생성 | ✅ 완료 | 읽을 때 조립 방식 (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2컬럼 TOC + 완성도 + Markdown 다운로드). **대시보드 요약 섹션 렌더링** — 섹션 `kind`별 빌딩블록(스탯 스트립 / 표+chip / 미터 / 레이어 밴드 / 콜아웃), markdown 내보내기 불변. 참고: 점진적 v1→v2→v3 생성은 실시간 조립으로 폐기; **Mermaid 다이어그램 렌더링은 스코프 제외** |
 | Phase 8: Admin & 부가 기능 | ✅ 완료 | Admin 대시보드(사용자 관리 + 토큰 사용량 차트 + 활동 로그), 공지 CRUD + 페이지, 호출별 토큰 로깅(캐시 포함), `slowapi` Rate Limiting(인터뷰 20/분, 일반 60/분), `structlog` JSON 로깅, 사용자 가이드 페이지. 후속: BL-003(프롬프트 캐싱), BL-004(dev 우회 로그 귀속) |
-| Phase 9: 다국어·테스트·배포 | 🚧 진행 중 | **Step 1 완료**: 이용약관/개인정보 페이지(`/terms`, `/privacy`) + 랜딩 푸터·로그인 법적 링크. 잔여: 다국어 UI(i18n), 에러 처리, E2E 테스트, Netlify + Railway 배포 |
+| Phase 9: 다국어·테스트·배포 | 🚧 진행 중 | **Step 1-2 완료**: 이용약관/개인정보 페이지(`/terms`, `/privacy`) + 랜딩 푸터·로그인 법적 링크; **에러 처리 통합(NFR-003)** — Claude 타임아웃/재시도 → 503 친절 에러, `apiFetch` 타임아웃 + `ApiError`, 재시도 버튼(4개 화면), Error Boundary, 인터뷰 오프라인 임시저장/자동 재전송. 잔여: 다국어 UI(i18n), E2E 테스트, Netlify + Railway 배포 |
 | MVP-2 (5개 기능) | 📋 예정 | 결제 + 토큰 추적 + 비용 미터 + 갤러리 + 모델 라우팅 |
 | v2 | 📋 Planned | 갭 분석, DOCX 내보내기, 공유 링크 |
 
@@ -249,7 +249,7 @@ prequel/
 
 ## 한계점
 
-- **초기 개발 단계** — Phase 1-8 완료 (셋업, 인증, 프로젝트 관리, 인터뷰 파이프라인, 설계, 평가/마무리, 문서 미리보기 + Markdown 내보내기, Admin & 부가 기능), Phase 9 진행 중 (Step 1 — 법적 페이지·랜딩 푸터 완료; 다국어, 에러 처리, 테스트, 배포 잔여)
+- **초기 개발 단계** — Phase 1-8 완료 (셋업, 인증, 프로젝트 관리, 인터뷰 파이프라인, 설계, 평가/마무리, 문서 미리보기 + Markdown 내보내기, Admin & 부가 기능), Phase 9 진행 중 (Step 1-2 — 법적 페이지·랜딩 푸터·에러 처리 완료; 다국어, 테스트, 배포 잔여)
 - **데스크탑 전용** — 태블릿은 MVP-2, 모바일은 미지원
 - **언어 고정** — 프로젝트 언어(ko/en)는 생성 시 고정, 변경하려면 새 프로젝트 생성 필요
 - **MVP-1에 결제 없음** — Free 2회 소진 후 유료 전환 불가 (MVP-2까지)
