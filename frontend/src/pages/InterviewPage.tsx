@@ -310,21 +310,23 @@ export default function InterviewPage() {
   }, [startInterview, startAttempt])
 
   const handleSend = useCallback(
-    async (text: string) => {
+    async (text: string, existingId?: string) => {
       const answer = text.trim()
       if (!answer || !sessionId || sending) return
+      // 멱등성(BL-007): 새 답변이면 ID 생성, 재전송이면 기존 ID 재사용 → 서버가 중복을 판별.
+      const answerId = existingId ?? crypto.randomUUID()
       setSending(true)
       // 후처리(applyApiResponse·초안 삭제)까지 run 안에 넣어야 재시도 시에도 반영된다.
       await run(async () => {
         try {
           const res = await apiFetch<InterviewApiResponse>('/interview/answer', {
             method: 'POST',
-            body: JSON.stringify({ session_id: sessionId, answer }),
+            body: JSON.stringify({ session_id: sessionId, answer, answer_id: answerId }),
           })
           applyApiResponse(res)
           clearDraft(projectId) // 성공 → 미전송 임시저장 삭제
         } catch (e) {
-          saveDraft(projectId, sessionId, answer) // 실패 → 답변 보존(오프라인 대비)
+          saveDraft(projectId, sessionId, answer, answerId) // 실패 → 답변·ID 보존(오프라인 대비)
           throw e // run이 에러+재시도를 세팅하도록 다시 던짐
         }
       })
@@ -349,7 +351,8 @@ export default function InterviewPage() {
   useEffect(() => {
     const onOnline = () => {
       const draft = loadDraft(projectId)
-      if (draft && draft.sessionId === sessionId) handleSend(draft.answer)
+      // 같은 answerId를 재사용해 재전송 → 서버가 중복으로 인식(이중 진행 방지).
+      if (draft && draft.sessionId === sessionId) handleSend(draft.answer, draft.answerId)
     }
     window.addEventListener('online', onOnline)
     return () => window.removeEventListener('online', onOnline)

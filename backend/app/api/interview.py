@@ -293,6 +293,29 @@ async def start_interview(
     )
 
 
+def _current_state_response(session: dict) -> InterviewResponse:
+    """저장된 세션의 현재 상태를 재처리 없이 응답으로 재구성한다.
+
+    resume(일시정지 재개)·중복 답변(BL-007) 처리에서 공유한다.
+    """
+    messages = session.get("messages") or []
+    last_ai, last_meta = None, {}
+    for msg in reversed(messages):
+        if msg["role"] == "assistant":
+            last_ai = msg["content"]
+            last_meta = msg.get("_meta", {})
+            break
+    session["_insights"] = session.get("_insights") or []
+    return _build_response(
+        session=session,
+        question=last_ai,
+        topics=last_meta.get("topics", []),
+        importance=last_meta.get("importance"),
+        example_answers=last_meta.get("example_answers", []),
+        session_insights=session.get("_insights") or [],
+    )
+
+
 @router.post("/answer", response_model=InterviewResponse)
 @limiter.limit("20/minute")
 async def submit_answer(
@@ -320,7 +343,19 @@ async def submit_answer(
 
     messages = session.get("messages") or []
     now = datetime.now(timezone.utc).isoformat()
-    messages.append({"role": "user", "content": body.answer, "time": now})
+
+    # 멱등성(BL-007): 직전 user 답변의 answer_id와 같으면 = 이미 처리된 재전송.
+    # 재처리·Claude·크레딧 없이 현재 상태를 반환해 인터뷰 이중 진행을 막는다.
+    answer_id = body.answer_id
+    if answer_id:
+        last_user_id = next(
+            (m.get("answer_id") for m in reversed(messages) if m["role"] == "user"),
+            None,
+        )
+        if last_user_id == answer_id:
+            return _current_state_response(session)
+
+    messages.append({"role": "user", "content": body.answer, "time": now, "answer_id": answer_id})
 
     current_step = session["current_question"]
     all_insights = session.get("_insights") or []
@@ -459,26 +494,8 @@ async def resume_interview(
     _save_session(body.session_id, {"status": "active", "paused_at": None})
     session["status"] = "active"
 
-    messages = session.get("messages") or []
-    last_ai = None
-    last_meta: dict = {}
-    for msg in reversed(messages):
-        if msg["role"] == "assistant":
-            last_ai = msg["content"]
-            last_meta = msg.get("_meta", {})
-            break
-
-    session["_insights"] = session.get("_insights") or []
     logger.info("interview_resumed", session_id=body.session_id)
-
-    return _build_response(
-        session=session,
-        question=last_ai,
-        topics=last_meta.get("topics", []),
-        importance=last_meta.get("importance"),
-        example_answers=last_meta.get("example_answers", []),
-        session_insights=session.get("_insights") or [],
-    )
+    return _current_state_response(session)
 
 
 @router.get("/status/{session_id}", response_model=InterviewStatusResponse)

@@ -4,15 +4,16 @@
 interface Draft {
   sessionId: string
   answer: string
+  answerId: string
   savedAt: number
 }
 
 const key = (projectId?: string) => `prequel:interview-draft:${projectId ?? ''}`
 
-/** 미전송 답변을 localStorage에 임시 저장한다. */
-export function saveDraft(projectId: string | undefined, sessionId: string, answer: string) {
+/** 미전송 답변을 localStorage에 임시 저장한다. answerId는 재전송 시 서버 멱등성 판별용(BL-007). */
+export function saveDraft(projectId: string | undefined, sessionId: string, answer: string, answerId: string) {
   try {
-    localStorage.setItem(key(projectId), JSON.stringify({ sessionId, answer, savedAt: Date.now() }))
+    localStorage.setItem(key(projectId), JSON.stringify({ sessionId, answer, answerId, savedAt: Date.now() }))
   } catch {
     /* localStorage 사용 불가(사생활 모드·용량 초과 등) — 조용히 무시 */
   }

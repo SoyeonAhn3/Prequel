@@ -147,9 +147,10 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-004 · 개발 인증 우회 시 활동 로그 행위자가 항상 `dev@localhost` (정상 동작, 배포 시 검증) 🟢
+## BL-004 · 개발 인증 우회 시 활동 로그 행위자가 항상 `dev@localhost` (정상 동작, 실사용자 귀속 검증) ✅
 
-**상태**: 정상 동작 확인(2026-06-29) — 버그 아님. **실제 사용자 귀속 검증은 배포 시로 연기.** 사전 준비(rodion admin 승격) 완료.
+**상태**: ✅ **검증 완료 (2026-07-06, 로컬)** — `DEV_BYPASS_AUTH=false` + rodion 실제 구글 로그인 → 공지 작성(admin 전용) 시 활동 로그 actor가 `rodion45673@gmail.com`(id `142c47ae`)로 정확히 기록됨(과거 `dev@localhost` 해소). 실제 로그인·admin 권한 인식·실사용자 귀속 3건 동시 확인. 비-admin 403은 코드(`require_admin`)로 확인, 수동 테스트 생략. 프로덕션 배포 env는 `false` 유지, 로컬은 개발 편의로 `DEV_BYPASS_AUTH=true` 원복 완료(2026-07-06).
+**사전 준비**: rodion admin 승격 완료(2026-06-29).
 **발견일**: 2026-06-29
 **관련 영역**: `backend/app/middleware/auth.py`, `backend/app/core/activity.py`, `.env`(`DEV_BYPASS_AUTH`/`VITE_DEV_BYPASS_AUTH`), `users` 테이블
 **대표 사례**: 프론트에서 rodion(rodion45673@gmail.com)으로 로그인한 상태로 공지 삭제 → 활동 로그 actor가 `dev@localhost`로 기록됨.
@@ -253,9 +254,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-007 · 인터뷰 답변 중복 전송 가능성 (멱등성 키 필요) 🟡
+## BL-007 · 인터뷰 답변 중복 전송 가능성 (멱등성 키) ✅
 
-**상태**: 발견 (2026-07-06). Phase 9 #5 에러 처리(D: 오프라인 임시저장·자동 재전송) 구현 중 도출. 프론트 D는 완료, **서버측 중복 방지는 미착수**.
+**상태**: ✅ **완료 (2026-07-06)** — 멱등성 키(`answer_id`)로 해결. 마이그레이션 없이 user 메시지에 answer_id를 저장하고 직전 답변 id와 비교해 중복을 판별.
 **발견일**: 2026-07-06
 **관련 영역**: `backend/app/api/interview.py`(`/interview/answer`), `frontend/src/pages/InterviewPage.tsx`, `frontend/src/lib/interviewDraft.ts`
 
@@ -269,7 +270,13 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 - **멱등성 키**: 클라이언트가 답변마다 고유 ID(예: `answer_id`)를 부여해 전송. 서버는 처리한 ID를 기록해두고, 같은 ID가 다시 오면 재처리하지 않고 이전 결과만 반환.
 - 또는 **순번 체크**: 서버가 세션의 현재 질문 번호를 확인해, 이미 답이 있는 질문이면 재적용하지 않음.
 
-### 현재 완화 (D에서 적용)
-- 임시저장은 프로젝트당 1건만 유지, 전송 성공 시 즉시 삭제 → 중복 창이 좁음.
+### 적용한 수정 (2026-07-06, 멱등성 키 방식) ✅
+**마이그레이션 없이** 해결 — `answer_id`를 user 메시지(`messages` JSON)에 저장하고 직전 답변 id와 비교.
+- **백엔드** `schemas/interview.py`: `InterviewAnswerRequest.answer_id: str | None`(하위호환). `api/interview.py` `/answer`: Claude 호출 전 "직전 user 답변 answer_id == 요청 answer_id"면 재처리·크레딧·Claude 없이 현재 상태 반환(`_current_state_response` 헬퍼, `/resume`과 공유). user 메시지에 answer_id 저장.
+- **프론트** `lib/interviewDraft.ts`: 초안에 `answerId` 저장. `InterviewPage.tsx` `handleSend`: 새 답변=`crypto.randomUUID()` 생성, 재전송(재시도 버튼·자동 재전송)=같은 id 재사용. 자동 재전송이 `draft.answerId` 전달.
+- **검증**: 인프로세스 테스트(TestClient) — 같은 answer_id 재요청 시 `current_step` 불변 + Claude 미호출 확인. 프론트 tsc·프로덕션 빌드 통과.
+- **한계/설계**: "직전 답변 1건" 기준으로 판별(중복은 항상 직전 답변 재전송 + `sending` 가드로 동시 전송 차단이라 충분). answer_id 없는 구 요청은 기존대로 동작.
+
+### 현재 완화 (D에서 적용, 위 수정의 보조)
+- 임시저장은 프로젝트당 1건만 유지, 전송 성공 시 즉시 삭제.
 - `sending` 가드로 동시 중복 전송 방지.
-- 완전 방지는 위 서버측 작업 필요 → 실사용/유료 전환 전 처리 권장.

@@ -8,6 +8,7 @@ class InterviewStartRequest(BaseModel):
 class InterviewAnswerRequest(BaseModel):
     session_id: str
     answer: str = Field(max_length=2000)
+    answer_id: str | None = None  # 멱등성 키(BL-007). 없으면 기존처럼 동작(하위호환).
 
 
 class InterviewPauseRequest(BaseModel):
