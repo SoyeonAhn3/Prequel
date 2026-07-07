@@ -2,7 +2,7 @@
 
 > Apply multilingual support, build the landing page, conduct E2E testing, and deploy to production.
 
-**Status**: 🚧 In Progress — Step 1 (legal pages & landing footer) + Step 2 (error handling `#5`) done
+**Status**: 🚧 In Progress — Step 1 (legal pages & landing footer) + Step 2 (error handling `#5`) + Step 3 (pytest coverage `#7`, 64%) done
 **Prerequisites**: Phase 8 completion (Admin features, rate limiting, logging)
 
 ---
@@ -22,8 +22,8 @@ The final phase brings everything together. Apply `react-i18next` for Korean/Eng
 | 3 | Landing page (service intro + "Get Started") | Frontend | 🚧 | — |
 | 4 | Terms of Service / Privacy Policy pages | Frontend | ✅ | FR-018 |
 | 5 | Error handling integration (Claude API timeout → retry, network drop → offline save) | Common | ✅ | NFR-003 |
-| 6 | E2E demo scenario test (10 features sequential execution) | Common | 🔲 | DoD |
-| 7 | pytest backend coverage 60%+ on core logic | Backend | 🔲 | NFR-013 |
+| 6 | E2E demo scenario test (10 features sequential execution) | Common | 🚧 | DoD |
+| 7 | pytest backend coverage 60%+ on core logic | Backend | ✅ | NFR-013 |
 | 8 | Deployment setup (Netlify + Railway, env vars, CI/CD) | Common | 🔲 | — |
 | 9 | CORS finalization (Netlify domain) | Backend | 🔲 | NFR-007 |
 | 10 | Production environment verification | Common | 🔲 | — |
@@ -50,6 +50,24 @@ End-to-end error handling shipped across backend and frontend:
 - Follow-up **BL-007**: duplicate-send risk on interview answers needs a server-side idempotency key.
 
 Verified: frontend `tsc -b` + production build pass; backend `py_compile` + in-process test confirming the `AIServiceError` → 503 mapping.
+
+### Progress — Step 3 (2026-07-07) — pytest coverage 60%+ (`#7` ✅)
+
+Backend core-logic coverage crossed the DoD threshold:
+
+- **New tests** — `tests/test_projects_endpoints.py` (16) covers the project CRUD + design-decision (idempotent credit charge) + generate-doc + soft-delete flows; `tests/test_finalize_endpoints.py` (9) covers the Phase 6 evaluate→checklist generate chain, session read/update, and 404/400 branches, which also exercises `api/_shared.py` context builders + JSON parsing.
+- **Shared fake** — `tests/_fakes.py` adds a stateful in-memory `FakeSupabase` (select/insert/update/delete + eq/is_/in_/order/limit/single/maybe_single) so writes are reflected by later reads — unlike the stateless fake in the interview tests.
+- **Result** — `55% → 64%` (target ≥ 60%), 34 → 59 tests. `api/projects.py` 36→98%, `api/finalize.py` 32→98%, `api/_shared.py` 15→51%.
+
+Run: `.venv/Scripts/python -m pytest --cov=app --cov-report=term-missing`.
+
+### Progress — Step 4 (2026-07-07) — E2E demo scenario authored (`#6` 🚧)
+
+A manual E2E test checklist was authored at `test-scenarios/20260707_E2E데모시나리오.md` — **16 TCs** covering the 10-feature happy path plus edge/failure cases (interview pause→resume, offline draft/auto-resend, AI-503 retry, empty-name guard, credit exhaustion, answer idempotency). Expected results were pinned to the app's real strings/routes by reading the source (note: interview is **11 steps** not 10; type auto-detection happens **during** the interview; announcements live on `/notices`, not `/admin`).
+
+AI-verifiable parts were **pre-checked**: **TC-015 (answer idempotency) passes** via `test_interview_idempotency.py`; TC-011/012/013/014/016 had their code backbones (messages, routes, wiring) confirmed in source. Human-tester execution is still pending, so `#6` stays 🚧.
+
+Follow-up **BL-008**: no UI to edit a project's name/description — the `⋮` row menu lacks an "edit" action, though backend `PATCH /projects/{id}` already supports it.
 
 ---
 
@@ -134,7 +152,7 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 - [x] Landing page accessible without login
 - [x] Terms/Privacy pages accessible and linked from login
 - [ ] E2E demo scenario (10 features) completes without errors
-- [ ] Backend core logic test coverage ≥ 60%
+- [x] Backend core logic test coverage ≥ 60% (64%)
 - [ ] Production deployment live on custom domain
 - [ ] CORS correctly restricts to Netlify production domain
 
@@ -147,6 +165,8 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 | 2026-05-19 | Initial creation |
 | 2026-07-03 | Step 1 done — legal pages (Terms/Privacy) + landing footer & login legal links; status → In Progress |
 | 2026-07-06 | Step 2 done — error handling integration (#5 ✅): backend 503/`AIServiceError`, frontend timeout/`ApiError` + retry buttons (4 screens), Error Boundary, interview offline draft/auto-resend. BL-007 logged. |
+| 2026-07-07 | Step 3 done — pytest coverage 60%+ (#7 ✅): +25 tests for projects & finalize endpoints, stateful `FakeSupabase` helper; 55% → 64%. |
+| 2026-07-07 | Step 4 — E2E demo scenario authored (#6 🚧): 16 manual TCs at `test-scenarios/20260707_…`, TC-015 AI-preverified; BL-008 logged (project name/desc edit UI). |
 
 ---
 ---
@@ -155,7 +175,7 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 
 > 다국어 지원 적용, 랜딩 페이지 구축, E2E 테스트 수행, 프로덕션 배포.
 
-**상태**: 🚧 진행 중 — Step 1 (법적 페이지·랜딩 푸터) + Step 2 (에러 처리 `#5`) 완료
+**상태**: 🚧 진행 중 — Step 1 (법적 페이지·랜딩 푸터) + Step 2 (에러 처리 `#5`) + Step 3 (pytest 커버리지 `#7`, 64%) 완료
 **선행 조건**: Phase 8 완료 (Admin 기능, Rate Limiting, 로깅)
 
 ---
@@ -175,8 +195,8 @@ End-to-end demo scenario covering all 10 MVP-1 features in order:
 | 3 | 랜딩 페이지 (서비스 소개 + "시작하기") | Frontend | 🚧 | — |
 | 4 | 이용약관 / 개인정보처리방침 페이지 | Frontend | ✅ | FR-018 |
 | 5 | 에러 처리 통합 (Claude API 타임아웃 → 재시도, 네트워크 끊김 → 오프라인 저장) | 공통 | ✅ | NFR-003 |
-| 6 | E2E 데모 시나리오 테스트 (10개 기능 순차 실행) | 공통 | 🔲 | DoD |
-| 7 | pytest 백엔드 핵심 로직 60%+ 커버리지 | Backend | 🔲 | NFR-013 |
+| 6 | E2E 데모 시나리오 테스트 (10개 기능 순차 실행) | 공통 | 🚧 | DoD |
+| 7 | pytest 백엔드 핵심 로직 60%+ 커버리지 | Backend | ✅ | NFR-013 |
 | 8 | 배포 설정 (Netlify + Railway, 환경 변수, CI/CD) | 공통 | 🔲 | — |
 | 9 | CORS 최종 설정 (Netlify 도메인) | Backend | 🔲 | NFR-007 |
 | 10 | 프로덕션 환경 검증 | 공통 | 🔲 | — |
@@ -203,6 +223,24 @@ Phase 9 잔여: i18n (`#1`, `#2`), 테스트 (`#6`, `#7`), 배포 (`#8`~`#10`).
 - 후속 **BL-007**: 인터뷰 답변 중복 전송 위험 → 서버측 멱등성 키 필요.
 
 검증: 프론트 `tsc -b` + 프로덕션 빌드 통과, 백엔드 `py_compile` + `AIServiceError` → 503 매핑 인프로세스 테스트 확인.
+
+### 진행 상황 — Step 3 (2026-07-07) — pytest 커버리지 60%+ (`#7` ✅)
+
+백엔드 핵심 로직 커버리지가 DoD 기준을 넘어섰다:
+
+- **신규 테스트** — `tests/test_projects_endpoints.py`(16개): 프로젝트 CRUD + 설계결정(멱등 크레딧 차감) + 문서생성 + 소프트삭제 흐름. `tests/test_finalize_endpoints.py`(9개): Phase 6 evaluate→checklist 생성 체인, 세션 조회/수정, 404/400 분기 — `api/_shared.py`의 컨텍스트 조립·JSON 파싱도 함께 커버.
+- **공용 가짜** — `tests/_fakes.py`에 상태 유지 인메모리 `FakeSupabase`(select/insert/update/delete + eq/is_/in_/order/limit/single/maybe_single) 추가. 쓰기가 이후 읽기에 반영됨(인터뷰 테스트의 무상태 가짜와 대비).
+- **결과** — `55% → 64%`(목표 ≥ 60%), 테스트 34 → 59개. `api/projects.py` 36→98%, `api/finalize.py` 32→98%, `api/_shared.py` 15→51%.
+
+실행: `.venv/Scripts/python -m pytest --cov=app --cov-report=term-missing`.
+
+### 진행 상황 — Step 4 (2026-07-07) — E2E 데모 시나리오 작성 (`#6` 🚧)
+
+수동 E2E 테스트 체크리스트를 `test-scenarios/20260707_E2E데모시나리오.md`에 작성 — **16개 TC**로 10개 기능 정상 흐름 + 엣지/실패(인터뷰 일시정지→재개, 오프라인 임시저장/자동 재전송, AI-503 재시도, 빈 이름 가드, 크레딧 소진, 답변 멱등성)를 아우름. 예상 결과는 소스를 읽어 앱의 실제 문구·라우트에 맞춤(참고: 인터뷰는 **11단계**이며 10이 아님; 유형 자동감지는 인터뷰 **도중** 발생; 공지는 `/admin`이 아닌 `/notices`).
+
+AI검증 가능한 부분은 **선검증**: **TC-015(답변 멱등성)는 `test_interview_idempotency.py`로 Pass 확인**, TC-011/012/013/014/016은 코드 근거(문구·라우트·배선)를 소스에서 확인. 사람 테스터의 실행은 아직 남아 `#6`는 🚧 유지.
+
+후속 **BL-008**: 프로젝트 이름·설명을 수정하는 UI 부재 — `⋮` 행 메뉴에 "수정"이 없음(백엔드 `PATCH /projects/{id}`는 이미 지원).
 
 ---
 
@@ -287,7 +325,7 @@ MVP-1의 10개 기능을 순서대로 커버하는 E2E 데모 시나리오:
 - [x] 랜딩 페이지가 로그인 없이 접근 가능
 - [x] 이용약관/개인정보처리방침 페이지 접근 가능 및 로그인에서 링크
 - [ ] E2E 데모 시나리오 (10개 기능) 에러 없이 완료
-- [ ] 백엔드 핵심 로직 테스트 커버리지 ≥ 60%
+- [x] 백엔드 핵심 로직 테스트 커버리지 ≥ 60% (64%)
 - [ ] 커스텀 도메인에서 프로덕션 배포 완료
 - [ ] CORS가 Netlify 프로덕션 도메인으로 올바르게 제한
 
@@ -300,3 +338,5 @@ MVP-1의 10개 기능을 순서대로 커버하는 E2E 데모 시나리오:
 | 2026-05-19 | 최초 작성 |
 | 2026-07-03 | Step 1 완료 — 법적 페이지(약관/개인정보) + 랜딩 푸터·로그인 법적 링크; 상태 → 진행 중 |
 | 2026-07-06 | Step 2 완료 — 에러 처리 통합(#5 ✅): 백엔드 503/`AIServiceError`, 프론트 타임아웃/`ApiError` + 재시도 버튼(4개 화면), Error Boundary, 인터뷰 오프라인 임시저장/자동 재전송. BL-007 등록. |
+| 2026-07-07 | Step 3 완료 — pytest 커버리지 60%+(#7 ✅): projects·finalize 엔드포인트 테스트 25개 추가, 상태 유지 `FakeSupabase` 헬퍼; 55% → 64%. |
+| 2026-07-07 | Step 4 — E2E 데모 시나리오 작성(#6 🚧): 수동 16 TC(`test-scenarios/20260707_…`), TC-015 AI 선검증; BL-008 등록(프로젝트 이름·설명 수정 UI). |

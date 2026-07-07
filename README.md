@@ -152,7 +152,7 @@ prequel/
 │   │   └── middleware/            # Auth, Rate Limiting, CORS
 │   ├── skills/                    # Runtime AI prompts (.md) — single source of truth
 │   ├── references/                # Reference files for prompts
-│   └── tests/                     # (planned — Phase 9)
+│   └── tests/                     # pytest suite — 59 tests, 64% coverage (Phase 9 #7)
 ├── scripts/
 │   └── sync_harness.py            # ⛔ Deprecated (BL-002) — backend/skills is the source of truth
 ├── supabase/
@@ -166,7 +166,7 @@ prequel/
 │   ├── Phase6_EvalFinalize.md     # ✅ Evaluation & finalization
 │   ├── Phase7_DocGeneration.md    # ✅ Document preview & generation (Markdown export; Mermaid out of scope)
 │   ├── Phase8_AdminFeatures.md    # ✅ Admin & supporting features
-│   └── Phase9_IntegrationDeploy.md # 🚧 i18n, testing & deployment (Steps 1-2 done: legal + error handling)
+│   └── Phase9_IntegrationDeploy.md # 🚧 i18n, testing & deployment (Steps 1-3 done: legal + error handling + pytest 64%)
 ├── .env.example
 └── README.md
 ```
@@ -207,7 +207,7 @@ Payment integration is planned for MVP-2.
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
 | Phase 7: Doc Preview & Generation | ✅ Done | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. Note: progressive v1→v2→v3 generation dropped in favor of live assembly; **Mermaid diagram rendering removed from scope** |
 | Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. Follow-ups logged: BL-003 (prompt caching), BL-004 (dev-bypass log attribution) |
-| Phase 9: i18n, Testing & Deploy | 🚧 In Progress | **Steps 1-2 done**: legal pages (`/terms`, `/privacy`) + landing footer & login legal links; **error handling integration (NFR-003)** — Claude timeout/retry → 503 friendly errors, `apiFetch` timeout + `ApiError`, retry buttons (4 screens), Error Boundary, interview offline draft/auto-resend. Remaining: multilingual UI (i18n), E2E testing, Netlify + Railway deploy |
+| Phase 9: i18n, Testing & Deploy | 🚧 In Progress | **Steps 1-3 done**: legal pages (`/terms`, `/privacy`) + landing footer & login legal links; **error handling integration (NFR-003)** — Claude timeout/retry → 503 friendly errors, `apiFetch` timeout + `ApiError`, retry buttons (4 screens), Error Boundary, interview offline draft/auto-resend; **pytest coverage 64%** (#7, ≥60% DoD — +25 projects/finalize endpoint tests + stateful `FakeSupabase` helper) + **E2E demo scenario authored** (#6, 16 manual TCs, TC-015 AI-preverified, not yet executed). Remaining: multilingual UI (i18n), E2E execution, Netlify + Railway deploy. Follow-up: BL-008 (project name/description edit UI) |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
 
@@ -216,6 +216,7 @@ Payment integration is planned for MVP-2.
 | Phase | Status | Link |
 |---|---|---|
 | Phase 3: Project Management | ✅ Pass (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
+| Phase 9: E2E Demo Scenario | 🚧 Authored (16 TCs, TC-015 AI-preverified Pass) | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## Roadmap
 
@@ -249,7 +250,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, doc preview + Markdown export, admin & supporting features); Phase 9 in progress (Steps 1-2 — legal pages, landing footer & error handling done; i18n, testing, deploy remaining)
+- **Early development** — Phase 1-8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, doc preview + Markdown export, admin & supporting features); Phase 9 in progress (Steps 1-3 — legal pages, landing footer, error handling & pytest coverage 64% done; i18n, E2E execution, deploy remaining)
 - **Desktop only** — Tablet support in MVP-2, mobile not planned
 - **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
 - **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2
