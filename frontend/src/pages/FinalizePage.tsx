@@ -186,6 +186,22 @@ export default function FinalizePage() {
     }
   }, [session, fail])
 
+  // BL-015: 빈틈 항목을 사용자가 ✕로 제외 — 남긴 것만 최종 문서·다음 단계에 반영.
+  const handleUpdateGap = useCallback(async (data: FinalizeSession['gaps']) => {
+    if (!session || !data) return
+    setSession({ ...session, gaps: data })
+    try {
+      const res = await apiFetch<FinalizeSession>(`/finalize/gap/${session.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ data }),
+      })
+      setSession(res)
+      setLastSavedLabel('방금 저장됨')
+    } catch (e) {
+      fail(e)
+    }
+  }, [session, fail])
+
   // BL-016: finish through the backend so we never show the "완료" screen for a
   // project the server hasn't actually completed. If the checklist step already
   // completed it (happy path) just show the screen; otherwise (re)run the
@@ -352,7 +368,7 @@ export default function FinalizePage() {
               <DoneStep session={session} generating={generating} onGenerate={() => handleGenerate('done')} onUpdate={handleUpdateDone} />
             )}
             {screen.stepId === 'gap' && (
-              <GapStep session={session} generating={generating} onGenerate={() => handleGenerate('gap')} />
+              <GapStep session={session} generating={generating} onGenerate={() => handleGenerate('gap')} onUpdate={handleUpdateGap} />
             )}
             {screen.stepId === 'checklist' && (
               <ChecklistStep session={session} generating={generating} onGenerate={() => handleGenerate('checklist')} />

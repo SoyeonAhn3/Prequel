@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import Explainer from '../design/Explainer'
 import { StepLoading, StepRetry } from './FinalizeStates'
-import type { FinalizeSession, GapItem } from '../design/types'
+import type { FinalizeSession, GapItem, Gaps } from '../design/types'
 
 interface Props {
   session: FinalizeSession | null
   generating: boolean
   onGenerate: () => void
+  onUpdate?: (gaps: Gaps) => void
 }
 
 const SEVERITY: Record<GapItem['severity'], { cls: string; label: string }> = {
@@ -21,7 +22,7 @@ const TYPE_EMOJI: Record<string, string> = {
   확인필요: '❓',
 }
 
-export default function GapStep({ session, generating, onGenerate }: Props) {
+export default function GapStep({ session, generating, onGenerate, onUpdate }: Props) {
   const gapsData = session?.gaps
   const autoGenRef = useRef(false)
 
@@ -56,6 +57,10 @@ export default function GapStep({ session, generating, onGenerate }: Props) {
 
   const gaps = gapsData!.gaps ?? []
 
+  function remove(idx: number) {
+    onUpdate?.({ gaps: gaps.filter((_, i) => i !== idx) })
+  }
+
   if (gaps.length === 0) {
     return (
       <div className="pb-7">
@@ -74,7 +79,7 @@ export default function GapStep({ session, generating, onGenerate }: Props) {
 
       <div className="text-[13px] font-bold text-text mb-1.5">발견된 항목 {gaps.length}개</div>
       <p className="text-[12.5px] text-text-muted leading-relaxed mb-3.5">
-        착수 전에 확인하거나 해결하면 좋은 부분이에요.
+        착수 전에 확인하거나 해결하면 좋은 부분이에요. 받아들이지 않을 항목은 ✕로 제외할 수 있어요.
       </p>
 
       <div className="flex flex-col gap-2">
@@ -87,6 +92,16 @@ export default function GapStep({ session, generating, onGenerate }: Props) {
                 <span className="text-[13px] font-semibold text-text">{g.category}</span>
                 <span className={`text-[10.5px] font-semibold px-1.5 py-0.5 rounded ${sev.cls}`}>{sev.label}</span>
                 <span className="text-[10.5px] text-text-subtle font-mono ml-auto">{g.type}</span>
+                {onUpdate && (
+                  <button
+                    type="button"
+                    onClick={() => remove(i)}
+                    className="text-[11px] text-text-subtle cursor-pointer bg-transparent border-none hover:text-red shrink-0"
+                    aria-label="제외"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
               <div className="text-[12.5px] text-text leading-relaxed mb-1.5">{g.issue}</div>
               {g.suggestion && (

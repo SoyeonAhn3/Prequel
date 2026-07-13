@@ -300,9 +300,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-009 · AI 모델 추천이 구형 GPT-4o로 편향됨 (BL-001 후속·강화) 🆕
+## BL-009 · AI 모델 추천이 구형 GPT-4o로 편향됨 (BL-001 후속·강화) ✅
 
-**상태**: 🆕 대기 (계획만 기록, 미구현). 방향 **A+C 채택** — 구현은 보류.
+**상태**: ✅ **구현 완료 (A+C, 2026-07-13)** — (A) `design-ai-workflow.md` 규칙 3: 구형 특정 모델(GPT-4 등) 단정 금지, 벤더 카테고리+선정 기준 제시, 예시는 "최신 세대"+추천 명시. (C) `design-architecture.md` 규칙 9: **인터뷰에서 구체 모델을 명시 안 하면 미확정으로 간주** + 임의로 구형 모델 지어내기 금지. `design.py` `_DEFER_TOKENS` 확장. py_compile OK·재시작.
 **발견일**: 2026-07-13
 **관련 영역**: `backend/skills/design-ai-workflow.md`(규칙 #3), `backend/skills/design-architecture.md`(AI 컴포넌트 technology 규칙), `backend/app/api/design.py`(`_model_undecided` 토큰/판정)
 **연관**: [[BL-001]] — 설계가 미확정 모델을 임의 확정하는 문제. 그 수정은 "모델 토큰 + 보류 단어가 **같은 줄**"일 때만 미확정 처리라 아래 케이스를 못 잡음.
@@ -328,9 +328,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-010 · 인터뷰 "수집된 정보" 패널 한 턴 지연 (insight가 다음 턴에 반영) 🆕
+## BL-010 · 인터뷰 "수집된 정보" 패널 한 턴 지연 (insight가 다음 턴에 반영) ✅
 
-**상태**: 🆕 대기 (계획만 기록, 미구현). **코드 버그 아님 — LLM emission 타이밍 특성.** 완화는 프롬프트 규칙 1줄.
+**상태**: ✅ **완화 구현 (2026-07-13)** — `prompt_manager.py` 인터뷰 규칙에 "직전 사용자 답변에서 확정된 정보는 다음 턴으로 미루지 말고 이번 응답의 insights에 즉시 포함(한 턴 지연 금지)" 추가. **코드 버그가 아닌 LLM 타이밍 특성이라 확률적 개선**(100% 보장 아님). py_compile OK·재시작.
 **발견일**: 2026-07-13
 **관련 영역**: `backend/app/core/prompt_manager.py`(`build_system_prompt` 응답 JSON 스펙), `backend/app/api/interview.py`(`submit_answer`). (무관 확인: `frontend/src/pages/InterviewPage.tsx`·`components/interview/RightPanel.tsx` — 지연 로직 없음)
 **대표 사례**: 기술 스택(STEP 5)에서 백엔드/DB를 답해도 우측 "수집된 정보"에 바로 안 뜨고, 다음 질문(배포 환경)을 답한 뒤에야 백엔드/DB 카드가 등장.
@@ -402,9 +402,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-014 · 설계 AI 흐름의 `model` 필드에 지저분한 blob이 들어감 (모델명 정규화 필요) 🆕
+## BL-014 · 설계 AI 흐름의 `model` 필드에 지저분한 blob이 들어감 (모델명 정규화 필요) ✅
 
-**상태**: 🆕 대기 (기록만, 미착수)
+**상태**: ✅ **구현 완료 (2026-07-13)** — `model` 필드는 벤더/모델명만, `API`·`최신 버전`·기법(프롬프트 엔지니어링)·배포 방식은 model_version·summary로. `design-ai-workflow.md`(model 필드 설명 + 규칙 2 정규화), `design-architecture.md`(규칙 10 technology 간결화), `design.py`(확정 모델 주입문을 "변경 금지"→"벤더 유지+정규화"로). py_compile OK·재시작. (예: "OpenAI GPT API (최신 버전, 프롬프트 엔지니어링)" → model "OpenAI GPT".)
 **발견일**: 2026-07-13
 **관련 영역**: `backend/skills/design-ai-workflow.md`, `backend/skills/design-architecture.md`(AI 컴포넌트 technology 규칙), `backend/app/api/design.py`(`generate_ai_workflow`의 `arch_ai_model` 복사 + "확정된 AI 모델 변경 금지" 경로 `:697-702, 720`)
 **연관**: [[BL-009]] — **별개 문제.** BL-009는 "미확정인데 멋대로 GPT-4o 추천", BL-014는 "사용자가 확정했는데 **표기가 지저분**".
@@ -437,9 +437,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-015 · 마감 단계 AI 산출물(정직한 평가·빈틈 점검)이 사용자 동의 없이 반영됨 — 채택/제외 큐레이션 필요 🆕
+## BL-015 · 마감 단계 AI 산출물(정직한 평가·빈틈 점검)이 사용자 동의 없이 반영됨 — 채택/제외 큐레이션 필요 🚧
 
-**상태**: 🆕 대기 (기록만, 미착수)
+**상태**: 🚧 **빈틈 ✕ 구현 완료 (2026-07-13)** — `GapStep.tsx`에 항목별 ✕(제외) 버튼 + `remove()` + `onUpdate`, `FinalizePage.tsx`에 `handleUpdateGap`→`PUT /finalize/gap/{id}`(기존 generic 엔드포인트) 배선. 남긴 빈틈만 `_prior_results_context`·최종 문서에 반영. 스키마 무변경·백엔드 무변경, `tsc -b` OK. **평가(evaluation) dismiss/문서포함 토글은 후속(선택) 잔여.**
 **발견일**: 2026-07-13
 **관련 영역**: `frontend/src/components/finalize/GapStep.tsx`·`EvaluateStep.tsx`·`DoneStep.tsx`(기존 ✕ 패턴), `frontend/src/pages/FinalizePage.tsx`(`handleUpdateDone` 배선), `backend/app/api/finalize.py`(`_prior_results_context` + generic `PUT /finalize/{step}`), `backend/app/core/doc_engine.py`·`doc_model.py`(문서 삽입)
 

@@ -31,7 +31,8 @@ router = APIRouter(prefix="/api/design", tags=["design"])
 _MODEL_TOKENS = ("모델", "llm", "gpt", "claude", "gemini", "ai api", "ai 모델",
                  "ai/ml", "ai 분석", "ai 도구", "vendor", "벤더")
 _DEFER_TOKENS = ("추후", "미정", "나중", "아직", "결정 안", "정하지", "정할",
-                 "추천 받", "추천받", "결정하지", "고민", "모르")
+                 "추천 받", "추천받", "결정하지", "고민", "모르",
+                 "선택 안", "미선택", "안 정", "안 골", "골라", "정해줘")
 # A stored model value that itself reads as "undecided" — don't lock these either.
 _UNDECIDED_MARKERS = ("추후", "미정", "tbd", "미확정", "결정")
 
@@ -704,9 +705,11 @@ async def generate_ai_workflow(
         )
     elif arch_ai_model:
         ai_constraint = (
-            f"\n\n## 확정된 AI 모델 (변경 금지)\n"
-            f"이전 단계(아키텍처)에서 AI 모델은 '{arch_ai_model}'(으)로 이미 결정되었습니다. "
-            f"AI 흐름의 model 필드에 반드시 이 모델을 그대로 사용하고, 임의로 다른 모델로 변경하지 마세요."
+            f"\n\n## 확정된 AI 모델 (벤더 유지 + 정규화)\n"
+            f"이전 단계(아키텍처)에서 AI 모델은 '{arch_ai_model}'(으)로 결정되었습니다. "
+            f"벤더/모델명은 바꾸지 말고 유지하되, model 필드엔 **깔끔한 벤더/모델명만** 넣으세요. "
+            f"위 문자열에 'API'·'최신 버전'·기법(프롬프트 엔지니어링)·배포 방식이 섞여 있으면 "
+            f"그 부가설명은 제거해 summary로 옮기고, model_version에는 버전만(모호하면 비움) 두세요."
         )
 
     proj = project.data
