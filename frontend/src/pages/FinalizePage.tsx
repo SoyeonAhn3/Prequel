@@ -60,6 +60,9 @@ const FOOTER_LABELS: Record<FinalizeStepId, string> = {
   checklist: '마무리 완료',
 }
 
+// BL-017: 평가·빈틈·최종 문서 생성은 수 분까지 걸릴 수 있어 기본 120초로는 부족.
+const AI_GEN_TIMEOUT_MS = 300_000
+
 function buildTransitionData(stepId: FinalizeStepId, s: FinalizeSession | null): { summary: string[]; nextPreview: string } {
   const nextPreview = NEXT_PREVIEWS[stepId] ?? ''
   if (!s) return { summary: ['이 단계의 데이터를 불러오는 중입니다.'], nextPreview }
@@ -160,7 +163,7 @@ export default function FinalizePage() {
       const res = await apiFetch<FinalizeSession>(`/finalize/${step}`, {
         method: 'POST',
         body: JSON.stringify({ project_id: projectId }),
-      })
+      }, AI_GEN_TIMEOUT_MS)
       setSession(res)
       updateStepStatuses(res)
       setLastSavedLabel('방금 저장됨')
@@ -182,6 +185,31 @@ export default function FinalizePage() {
       fail(e)
     }
   }, [session, fail])
+
+  // BL-016: finish through the backend so we never show the "완료" screen for a
+  // project the server hasn't actually completed. If the checklist step already
+  // completed it (happy path) just show the screen; otherwise (re)run the
+  // idempotent completion — this also recovers projects stranded in 'evaluating'
+  // when a prior doc-gen failed after the checklist was saved.
+  const handleComplete = useCallback(async () => {
+    if (!projectId || generating) return
+    if (session?.status === 'completed') {
+      setScreen({ kind: 'complete' })
+      return
+    }
+    setGenerating(true)
+    await run(async () => {
+      const res = await apiFetch<FinalizeSession>('/finalize/complete', {
+        method: 'POST',
+        body: JSON.stringify({ project_id: projectId }),
+      }, AI_GEN_TIMEOUT_MS)
+      setSession(res)
+      updateStepStatuses(res)
+      setLastSavedLabel('방금 저장됨')
+      setScreen({ kind: 'complete' })
+    })
+    setGenerating(false)
+  }, [projectId, generating, session, run])
 
   const handleNext = useCallback(() => {
     if (generating) return
@@ -287,6 +315,9 @@ export default function FinalizePage() {
   const currentStepIdx = FINALIZE_STEPS.findIndex((s) => s.id === screen.stepId)
   const totalQ = FINALIZE_STEPS.length
   const currentQ = currentStepIdx + 1
+  // On the last (checklist) step the primary/skip buttons must complete via the
+  // backend (handleComplete), not just switch the screen (handleNext). (BL-016)
+  const primaryAction = screen.stepId === 'checklist' ? handleComplete : handleNext
 
   return (
     <Frame>
@@ -332,8 +363,8 @@ export default function FinalizePage() {
             canBack={!isFirstStep}
             primaryLabel={FOOTER_LABELS[screen.stepId]}
             onBack={handleBack}
-            onSkip={handleNext}
-            onNext={handleNext}
+            onSkip={primaryAction}
+            onNext={primaryAction}
             loading={generating}
             lastSavedLabel={lastSavedLabel}
           />

@@ -297,3 +297,278 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ### 해결 방향
 - ⋮ 메뉴에 `수정` 항목 추가 → 이름·설명 편집 모달(생성 모달 2단계 재활용 또는 간단 모달) → `PATCH /projects/{id}` 호출 → 목록 즉시 갱신.
+
+---
+
+## BL-009 · AI 모델 추천이 구형 GPT-4o로 편향됨 (BL-001 후속·강화) 🆕
+
+**상태**: 🆕 대기 (계획만 기록, 미구현). 방향 **A+C 채택** — 구현은 보류.
+**발견일**: 2026-07-13
+**관련 영역**: `backend/skills/design-ai-workflow.md`(규칙 #3), `backend/skills/design-architecture.md`(AI 컴포넌트 technology 규칙), `backend/app/api/design.py`(`_model_undecided` 토큰/판정)
+**연관**: [[BL-001]] — 설계가 미확정 모델을 임의 확정하는 문제. 그 수정은 "모델 토큰 + 보류 단어가 **같은 줄**"일 때만 미확정 처리라 아래 케이스를 못 잡음.
+
+### 문제
+사용자가 인터뷰에서 "AI로 분석하고 싶다"처럼 **모델을 명시하지 않고** 말하면, 설계 AI 워크플로우가 **구형 GPT-4o를 추천**한다. Prequel 자신은 Claude 기반인데도 OpenAI 구모델이 박히는 역설(BL-001에서도 지적).
+
+### 근본 원인 (조사 완료, 2026-07-13)
+`chat()` 기본 모델은 `claude-sonnet-4-6`(`claude_client.py:31`)이고, `gpt-4o`는 **코드/프롬프트에 하드코딩된 곳이 없음**(방어 문구뿐: `design.py:461,694`). 즉 추천은 LLM이 그때그때 생성한다.
+1. `design-ai-workflow.md` 규칙 #3이 "정해진 모델이 없으면 프로젝트 유형에 맞는 접근법을 추천하라"고 시킴 → 추천 LLM이 자유 선택.
+2. 프롬프트에 **"최신 세대 우선"·"현행 모델 목록"** 같은 기준이 없음 → LLM이 학습 데이터에서 가장 흔한 GPT-4o를 디폴트로 집음.
+3. 추천 LLM의 **지식 컷오프** 때문에 더 최신 모델은 학습에 적게 들어와 GPT-4o로 회귀.
+4. BL-001의 `_model_undecided()`는 모델 토큰 + 보류 단어가 같은 줄일 때만 미확정 판정(`design.py:39-45`) → 보류 뉘앙스 없는 표현은 미검출.
+
+### 해결 방향 — A+C 채택 (미구현)
+- **A. 특정 모델명 미기재 (핵심)**: 모델이 사용자 확정이 아니면 `model`에 구체 모델명/버전 대신 **"범용 LLM API (요구사항 기반 추후 선정)"** 같은 카테고리 + **선정 기준**(컨텍스트 길이·비용·멀티모달 여부 등)만 출력. → 구형 모델명 노출 원천 차단·유지보수 0·벤더 중립. 수정: `design-ai-workflow.md` 규칙 #3, `design-architecture.md` AI 컴포넌트 technology 규칙에 동일 원칙 적용.
+- **C. 미확정 감지 강화**: `_model_undecided`의 토큰/판정을 넓혀 "AI로 분석/추천하고 싶다"처럼 보류 단어 없는 표현도 미확정으로 보게 함(또는 사용자가 모델을 **명시하지 않았으면 기본 미확정**으로 간주).
+- **B (미채택, 후속 옵션)**: 현행 모델 카탈로그를 프롬프트에 주입해 최신 모델을 구체 추천 — 목록을 **수동 갱신**해야 해 유지보수 부담(또 낡음). 구체 모델명이 꼭 필요해지면 나중에 얹기.
+
+### 완료 조건 (구현 시)
+- 모델 미명시 인터뷰에서 설계 AI 워크플로우 `model`이 특정 벤더/구모델(GPT-4o 등)로 채워지지 않음.
+- "AI로 분석" 류 표현도 미확정으로 잡혀 추천/미확정 표기가 일관됨.
+
+---
+
+## BL-010 · 인터뷰 "수집된 정보" 패널 한 턴 지연 (insight가 다음 턴에 반영) 🆕
+
+**상태**: 🆕 대기 (계획만 기록, 미구현). **코드 버그 아님 — LLM emission 타이밍 특성.** 완화는 프롬프트 규칙 1줄.
+**발견일**: 2026-07-13
+**관련 영역**: `backend/app/core/prompt_manager.py`(`build_system_prompt` 응답 JSON 스펙), `backend/app/api/interview.py`(`submit_answer`). (무관 확인: `frontend/src/pages/InterviewPage.tsx`·`components/interview/RightPanel.tsx` — 지연 로직 없음)
+**대표 사례**: 기술 스택(STEP 5)에서 백엔드/DB를 답해도 우측 "수집된 정보"에 바로 안 뜨고, 다음 질문(배포 환경)을 답한 뒤에야 백엔드/DB 카드가 등장.
+
+### 현상
+답변 N에서 확정된 정보의 insight 카드가 답변 N+1을 제출한 뒤에야 우측 패널에 반영됨(한 턴 지연, off-by-one처럼 보임).
+
+### 원인 (조사 완료, 2026-07-13 — 코드 버그 아님)
+- 프론트는 응답의 insights를 그대로 교체 표시(`InterviewPage.tsx:167`, 매핑 `:85-90`), 백엔드는 이번 턴 Claude 응답의 `parsed["insights"]`를 같은 응답에 즉시 반환(`interview.py:389-394, 441-442`). **양측 어디에도 지연 로직 없음** — step 완료를 기다리지 않음.
+- 실제 원인은 **Claude가 직전에 닫힌 주제의 insight를 그 다음 턴에 커밋**하는 emission 타이밍. 응답 JSON 스펙(`prompt_manager.py:121-128`)에 "이번 답변에서 확정된 정보를 이번 응답 insights에 즉시 넣어라"는 강제가 없어 생기는 확률적 동작.
+- 참고: 좌측 레일 단계 요약은 원래 단계 완료 시에만 채워짐(`_build_steps_list`, `interview.py:109-116`) — 우측 패널(턴마다 갱신)과 혼동 주의.
+
+### 해결 방향 (선택·완화)
+- 인터뷰 시스템 프롬프트에 규칙 추가: **"직전 사용자 답변에서 확정된 정보는 반드시 이번 응답의 `insights`에 즉시 포함한다"** (`prompt_manager.py`의 stable 블록 규칙 목록 또는 응답 형식 안내에).
+- 확률적 개선(100% 보장 아님), 회귀 위험 낮음(프롬프트 1줄). 효과는 실제 인터뷰로 관찰 필요.
+
+### 완료 조건 (구현 시)
+- 한 주제(예: 백엔드/DB)를 답한 **그 턴에** 해당 insight 카드가 즉시 등장(다음 답변을 기다리지 않음).
+
+---
+
+## BL-011 · 시스템 구조 단계 가이드 문구가 실제 UX와 불일치 (존재하지 않는 입력 안내) 🆕
+
+**상태**: 🆕 대기 (기록만, 미착수)
+**발견일**: 2026-07-13
+**관련 영역**: `frontend/src/components/design/ArchHelperPanel.tsx`, (동작 근거) `frontend/src/components/design/ArchitectureStep.tsx`
+
+### 문제
+아키텍처(시스템 구조) 단계는 **완전 자동**이다 — 진입 시 추천 조합(템플릿)을 자동 로드하고(`ArchitectureStep.tsx` `useEffect`→`onLoadTemplates`), 템플릿이 오면 자동으로 첫 조합을 생성한다(`autoGenRef`→`onGenerate(0)`). **사용자 입력창이나 조합 선택 UI가 없다.** 그런데 가이드 패널의 ExampleBox가 `"잘 모르겠어요"라고 입력하시면, AI가 비슷한 프로젝트의 조합을 추천…`이라며 **존재하지 않는 텍스트 입력 조작**을 안내해 오해를 준다. 첫 줄 "**추천 조합을 선택하시면**"도 실제론 '선택' 없이 자동 생성이라 어감이 안 맞음.
+
+### 해결 방향
+- ExampleBox를 자동 생성 현실에 맞게 교체. 예: "이 단계는 AI가 **자동으로** 추천 조합을 만들어 보여줘요. 훑어보고 마음에 안 들면 **다시 시도**로 재생성할 수 있어요."
+- 첫 줄 "선택하시면" → "기다리시면" 소폭 수정.
+- **용어 사전**(프론트엔드/백엔드/데이터베이스/API)은 초보에게 유용하므로 유지.
+
+---
+
+## BL-012 · 인터뷰 "기술 스택" 단계와 설계 "시스템 구조" 단계 중복 🆕
+
+**상태**: 🆕 대기 (구조 개선 후보, 기록만)
+**발견일**: 2026-07-13
+**관련 영역**: `backend/app/core/prompt_manager.py`(`INTERVIEW_STEPS` S5 tech_stack), `backend/skills/kickoff-interview.md`(STEP 5), 설계 아키텍처(`frontend/src/components/design/ArchitectureStep.tsx` + `backend/app/api/design.py` `generate_architecture`)
+
+### 문제
+인터뷰 11단계와 설계 4단계를 대응시키면 중복이 있다. **가장 심한 중복 = 기술 스택**: 인터뷰 S5(기술 스택 — 프론트/백엔드/DB/배포)에서 대화로 다 물어본 뒤, 설계 2단계(시스템 구조)에서 **같은 내용을 컴포넌트+tech_stack으로 다시** 만든다 → 사용자가 "아까 말한 걸 또?" 체감. (부차 중복: 인터뷰 S4 데이터 소스 ↔ 설계 3 데이터 구조 / 인터뷰 S3 핵심가치·S8·S9 심화 ↔ 설계 1 요구사항 — 중간 정도, '구체화'로 정당화 가능.)
+
+### 참고
+설계는 인터뷰를 `_get_interview_context`로 **입력받아 재료로 사용**하므로 순수 중복은 아님. 단 기술 스택만큼은 재료 활용보다 **재수집**에 가까움.
+
+### 해결 방향 (후보)
+- 인터뷰 S5(기술 스택)를 가볍게 축소("정해둔 스택 있으세요? 없으면 설계 단계에서 추천해드려요")하고, **실제 스택 확정은 설계 2단계에 위임** → 인터뷰 단축 + 중복 제거.
+- 설계 흐름을 바꾸는 변경이므로 신중 검토 필요(회귀·문서 동기화 영향).
+
+---
+
+## BL-013 · 설계 "AI 흐름" 단계가 빈 껍데기로 뜨고 자동 생성 안 됨 ✅
+
+**상태**: ✅ **완료 (2026-07-13)** — `_coerce_ai_workflow`가 미생성(None)일 때 `None`을 반환하도록 수정. 실측 HTTP로 검증.
+**발견일**: 2026-07-13
+**관련 영역**: `backend/app/api/design.py`(`_coerce_ai_workflow`), (증상) `frontend/src/components/design/AiWorkflowStep.tsx`
+**대표 사례**: "등기부 등본 AI 해석기"(활성 프로젝트 `2f8e9275`, 설계 data-model까지 진행, `ai_workflow=None`)에서 AI 흐름 단계가 빈 화면으로만 뜨고 생성이 안 됨.
+
+### 근본 원인 (코드 버그)
+`_coerce_ai_workflow(None)`이 `None`이 아니라 **`{}`**를 반환 → `DesignSessionOut(ai_workflow={})`가 `AiWorkflowData` 기본값(`model="Claude"`, inputs/outputs/fallbacks=`[]`)으로 채움 → `GET /design/session`이 `ai_workflow`를 **null이 아닌 빈 객체**로 반환. 프론트 `AiWorkflowStep`은 `aiWorkflow`가 truthy가 되어 ① `useEffect`의 `!aiWorkflow`가 false → **자동 생성이 절대 안 돎**, ② 빈 껍데기(입력·출력·폴백 전부 비어있음)만 렌더. 모든 generate 엔드포인트가 `_session_to_out`를 거치므로 **저장된 세션으로 AI 흐름에 도달하는 모든 AI/ML 프로젝트**가 동일 증상.
+
+### 적용한 수정 (2026-07-13)
+- `_coerce_ai_workflow`: 시작에 `if not value: return None`, 마지막 `return {}`→`return None`, dict/str 분기도 빈 값이면 `None` 반환. 레거시 이중 인코딩 문자열 → dict 디코딩은 그대로 유지.
+- **검증**: 단위 테스트(None/빈값→None, 정상 dict 보존, 단일·이중 인코딩 문자열→dict, garbage→summary 폴백) + 백엔드 재시작 후 실측 `GET /api/design/session/2f8e9275…` → `ai_workflow: null` 확인. → 프론트 `!aiWorkflow`가 true가 되어 AI 흐름 자동 생성 정상화.
+
+---
+
+## BL-014 · 설계 AI 흐름의 `model` 필드에 지저분한 blob이 들어감 (모델명 정규화 필요) 🆕
+
+**상태**: 🆕 대기 (기록만, 미착수)
+**발견일**: 2026-07-13
+**관련 영역**: `backend/skills/design-ai-workflow.md`, `backend/skills/design-architecture.md`(AI 컴포넌트 technology 규칙), `backend/app/api/design.py`(`generate_ai_workflow`의 `arch_ai_model` 복사 + "확정된 AI 모델 변경 금지" 경로 `:697-702, 720`)
+**연관**: [[BL-009]] — **별개 문제.** BL-009는 "미확정인데 멋대로 GPT-4o 추천", BL-014는 "사용자가 확정했는데 **표기가 지저분**".
+**대표 사례**: "등기부 등본 AI 해석기"(`2f8e9275`) — AI 박스 model 타이틀에 `OpenAI GPT API (최신 버전, 프롬프트 엔지니어링)` 표시(BL-013 수정으로 생성이 되게 된 뒤 관찰됨).
+
+### 문제
+`model` 필드는 깔끔한 모델명 하나여야 하는데, **벤더(OpenAI) + 형태(API) + 버전문구(최신 버전) + 기법(프롬프트 엔지니어링)** 이 한 덩어리로 들어감. `model_version`은 빈칸.
+
+| 칸 | 지금 | 기대 |
+|---|---|---|
+| model | `OpenAI GPT API (최신 버전, 프롬프트 엔지니어링)` | `OpenAI GPT` (벤더/모델명만) |
+| model_version | (빈칸) | `최신(미지정)` 또는 빈칸 |
+| task | 등기부 등본 위험도 분석 및 해석 | 그대로 |
+| summary | — | 기법(프롬프트 엔지니어링)·API 호출 방식은 여기로 |
+
+### 근본 원인 (데이터 조회로 확정, 2026-07-13)
+사용자 벤더 선택(OpenAI) 자체는 정당 — **표기/정규화만 문제.** 체인:
+1. 인터뷰: 사용자가 `OpenAI GPT 최신 버전`(모델) + `프롬프트 엔지니어링`(기법)을 **별개로** 선택.
+2. 설계 아키텍처 생성: AI 컴포넌트 `AI 분석 엔진(LLM)`의 `technology`를 `"OpenAI GPT API (최신 버전, 프롬프트 엔지니어링)"` **한 덩어리로 합침**.
+3. 설계 AI 흐름 생성: `_model_undecided`/`_looks_undecided` 모두 False(사용자가 정했으므로) → `undecided=False` → "확정된 AI 모델 (변경 금지)" 경로가 `arch_ai_model`을 `model`에 **그대로 복사**(`design.py:720` `parsed.get("model") or arch_ai_model`).
+
+### 해결 방향 (추천: 프롬프트 정규화)
+- `design-ai-workflow.md`: `model`엔 **벤더/모델명만**("OpenAI GPT", "Claude" 등), "API"·"최신 버전"·기법(프롬프트 엔지니어링)은 넣지 말 것. 버전 → `model_version`, 기법·배포 방식 → `summary`.
+- `design-architecture.md`: AI 컴포넌트 `technology`도 모델명 위주로 짧게.
+- 코드 정규식 파싱(대안)보다 프롬프트 정규화가 회귀 위험 낮음.
+
+### 완료 조건 (구현 시)
+- AI 박스 model 타이틀이 깔끔한 모델명(예: "OpenAI GPT")으로, 버전·기법은 각 필드로 분리 표시.
+- 기존 오염 프로젝트(등기부)는 설계 재생성 시 자연 교정([[BL-001]] 방식).
+
+---
+
+## BL-015 · 마감 단계 AI 산출물(정직한 평가·빈틈 점검)이 사용자 동의 없이 반영됨 — 채택/제외 큐레이션 필요 🆕
+
+**상태**: 🆕 대기 (기록만, 미착수)
+**발견일**: 2026-07-13
+**관련 영역**: `frontend/src/components/finalize/GapStep.tsx`·`EvaluateStep.tsx`·`DoneStep.tsx`(기존 ✕ 패턴), `frontend/src/pages/FinalizePage.tsx`(`handleUpdateDone` 배선), `backend/app/api/finalize.py`(`_prior_results_context` + generic `PUT /finalize/{step}`), `backend/app/core/doc_engine.py`·`doc_model.py`(문서 삽입)
+
+### 문제
+마감 단계의 AI 산출물이 **사용자가 채택 여부를 표시하지 않았는데** 자동으로 반영된다. 두 경로:
+1. **다음 단계 전파** — `_prior_results_context`(finalize.py:115)가 평가→완료조건→빈틈→체크리스트로 이전 결과를 다음 단계 AI 입력에 자동 포함.
+2. **최종 문서 삽입** — `generate_final_document`(doc_engine.py:140-157, "반드시 포함" 지시) + `build_sections`가 "정직한 평가"·"빈틈 점검"을 최종 킥오프 문서 섹션으로 항상 포함.
+
+**완료 조건(DoneStep)은 이미 ✕로 제외 가능**(`onUpdate`→`PUT`)하지만 **빈틈(GapStep)·평가(EvaluateStep)는 읽기 전용**이라 걸러낼 수 없음. (요구사항/아키텍처를 자동 수정하진 않음 — 문서·하류 반영만.)
+**대표 사례**: 등기부 — 빈틈 suggestion "공공 API 3종→1종으로 줄이고 나머지는 MVP2로" 가 사용자 채택 없이 문서/하류에 반영됨.
+
+### 해결 방향 (추천: 채택/제외 큐레이션으로 통일)
+- **빈틈(gap)에 ✕ 추가** — DoneStep 패턴 복사(`onUpdate` + `remove(idx)`), `PUT /finalize/gap/{session_id}`는 **이미 generic 지원**(finalize.py:251). 남긴 항목만 `_prior_results_context`·`generate_final_document`에 반영됨.
+- **평가(evaluation)** — 항목 삭제보다 **AI 권고(recommendation) dismiss** 또는 **"문서에 포함" 토글**이 자연스러움(평가는 assessment라 리스트가 아님).
+- 원칙: **"AI 산출물은 사용자가 채택한 것만 반영."**
+- ⚠️ 문서·다음 단계 생성 **전에** PUT 저장돼야 제외가 반영됨(완료조건과 동일 흐름).
+
+### 공수 추정 (2026-07-13 배선 확인 기준)
+- **빈틈 ✕만**: ~1~2h. GapStep.tsx `onUpdate`+✕(~15줄), FinalizePage `handleUpdateGap`+배선(~8줄), **백엔드 변경 0, 마이그레이션 0**.
+- 평가(권고 dismiss/문서포함 토글)까지 확장: **+1~2h**(dimensions 구조라 살짝 더).
+
+### 완료 조건 (구현 시)
+- 빈틈 항목을 ✕로 제외 가능 + 제외분이 최종 문서·다음 단계에 들어가지 않음.
+- (선택) 평가를 문서에 포함할지 사용자가 선택.
+
+---
+
+## BL-016 · 마감 완료 처리 실패 시 복구 경로 없음 (프로젝트가 evaluating에 갇힘) ✅
+
+**상태**: ✅ **구현 완료 (2026-07-13)** — 멱등 완료 엔드포인트 + 프론트 재시도 버튼. 정적 검증(py_compile·tsc·endpoint 등록) 통과. **복구 로직 end-to-end 검증됨**(등기부를 타임아웃 300초로 재실행 → 127초 만에 `completed`+`kickoff_doc` 생성). ⚠️ **단, 기본 타임아웃(백엔드 60초·프론트 120초)으로는 큰 문서 완료가 여전히 실패** → 후속 [[BL-017]] 필요.
+**발견일**: 2026-07-13
+**관련 영역**: `backend/app/api/finalize.py`(`_generate` checklist 경로 `:193-198`, `_finalize_complete` `:130-161`), `backend/app/core/doc_engine.py`(`generate_final_document` `chat` 호출 `:183`), `frontend/src/components/finalize/ChecklistStep.tsx`·`FinalizeComplete.tsx`·`pages/FinalizePage.tsx`
+**대표 사례**: 등기부(`2f8e9275`) — 마감 4단계(평가·완료조건·빈틈·체크리스트) **내용은 전부 저장**됐는데 `finalize_session.status=in_progress`·`project.status=evaluating`·`kickoff_doc=비어있음`.
+
+### 문제 (원자성 부재 + 복구 경로 없음)
+체크리스트 단계가 두 작업을 연달아 하는데 원자적이지 않음:
+1. 체크리스트 생성 → DB 저장(`finalize.py:193-194`) — **커밋됨**.
+2. `_finalize_complete()`: 최종 문서 생성(Claude, `doc_engine.py:183`) → `project.status=completed`+`kickoff_doc` → `finalize_session.status=completed`.
+
+**②의 Claude 호출이 실패**(큰 문서라 타임아웃/일시적 503 추정, 코드엔 데이터 버그 없음)하면 ①만 커밋된 **부분 상태로 굳음**. 게다가:
+- `_finalize_complete`는 `_generate("checklist")` 안에서만 호출됨 → 독립 재실행 경로 없음.
+- 프론트 `ChecklistStep` 자동생성 가드가 "체크리스트 이미 있으면 재생성 안 함"이라 재시도가 안 걸림.
+- → **복구 경로 없이 evaluating에 영구히 갇힘.**
+
+### 해결 방향 (추천)
+- **백엔드**: `_finalize_complete`를 독립 **멱등** 엔드포인트 `POST /finalize/complete/{project_id}`로 노출(기존 로직 재사용 ~15줄). 4단계가 다 있으면 문서 재생성 후 `status=completed`, 다시 불러도 안전.
+- **프론트**: 마감 세션이 **"4단계 다 있는데 status ≠ completed"** 이면 "완료 처리 다시 시도" 버튼 노출 → 위 엔드포인트 호출. → **갇힌 프로젝트 복구 + 향후 재시도** 동시 해결.
+- (선택 보강) 문서 생성 성공 **후에** 체크리스트를 저장하도록 순서 조정 → 신규 실패 시 체크리스트가 안 남아 기존 auto-gen이 자연 복구.
+
+### 공수
+- 백엔드 엔드포인트 ~15줄(기존 함수 재사용) + 프론트 감지·버튼 ~20~30줄, **마이그레이션 없음**. 총 **~2~3h**(중간·저위험).
+
+### 적용한 수정 (2026-07-13)
+- **백엔드** `finalize.py`: 멱등 엔드포인트 `POST /finalize/complete` 추가 — 기존 `_finalize_complete` 재사용, 체크리스트 없으면 400, 다시 불러도 안전. (기존 `_generate("checklist")` 경로는 그대로 유지.)
+- **프론트** `FinalizePage.tsx`: `handleComplete` 추가 — `status==='completed'`면 화면만 전환(불필요한 재생성 방지), 아니면 `/finalize/complete` 호출(`useRetryable`로 실패 시 재시도). 체크리스트 단계의 primary/skip 버튼을 `handleNext`(단순 화면전환) → `handleComplete`(백엔드 검증)로 교체. → 서버가 실제 완료하지 않은 프로젝트에 "완료" 화면을 띄우지 않음 + 갇힌 프로젝트 복구.
+- **검증**: `py_compile` OK, 프론트 `tsc -b` OK, 백엔드 재시작 후 `/openapi.json`에 `/api/finalize/complete` 등록 확인.
+
+### 완료 조건
+- ~~완료 처리가 실패해도 "완료 처리 다시 시도"로 재실행 가능~~ ✅ (체크리스트 단계 "마무리 완료" = 멱등 완료 호출)
+- ~~등기부 등 이미 갇힌 프로젝트가 완료됨~~ ✅ (2026-07-13, 타임아웃 300초 인프로세스 재실행으로 `completed`+`kickoff_doc` 생성). **단 기본 타임아웃 하에서 UI 버튼으로 성공하려면 [[BL-017]] 선행 필요.**
+
+---
+
+## BL-017 · 최종 킥오프 문서 생성이 타임아웃(60초/120초)으로 실패 — 큰 프로젝트 완료 불가 ✅
+
+**상태**: ✅ **구현 완료 (2026-07-13)** — `chat()` per-call `timeout` 파라미터 추가, 최종 문서 300초·마감 생성 180초·프론트 300초로 상향. 정적 검증(py_compile·tsc) 통과 + 재시작. (300초면 성공은 [[BL-016]] 검증서 실측: 등기부 최종 문서 127초.)
+**발견일**: 2026-07-13 ([[BL-016]] 검증 중 발견)
+**관련 영역**: `backend/app/core/claude_client.py`(`chat` timeout=60s·max_retries=2), `backend/app/core/doc_engine.py`(`generate_final_document` `chat(... max_tokens=8192)`), `frontend/src/lib/api.ts`(`apiFetch` 120s AbortController), `frontend/src/pages/FinalizePage.tsx`(`handleComplete`)
+**대표 사례**: 등기부(`2f8e9275`) — 최종 문서 생성이 **실제 127초** 소요. 기본 60초 타임아웃×재시도2로도 실패해 `POST /finalize/complete`가 503. 타임아웃 300초로 재실행하니 127초 만에 성공(문서 9,584자, tokens 32,136).
+
+### 근본 원인 (확정)
+최종 킥오프 문서는 인터뷰+설계+평가·완료조건·빈틈·체크리스트를 **전부 종합**하고 `max_tokens=8192`로 긴 출력을 생성 → 내용 많은 프로젝트는 **60초를 초과**(등기부 127초). `chat()`의 60초 타임아웃(×2 재시도)이 이를 죽이고, 설령 백엔드를 늘려도 프론트 `apiFetch` 120초가 다시 죽임. → 큰 프로젝트는 **완료 자체가 불가**. (이게 [[BL-016]]에서 프로젝트가 evaluating에 갇힌 실제 유발 원인.)
+
+### 해결 방향
+- **백엔드**: `chat()`에 per-call `timeout` 파라미터 추가(SDK `messages.create(..., timeout=...)` 또는 `with_options`). `generate_final_document`은 긴 타임아웃(예: 240~300초)으로 호출. (기본 호출은 60초 유지.)
+- **프론트**: `apiFetch`에 per-call 타임아웃 오버라이드 추가, `handleComplete`(완료 호출)에 긴 타임아웃(예: 300초) 지정.
+- (대안·더 견고) 문서 생성을 **스트리밍** 또는 **백그라운드 잡+폴링**으로 전환하면 단일 요청 타임아웃 의존을 제거 — 규모 커지면 권장. 우선은 타임아웃 상향으로 충분.
+
+### 공수
+- 타임아웃 상향(백엔드 `chat` 파라미터 + doc_engine 호출 + `apiFetch` 오버라이드 + handleComplete): ~1~2h, 마이그레이션 없음.
+- 스트리밍/백그라운드 잡 전환(대안): 별도·큰 작업.
+
+### 적용한 수정 (2026-07-13)
+- **백엔드** `claude_client.py`: `chat(..., timeout: float | None)` 추가 — 지정 시 `client.with_options(timeout=...)`, 미지정이면 기본 60초 유지(인터뷰 등 빠른 호출).
+- `doc_engine.py` `generate_final_document`: `timeout=300`. `finalize.py` `_generate`(평가·완료조건·빈틈·체크리스트): `timeout=180`(BL-018로 프롬프트가 깊어져 출력↑ 대비).
+- **프론트** `FinalizePage.tsx`: `AI_GEN_TIMEOUT_MS=300_000`을 `handleGenerate`(마감 4단계)·`handleComplete`에 전달(`apiFetch`는 기존 `timeoutMs` 파라미터 활용, 시그니처 변경 없음).
+- 검증: `py_compile` OK, `tsc -b` OK, 재시작 완료. (design.py 생성 4종은 이번 범위 밖 — 필요 시 후속.)
+
+### 완료 조건 (구현 시)
+- 등기부처럼 큰 프로젝트도 UI "마무리 완료" 버튼으로 타임아웃 없이 완료됨.
+
+---
+
+## BL-018 · 평가·빈틈 점검이 "판단형 비판"을 못 함 — 도메인·전제·규제 리스크 미포착 🚧
+
+**상태**: ✅ **Phase 1(F2+F3) 완료·실측 통과 (2026-07-13)** — `kickoff-evaluate.md`·`kickoff-gap.md`에 도메인 전문가 프레이밍 + 보편 축(전제 타당성·치명적 실패모드) + 도출식 도메인/규제 슬롯(억지 금지) + 보수 편향 완화. 스키마 무변경(`dict`)이라 프론트/문서 영향 0.
+**실측 (등기부, 읽기전용 재생성, 모델 변경 없이 Sonnet 4.6)**: 종합 **yellow→red**로 뒤집힘. **마스킹↔핵심가치(전제 red 3), 오류 비대칭/거짓안전(실패모드 red 3), 변호사법·공인중개사법(도메인·규제 red 2), LLM 환각(AI적절성 yellow 5)** — 4대 근본 문제를 모두 포착(기존 프롬프트는 전부 놓쳤음). 빈틈도 9→11건, 근본 4개 포함. 빈틈 생성 77초(→BL-017 없었으면 60초 타임아웃으로 죽었을 것, 상호 검증).
+**→ F1(모델 격상)은 F2+F3만으로 효과가 충분해 보류 후보.** F4(2-패스)도 불필요해 보임.
+**발견일**: 2026-07-13
+**관련 영역**: `backend/skills/kickoff-evaluate.md`, `backend/skills/kickoff-gap.md`(프롬프트), `backend/app/core/claude_client.py`(`chat` 모델/추론 설정), `backend/app/api/finalize.py`(`_generate`)
+**대표 사례**: `pre-requirement/등기부 등본 AI 해석기_kickoff.md` — 앱의 평가/빈틈이 **엔지니어링 빈틈**(3종 API vs 1종 모순, 주소 마스킹↔공공API 충돌, Railway ephemeral 스토리지, 10건 표본 부족)은 잘 잡았으나, **근본 문제를 통째로 놓침**: ①개인정보 마스킹이 위험판단 핵심가치를 무력화(소유자·날짜가 사기 신호), ②변호사법·공인중개사법 존폐 리스크, ③OCR 전제(등기부는 인터넷등기소 정형 PDF), ④90% 정확도의 오류 비대칭(위험 놓침 비용이 훨씬 큼), ⑤법적 사실 추출을 LLM 환각에 맡김, ⑥신호등 3단계의 false reassurance. 사용자가 같은 md를 **Opus 4.8 max**로 돌리면 이런 근본 문제가 잡힘.
+
+### 근본 원인 (진단)
+- **① 비판이 앱에서 가장 약한 설정으로 돌아감** — evaluate·gap이 `chat()` 기본값(**Sonnet 4.6**, **thinking 꺼짐**, 단일 패스). 모순·전제·도메인 리스크 찾기는 깊은 추론이 가장 크게 기여하는 작업인데 얕은 1패스로 처리.
+- **② 닫힌 분류표** — evaluate는 고정 6차원(차별화/AI/시장/완성도/학습/보안), gap은 고정 7카테고리(전부 엔지니어링/정합성). "규제·전제·도메인 함정"이 들어갈 칸이 없어 탈락.
+- **③ 깊이 억제 지시** — gap "명확한 것만·오탐 금지·없으면 빈 배열"(과소보고 편향), 양쪽 "킥오프 수준만·1~2문장"(파고들 공간 차단).
+- **④ 도메인 전문성 스캐폴딩 부재** — 그냥 "평가자/검토자". 도메인 전문가 시각 없음 → 일반적(엔지니어링) 시각만.
+
+### 설계 원칙 (사용자 논의로 확정)
+1. **"목록 확장"이 아니라 "렌즈 도출"** — 규제·법률/도메인 리스크는 **프로젝트마다 다름**(부동산=변호사법 존폐급, 할일앱=무관). 고정 차원으로 박으면 억지 오탐/빈칸 = 현재 실수 반복. → 프로젝트에서 **도출**하고 무관하면 정직하게 "없음". (앱의 기존 `applicable` 조건부 패턴의 확장)
+2. **기존 JSON 스키마 안에서 해결** — `dimensions[]`·`gaps[]` 구조 유지, 내용만 풍부하게. 항목 추가만으로 프론트(`EvaluateStep`·`GapStep`)가 그대로 렌더 → **프론트·문서 코드 변경 0.**
+
+### 수정안 (F1~F4)
+| 수정 | 겨냥 원인 | 내용 | 대상 | 모델변경 | 난이도 |
+|---|---|---|---|---|---|
+| **F1. 비판 단계만 모델·추론 격상** | ① | evaluate·gap(+최종문서)만 상위 모델(Sonnet 5/Opus 4.8)+thinking/effort↑. 인터뷰 턴은 유지 | `claude_client.py`, `finalize.py` | ✅ | 중·비용↑ |
+| **F2. 닫힌 목록→열린 도출** | ②④ | 보편 축 2개(전제 타당성·치명적 실패모드) + 열린 슬롯("도메인 전문가라면? 규제·함정 도출, 없으면 '없음', 억지 금지") + 도메인 전문가 프레이밍 | `kickoff-evaluate.md`, `kickoff-gap.md` | ❌ | **낮음·무료** |
+| **F3. "보수·얕게" 제약 완화** | ③ | gap "명확한 것만"→confidence 표기+coverage 우선 / "킥오프 수준만·1~2문장" 완화 | 같은 두 스킬 | ❌ | 낮음 |
+| **F4. (선택) 2-패스 자기비판** | ①③ | 1차 평가 후 "놓친 근본 문제·틀린 전제는?" 재질문 | `finalize.py` | 선택 | 중·호출↑ |
+
+### 의존성
+- **F1**은 thinking 켜면 느려짐 → **[[BL-017]](타임아웃) 선행 필요**, 비용은 **[[BL-003]](캐싱)·[[BL-009]](모델전략)** 과 함께 판단.
+- **F2·F3는 완전 독립** — 모델 안 바꾸고 프롬프트만으로 즉시 가능.
+
+### 추천 순서 (싼 것부터 검증)
+1. **Phase 1 (무료·저위험): F2 + F3** → 등기부 md 재생성으로 "근본 문제 잡히나" 실측. 충분하면 종료.
+2. **Phase 2 (부족 시): F1** → [[BL-017]]과 세트.
+3. **Phase 3 (선택): F4.**
+
+### 완료 조건 (구현 시)
+- 등기부 md 재생성 시 평가/빈틈이 마스킹↔핵심가치 모순·규제(변호사법) 리스크·전제(OCR)·오류 비대칭 중 **다수를 실제로 포착**.
+- 무관한 프로젝트(할일앱 등)에선 규제/도메인 슬롯이 **억지 오탐 없이 "없음"** 으로 나옴.

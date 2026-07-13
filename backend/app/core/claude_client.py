@@ -29,8 +29,14 @@ def chat(
     messages: list[dict],
     max_tokens: int = 1024,
     model: str = "claude-sonnet-4-6",
+    timeout: float | None = None,
 ) -> tuple[str, dict]:
     client = get_claude()
+    # BL-017: heavy one-shot generations (최종 문서·평가·빈틈)은 8192 토큰이라
+    # 기본 60초를 넘을 수 있다(등기부 최종 문서 실측 127초). 호출별로 더 긴
+    # 타임아웃을 줄 수 있게 한다. 미지정이면 기본(60초) 유지 — 인터뷰 등 빠른 호출.
+    if timeout is not None:
+        client = client.with_options(timeout=timeout)
     try:
         response = client.messages.create(
             model=model,

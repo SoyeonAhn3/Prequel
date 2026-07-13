@@ -187,7 +187,8 @@ def _generate(step: str, body: FinalizeGenerateRequest, user: dict) -> FinalizeS
     system = [{"type": "text", "text": skill_text, "cache_control": {"type": "ephemeral"}}]
     messages = [{"role": "user", "content": user_message}]
 
-    text, usage = chat(system, messages, max_tokens=8192)
+    # BL-017: 평가·빈틈은 8192 토큰 + 깊은 분석(BL-018)이라 60초를 넘길 수 있음.
+    text, usage = chat(system, messages, max_tokens=8192, timeout=180.0)
     parsed = parse_json_response(text)
 
     updates = {cfg["column"]: parsed, "current_step": cfg["next"]}
@@ -227,6 +228,26 @@ async def generate_gap(body: FinalizeGenerateRequest, user: dict = Depends(get_c
 @router.post("/checklist", response_model=FinalizeSessionOut)
 async def generate_checklist(body: FinalizeGenerateRequest, user: dict = Depends(get_current_user)):
     return _generate("checklist", body, user)
+
+
+@router.post("/complete", response_model=FinalizeSessionOut)
+async def complete_finalize(body: FinalizeGenerateRequest, user: dict = Depends(get_current_user)):
+    """Idempotent finalize completion (BL-016).
+
+    Runs final-document generation and marks the project + session completed.
+    Safe to retry: if a prior completion failed *after* the checklist was saved
+    (e.g. the doc-gen Claude call timed out), the project was stranded in
+    'evaluating' with no kickoff_doc and no way to finish — the checklist step no
+    longer auto-generates because its content already exists. This re-runs only
+    the completion, without regenerating the checklist.
+    """
+    sb = get_supabase()
+    project = _verify_project(sb, body.project_id, user["id"])
+    session = _get_or_create_finalize_session(body.project_id)
+    if not session.get("checklist"):
+        raise HTTPException(status_code=400, detail="착수 체크리스트까지 먼저 생성해주세요.")
+    _finalize_complete(sb, project, body.project_id, session)
+    return _finalize_to_out(session)
 
 
 # ─── Read & update ────────────────────────────────────────

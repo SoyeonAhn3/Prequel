@@ -70,7 +70,15 @@ def _coerce_ai_workflow(value):
     object. Parse it back (falling back to a summary-only object) so reads don't
     fail validation. Some rows are double-encoded, so json.loads can yield a
     str/list — and a few are double-encoded (json.dumps applied twice). Decode
-    repeatedly until we reach a dict so schema validation never sees a bare str."""
+    repeatedly until we reach a dict so schema validation never sees a bare str.
+
+    Returns None when there is no workflow yet (BL-011): a not-yet-generated
+    step is None in the DB, and coercing that to {} made DesignSessionOut fill
+    AiWorkflowData defaults, so the frontend saw a truthy (but empty) workflow,
+    never auto-generated, and rendered an empty shell. None keeps `!aiWorkflow`
+    true so the AI-workflow step generates as intended."""
+    if not value:
+        return None
     for _ in range(3):
         if not isinstance(value, str):
             break
@@ -79,10 +87,10 @@ def _coerce_ai_workflow(value):
         except (json.JSONDecodeError, ValueError):
             return {"summary": value}
     if isinstance(value, dict):
-        return value
+        return value or None
     if isinstance(value, str):
-        return {"summary": value}
-    return {}
+        return {"summary": value} if value else None
+    return None
 
 
 def _get_or_create_session(project_id: str, user_id: str) -> dict:

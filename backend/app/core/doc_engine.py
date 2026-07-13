@@ -184,6 +184,7 @@ def generate_final_document(
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
         max_tokens=8192,
+        timeout=300.0,  # BL-017: 최종 문서는 인터뷰+설계+마감 종합이라 오래 걸림(실측 127초)
     )
 
     return doc_text, usage

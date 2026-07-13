@@ -10,7 +10,7 @@ export default function Markdown({ children, className = '' }: MarkdownProps) {
   return (
     <div className={`markdown-body ${className}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[[remarkGfm, { singleTilde: false }]]}
         components={{
           table: ({ children }) => (
             <div className="overflow-x-auto my-2">
