@@ -58,5 +58,15 @@ export function useProjects() {
     setProjects((prev) => prev.filter((p) => p.id !== id))
   }
 
-  return { projects, loading, error, createProject, deleteProject, refetch: fetchProjects }
+  // BL-008: 이름·설명 수정 — PATCH 후 목록 즉시 갱신.
+  async function updateProject(id: string, patch: { name?: string; description?: string }): Promise<Project> {
+    const project = await apiFetch<Project>(`/projects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+    setProjects((prev) => prev.map((p) => (p.id === id ? project : p)))
+    return project
+  }
+
+  return { projects, loading, error, createProject, deleteProject, updateProject, refetch: fetchProjects }
 }

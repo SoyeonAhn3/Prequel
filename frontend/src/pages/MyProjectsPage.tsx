@@ -6,6 +6,7 @@ import type { Project } from '../hooks/useProjects'
 import NewProjectModal from '../components/projects/NewProjectModal'
 import { Plus, AlertTriangle, Search, MoreVertical } from 'lucide-react'
 import DeleteConfirmModal from '../components/projects/DeleteConfirmModal'
+import EditProjectModal from '../components/projects/EditProjectModal'
 import Badge from '../components/common/Badge'
 
 type FilterTab = 'all' | 'in_progress' | 'completed'
@@ -36,12 +37,13 @@ function resumeRoute(project: Project): string {
 export default function MyProjectsPage() {
   const navigate = useNavigate()
   const { user, refetchProfile } = useAuthContext()
-  const { projects, loading, error, createProject, deleteProject } = useProjects()
+  const { projects, loading, error, createProject, deleteProject, updateProject } = useProjects()
 
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
   const [showNewModal, setShowNewModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [editTarget, setEditTarget] = useState<Project | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -83,6 +85,12 @@ export default function MyProjectsPage() {
     if (!deleteTarget) return
     await deleteProject(deleteTarget.id)
     setDeleteTarget(null)
+  }
+
+  async function handleUpdate(data: { name: string; description: string }) {
+    if (!editTarget) return
+    await updateProject(editTarget.id, data)
+    setEditTarget(null)
   }
 
   const isQuotaExceeded = !devBypass && user?.plan === 'free' && creditsUsed >= 2
@@ -319,6 +327,15 @@ export default function MyProjectsPage() {
                       <button
                         onClick={() => {
                           setMenuOpenId(null)
+                          setEditTarget(project)
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-sm text-text hover:bg-bg transition-colors cursor-pointer"
+                      >
+                        수정
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMenuOpenId(null)
                           setDeleteTarget(project)
                         }}
                         className="w-full text-left px-3 py-1.5 text-sm text-red hover:bg-bg transition-colors cursor-pointer"
@@ -347,6 +364,14 @@ export default function MyProjectsPage() {
           projectName={deleteTarget.name}
           onClose={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
+        />
+      )}
+      {editTarget && (
+        <EditProjectModal
+          initialName={editTarget.name}
+          initialDescription={editTarget.description ?? ''}
+          onClose={() => setEditTarget(null)}
+          onSave={handleUpdate}
         />
       )}
     </div>

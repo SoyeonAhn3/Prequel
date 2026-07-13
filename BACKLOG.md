@@ -283,9 +283,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-008 · 프로젝트 이름·설명 수정 UI 부재 (⋮ 메뉴에 "수정" 추가) 🆕
+## BL-008 · 프로젝트 이름·설명 수정 UI 부재 (⋮ 메뉴에 "수정" 추가) ✅
 
-**상태**: 🆕 대기 (미착수)
+**상태**: ✅ **구현 완료 (2026-07-13)** — `/projects` ⋮ 메뉴에 "수정" 추가 → `EditProjectModal`(이름·설명 편집) → `useProjects.updateProject`→`PATCH /projects/{id}` → 목록 즉시 갱신. 프론트만, 백엔드 무변경, `tsc -b` OK.
 **발견일**: 2026-07-07
 **관련 영역**: `frontend/src/pages/MyProjectsPage.tsx`(⋮ 행 메뉴), `frontend/src/components/projects/`(수정 모달 신규), 백엔드는 기구현
 
@@ -352,9 +352,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-011 · 시스템 구조 단계 가이드 문구가 실제 UX와 불일치 (존재하지 않는 입력 안내) 🆕
+## BL-011 · 시스템 구조 단계 가이드 문구가 실제 UX와 불일치 (존재하지 않는 입력 안내) ✅
 
-**상태**: 🆕 대기 (기록만, 미착수)
+**상태**: ✅ **구현 완료 (2026-07-13)** — `ArchHelperPanel.tsx`의 ExampleBox("'잘 모르겠어요'라고 입력…" — 존재하지 않는 입력 조작)를 자동 생성 현실에 맞게 교체("AI가 자동으로 만들고, 마음에 안 들면 '다시 시도'"). 용어 사전은 유지. tsc OK.
 **발견일**: 2026-07-13
 **관련 영역**: `frontend/src/components/design/ArchHelperPanel.tsx`, (동작 근거) `frontend/src/components/design/ArchitectureStep.tsx`
 
