@@ -270,8 +270,13 @@ function DynamicArchDiagram({ components }: { components: ArchComponent[] }) {
           const by = b.cy - BOX_H / 2
           const name = b.comp.name.length > 16 ? b.comp.name.slice(0, 15) + '…' : b.comp.name
           const role = b.comp.role.length > 18 ? b.comp.role.slice(0, 17) + '…' : b.comp.role
+          // BL-019: 박스는 폭이 고정이라 긴 이름/역할이 잘린다. <title>로 전문을 호버 툴팁에 노출.
+          const tooltip = [b.comp.name, b.comp.technology, b.comp.role && `역할: ${b.comp.role}`]
+            .filter(Boolean)
+            .join('\n')
           return (
             <g key={i} transform={`translate(${bx} ${by})`}>
+              <title>{tooltip}</title>
               <rect width={BOX_W} height={BOX_H} rx="10" fill={col.fill} stroke={col.stroke} />
               <text x={BOX_W / 2} y={24} fontSize="11" fontWeight="700" textAnchor="middle" fill={col.titleFill} style={{ fontFamily: 'var(--font-sans)' }}>
                 {name}
