@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.api._shared import raise_credit_rpc_error, unpack_credit_rpc_project
+from app.config import settings
 from app.core.supabase import get_supabase
 from app.core.claude_client import chat
 from app.core.ratelimit import limiter
@@ -194,17 +196,21 @@ async def start_interview(
 ):
     sb = get_supabase()
 
-    project = (
-        sb.table("projects")
-        .select("*")
-        .eq("id", body.project_id)
-        .eq("user_id", user["id"])
-        .is_("deleted_at", "null")
-        .execute()
-    )
-    if not project.data:
-        raise HTTPException(status_code=404, detail="Project not found")
-    project = project.data[0]
+    # Charge/check before any Claude call. The RPC locks project + user rows and
+    # makes retries idempotent through interview_credit_charged_at.
+    try:
+        credit_result = sb.rpc(
+            "start_interview_atomic",
+            {
+                "p_project_id": body.project_id,
+                "p_user_id": user["id"],
+                "p_bypass_limit": settings.DEV_BYPASS_AUTH,
+            },
+        ).execute()
+    except Exception as exc:
+        raise_credit_rpc_error(exc)
+
+    project, charged = unpack_credit_rpc_project(credit_result.data)
 
     existing = (
         sb.table("interview_sessions")
@@ -280,7 +286,12 @@ async def start_interview(
                 {"project_type": type_insight["value"]}
             ).eq("id", body.project_id).execute()
 
-    logger.info("interview_started", session_id=session["id"], project_id=body.project_id)
+    logger.info(
+        "interview_started",
+        session_id=session["id"],
+        project_id=body.project_id,
+        charged=charged,
+    )
 
     return _build_response(
         session=session,

@@ -156,7 +156,7 @@ prequel/
 ├── scripts/
 │   └── sync_harness.py            # ⛔ Deprecated (BL-002) — backend/skills is the source of truth
 ├── supabase/
-│   └── migrations/                # SQL migration files (001~010)
+│   └── migrations/                # SQL migration files (001~011)
 ├── Phase/
 │   ├── Phase1_ProjectSetup.md     # ✅ Project setup & infrastructure
 │   ├── Phase2_AuthSystem.md       # ✅ Auth & user system

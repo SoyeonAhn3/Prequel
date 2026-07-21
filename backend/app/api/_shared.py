@@ -14,6 +14,50 @@ from app.core.supabase import get_supabase
 
 DESIGN_STEP_COLS = ("requirements", "architecture", "data_model", "ai_workflow")
 FINALIZE_STEP_COLS = ("evaluation", "done_criteria", "gaps", "checklist")
+_CREDIT_LIMIT_ERROR = re.compile(r"CREDIT_LIMIT_EXCEEDED:(\d+)")
+
+
+def rpc_error_text(exc: Exception) -> str:
+    """Flatten supabase-py/PostgREST error fields for stable RPC error mapping."""
+    message = getattr(exc, "message", "")
+    details = getattr(exc, "details", "")
+    return " ".join(str(value) for value in (message, details, exc) if value)
+
+
+def raise_credit_rpc_error(exc: Exception) -> None:
+    """Map credit/state RPC domain errors to public HTTP responses."""
+    error_text = rpc_error_text(exc)
+    limit_match = _CREDIT_LIMIT_ERROR.search(error_text)
+    if limit_match:
+        limit = int(limit_match.group(1))
+        raise HTTPException(
+            status_code=403,
+            detail=f"사용 횟수({limit}회)를 모두 소진했습니다. 유료 플랜으로 업그레이드하세요.",
+        ) from exc
+    if "PROJECT_NOT_FOUND" in error_text:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+    if "USER_NOT_FOUND" in error_text:
+        raise HTTPException(status_code=404, detail="User profile not found") from exc
+    if "INTERVIEW_NOT_COMPLETED" in error_text:
+        raise HTTPException(status_code=409, detail="인터뷰를 먼저 완료해주세요.") from exc
+    if "INVALID_PROJECT_STATE" in error_text:
+        raise HTTPException(
+            status_code=409,
+            detail="현재 프로젝트 상태에서는 요청한 단계를 시작할 수 없습니다.",
+        ) from exc
+    if "INVALID_DESIGN_DECISION" in error_text:
+        raise HTTPException(status_code=400, detail="Invalid design decision") from exc
+    raise exc
+
+
+def unpack_credit_rpc_project(data) -> tuple[dict, bool]:
+    """Validate the common {project, charged} JSONB response from credit RPCs."""
+    payload = data
+    if isinstance(payload, list):
+        payload = payload[0] if len(payload) == 1 else None
+    if not isinstance(payload, dict) or not isinstance(payload.get("project"), dict):
+        raise HTTPException(status_code=500, detail="Invalid credit transaction response")
+    return payload["project"], payload.get("charged") is True
 
 
 def session_content_score(session: dict, columns: tuple[str, ...]) -> int:

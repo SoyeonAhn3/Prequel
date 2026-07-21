@@ -104,7 +104,7 @@ function transformResponse(res: InterviewApiResponse) {
 export default function InterviewPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { user } = useAuthContext()
+  const { user, refetchProfile } = useAuthContext()
 
   const [sessionId, setSessionId] = useState('')
   const [pageStatus, setPageStatus] = useState<'loading' | 'active' | 'completed' | 'error'>(
@@ -270,8 +270,16 @@ export default function InterviewPage() {
       const proj = projects.find((p) => p.id === projectId)
       if (proj) {
         setProject({ name: proj.name, type: proj.project_type ?? '', language: proj.language })
-        if (proj.status === 'designing' || proj.status === 'evaluating') {
-          navigate('/projects')
+        if (proj.status === 'designing') {
+          navigate(`/projects/${projectId}/design`, { replace: true })
+          return
+        }
+        if (proj.status === 'evaluating') {
+          navigate(`/projects/${projectId}/finalize`, { replace: true })
+          return
+        }
+        if (proj.status === 'completed') {
+          navigate(`/projects/${projectId}/document`, { replace: true })
           return
         }
       }
@@ -290,7 +298,7 @@ export default function InterviewPage() {
       const res = await apiFetch<InterviewApiResponse>('/interview/start', {
         method: 'POST',
         body: JSON.stringify({ project_id: projectId }),
-      })
+      }).finally(refetchProfile)
       applyApiResponse(res)
 
       startTimeRef.current = Date.now()
@@ -303,7 +311,7 @@ export default function InterviewPage() {
       })
       setPageStatus('error')
     }
-  }, [projectId, navigate, applyApiResponse, clear, fail])
+  }, [projectId, navigate, applyApiResponse, clear, fail, refetchProfile])
 
   useEffect(() => {
     startInterview()
@@ -366,16 +374,18 @@ export default function InterviewPage() {
         method: 'POST',
         body: JSON.stringify({ decision }),
       })
+      await refetchProfile()
       if (decision === 'design') {
         navigate(`/projects/${projectId}/design`)
       } else {
-        navigate(`/projects/${projectId}/finalize`)
+        navigate(`/projects/${projectId}/document`)
       }
     } catch (e) {
+      await refetchProfile()
       fail(e)
       setDecidingDesign(false)
     }
-  }, [projectId, decidingDesign, navigate, fail])
+  }, [projectId, decidingDesign, navigate, fail, refetchProfile])
 
   const handleTypeConfirm = useCallback(async (confirmedType: string) => {
     typeConfirmedRef.current = true
@@ -438,8 +448,10 @@ export default function InterviewPage() {
 
   if (pageStatus === 'completed') {
     return (
-      <div className="h-screen flex items-center justify-center bg-bg">
-        <div className="max-w-xl w-full px-6">
+      <div className="h-screen flex flex-col bg-bg">
+        {error && <ErrorBanner message={error} onClose={clear} />}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="max-w-xl w-full px-6">
           <div className="text-center mb-8">
             <div className="w-14 h-14 rounded-full bg-green flex items-center justify-center mx-auto mb-4">
               <span className="text-white text-xl font-bold">&#10003;</span>
@@ -463,7 +475,7 @@ export default function InterviewPage() {
               <p className="text-xs text-text-muted leading-relaxed">
                 요구사항, 아키텍처, 데이터 모델, AI 워크플로우를 단계별로 설계합니다.
               </p>
-              <div className="mt-3 text-[11px] text-accent font-semibold">추천 — 복잡한 프로젝트</div>
+              <div className="mt-3 text-[11px] text-accent font-semibold">설계·평가 세트 · 크레딧 1회</div>
             </button>
 
             <button
@@ -476,9 +488,9 @@ export default function InterviewPage() {
               </div>
               <h3 className="text-sm font-bold text-text mb-1.5">건너뛰기</h3>
               <p className="text-xs text-text-muted leading-relaxed">
-                설계를 건너뛰고 바로 평가 및 킥오프 문서 생성으로 진행합니다.
+                설계와 평가를 모두 건너뛰고 인터뷰 요약 문서로 바로 이동합니다.
               </p>
-              <div className="mt-3 text-[11px] text-text-muted font-semibold">빠른 진행 — 단순한 프로젝트</div>
+              <div className="mt-3 text-[11px] text-text-muted font-semibold">추가 크레딧 없음</div>
             </button>
           </div>
 
@@ -491,6 +503,7 @@ export default function InterviewPage() {
             </button>
           </div>
         </div>
+      </div>
       </div>
     )
   }

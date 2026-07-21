@@ -118,7 +118,15 @@ export default function FinalizePage() {
           setScreen({ kind: 'error', message: '프로젝트를 찾을 수 없습니다' })
           return
         }
-        if (!['designing', 'evaluating', 'completed'].includes(proj.status)) {
+        if (proj.status === 'designing') {
+          navigate(`/projects/${projectId}/design`, { replace: true })
+          return
+        }
+        if (proj.status === 'completed') {
+          navigate(`/projects/${projectId}/document`, { replace: true })
+          return
+        }
+        if (proj.status !== 'evaluating') {
           navigate('/projects')
           return
         }

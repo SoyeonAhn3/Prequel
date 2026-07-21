@@ -13,11 +13,11 @@ from tests._fakes import FakeSupabase
 _TS = "2026-01-01T00:00:00+00:00"
 
 
-def _project(status="designing", **over):
+def _project(status="evaluating", **over):
     base = {
         "id": "p1", "user_id": "u1", "name": "테스트 프로젝트",
         "project_type": "Web", "description": "설명",
-        "status": status, "created_at": _TS,
+        "status": status, "credit_charged_at": _TS, "created_at": _TS,
     }
     base.update(over)
     return base
@@ -43,15 +43,18 @@ def _install(monkeypatch, fake, chat_json='{"score": 5, "summary": "좋음"}'):
     monkeypatch.setattr(fin, "load_skill", lambda name: f"SKILL::{name}")
     monkeypatch.setattr(
         fin, "chat",
-        lambda system, messages, max_tokens=8192: (chat_json, {"input_tokens": 10, "output_tokens": 5}),
+        lambda system, messages, max_tokens=8192, **kwargs: (
+            chat_json,
+            {"input_tokens": 10, "output_tokens": 5},
+        ),
     )
 
 
 # ── 생성: evaluate ─────────────────────────────────────────
 
-def test_evaluate_creates_session_and_flips_status(client, monkeypatch):
+def test_evaluate_creates_session_after_evaluation_entry(client, monkeypatch):
     fake = FakeSupabase({
-        "projects": [_project(status="designing")],
+        "projects": [_project(status="evaluating")],
         "interview_sessions": [_completed_interview()],
         "design_sessions": [],
         "finalize_sessions": [],
@@ -62,10 +65,36 @@ def test_evaluate_creates_session_and_flips_status(client, monkeypatch):
     body = r.json()
     assert body["evaluation"] == {"score": 5, "summary": "좋음"}
     assert body["current_step"] == "done"          # 다음 단계로 진행
-    # 프로젝트 상태가 evaluating 으로 전환
+    # 평가 진입 API가 선행되어 이미 evaluating 상태다.
     assert fake.rows("projects")[0]["status"] == "evaluating"
     # 마감 세션이 새로 생성됨
     assert len(fake.rows("finalize_sessions")) == 1
+
+
+def test_evaluate_rejects_designing_project_before_transition(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project(status="designing")],
+        "interview_sessions": [_completed_interview()],
+        "design_sessions": [],
+        "finalize_sessions": [],
+    })
+    _install(monkeypatch, fake)
+    r = client.post("/api/finalize/evaluate", json={"project_id": "p1"})
+    assert r.status_code == 409
+    assert fake.rows("finalize_sessions") == []
+
+
+def test_evaluate_rejects_unpaid_evaluating_project(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project(status="evaluating", credit_charged_at=None)],
+        "interview_sessions": [_completed_interview()],
+        "design_sessions": [],
+        "finalize_sessions": [],
+    })
+    _install(monkeypatch, fake)
+    r = client.post("/api/finalize/evaluate", json={"project_id": "p1"})
+    assert r.status_code == 409
+    assert fake.rows("finalize_sessions") == []
 
 
 def test_evaluate_requires_completed_interview(client, monkeypatch):

@@ -682,3 +682,270 @@ def validate_models(client) -> None:
 ### 완료 조건 (구현 시)
 - 인터뷰 호출 단가가 유의미하게 하락하되 인터뷰 품질(insight 수·질)은 실측상 유지.
 - 평가/빈틈이 상위 모델+추론으로 근본 문제 포착률↑([[BL-018]] 완료조건과 공유).
+
+
+---
+
+## BL-021 · 설계·마감 세션 API 소유권 검사 누락(IDOR) — 타 사용자 데이터 조회·변조 가능 🔴
+
+**상태**: 🔴 **출시 차단 · 미구현 (2026-07-20)** — 로그인 여부는 확인하지만 일부 `session_id` 기반 API가 해당 세션의 프로젝트 소유자를 확인하지 않는다. 백엔드가 Supabase `service_role`을 사용해 RLS를 우회하므로 API에서 소유권을 빠뜨리면 다른 로그인 사용자의 세션을 조회·수정할 수 있다.
+**심각도**: Critical — Broken Access Control / IDOR(Insecure Direct Object Reference)
+**발견일**: 2026-07-20 (코드 전수 점검, 기존 `pre-requirement/code-review-report.txt`의 Critical #1 재확인)
+**관련 영역**: `backend/app/core/supabase.py`, `backend/app/api/_shared.py`, `backend/app/api/design.py`, `backend/app/api/finalize.py`, 백엔드 권한 테스트
+
+### 문제
+정상 로그인한 사용자 A의 토큰은 "요청자가 A"라는 사실만 증명하며, URL의 `session_id`가 A 소유라는 사실까지 증명하지 않는다. 아래 API는 로그인은 확인하지만 조회·수정 쿼리에 `user["id"]` 또는 연결된 `projects.user_id` 조건이 없다.
+
+- `GET /api/design/requirements/{session_id}`
+- `PUT /api/design/requirements/{session_id}/{req_id}`
+- `PUT /api/design/requirements/{session_id}`
+- `GET /api/design/architecture/{session_id}`
+- `PUT /api/design/architecture/{session_id}`
+- `GET /api/design/data-model/{session_id}`
+- `PUT /api/design/data-model/{session_id}`
+- `PUT /api/finalize/{step}/{session_id}`
+
+사용자 A가 개발자 도구·Postman·curl 등으로 요청의 `session_id`를 사용자 B의 값으로 바꾸면 백엔드는 로그인 성공만 확인한 뒤 B의 세션을 처리할 수 있다. UUID는 로그·화면 캡처·오류·다른 API 결함 등으로 유출될 수 있으므로 접근 권한으로 사용할 수 없다.
+
+### 발생 가능한 피해
+- 타 사용자의 요구사항·아키텍처·데이터 모델 등 사업/기술 정보 열람.
+- 타 사용자의 요구사항·아키텍처·데이터 모델·마감 결과 덮어쓰기.
+- 변조된 데이터가 평가와 최종 킥오프 문서까지 전파되어 프로젝트 전체 결과 오염.
+- `dict` 형태의 비정상 데이터를 저장해 피해 사용자의 화면 렌더링·문서 생성 오류 유발.
+- 사용자 데이터 격리 실패에 따른 신뢰·보안·컴플라이언스 문제.
+
+### 근본 원인
+1. 인증(Authentication: 누구인가)과 인가(Authorization: 이 데이터의 주인인가)를 동일하게 취급함.
+2. 프로젝트 ID 기반 API는 대체로 `.eq("user_id", user["id"])`를 적용하지만 세션 ID 기반 API에는 같은 규칙이 누락됨.
+3. 서버가 `SUPABASE_SERVICE_KEY`를 사용하므로 DB RLS가 최종 방어선이 되지 못함.
+4. 다중 사용자 교차 접근을 검증하는 부정 권한 테스트가 없음.
+
+### 해결 방향
+1. `backend/app/api/_shared.py`에 설계·마감 세션 소유권 검사 헬퍼를 추가한다.
+   - `session_id`로 세션을 조회하고 세션의 `project_id`를 확인한다.
+   - 삭제되지 않은 프로젝트의 `projects.user_id == user["id"]`일 때만 세션을 반환한다.
+   - 세션이 없거나 소유자가 다르면 모두 404를 반환해 리소스 존재 여부도 숨긴다.
+2. 위 8개 API가 조회·수정 전에 반드시 공통 헬퍼를 호출하도록 변경한다.
+3. `_get_or_create_session`처럼 세션을 먼저 찾는 내부 헬퍼도 프로젝트 소유권 확인을 선행하도록 방어적으로 정리한다.
+4. 관리자 교차 접근이 필요하면 일반 사용자 API가 아니라 별도 Admin API와 명시적 권한 규칙으로 제공한다.
+5. 장기적으로 사용자 JWT 기반 Supabase 클라이언트/RLS를 검토하되 현재 구조에서는 백엔드 소유권 검사를 필수 방어선으로 유지한다.
+
+### 테스트 계획
+- 사용자 A가 자신의 설계·마감 세션을 조회·수정하면 200.
+- 사용자 B가 A의 `session_id`로 조회·수정하면 404.
+- 거부된 수정 후 A의 원본 데이터가 변경되지 않았는지 확인.
+- 삭제된 프로젝트의 세션 접근은 소유자에게도 404.
+- 위 8개 API 모두 소유자 성공/비소유자 거부 회귀 테스트 추가.
+
+### 예상 변경 범위
+- 백엔드 공통 헬퍼 + 설계 API 7개 + 마감 API 1개 + 권한 테스트.
+- 프론트엔드·DB 스키마·마이그레이션 변경 없음.
+- 정상 사용자의 요청 형식과 화면 흐름은 변경 없음.
+
+### 완료 조건
+- 위 8개 API가 세션→프로젝트→사용자 소유권을 확인한다.
+- 다른 로그인 사용자의 세션 ID로 조회·수정 시 일관되게 404를 반환한다.
+- 거부된 요청으로 대상 데이터가 변경되지 않는다.
+- 소유자 정상 동작과 비소유자 거부 테스트가 자동화되어 통과한다.
+- 프로덕션 배포 전 보안 회귀 테스트 전체 통과.
+
+---
+
+## BL-022 · 크레딧 확인·차감이 비원자적 — 동시 요청 시 중복/누락·한도 초과 가능 🔴
+
+**상태**: 🚧 **코드 구현·Supabase DB 적용 완료 · 동시성 실측 대기 (2026-07-20)** — `011_atomic_credit_charge.sql`의 행 잠금 기반 RPC를 실제 Supabase에 적용하고 백엔드 차감 흐름을 RPC 1회 호출로 교체했다. 단계별 과금 정책과 설계·평가 패스 흐름 보완은 후속 [[BL-023]]에서 진행한다.
+**심각도**: Critical — 과금/사용량 무결성, Race Condition
+**발견일**: 2026-07-20 (코드 전수 점검, 기존 `pre-requirement/code-review-report.txt`의 Critical #2 재확인)
+**관련 영역**: `backend/app/api/projects.py`(`_check_credits`, `_increment_credits`, `set_design_decision`), `supabase/migrations/010_credit_charged_at.sql`, 신규 DB RPC 마이그레이션, 동시성 테스트
+**연관**: [[BL-006]]은 프로젝트별 중복 차감 표시를 추가했지만 여러 DB 요청 사이의 동시성·트랜잭션 문제는 해결하지 못함.
+
+### 문제
+현재 `POST /api/projects/{project_id}/design-decision`의 차감 흐름은 다음 세 단계로 나뉜다.
+
+1. 요청 시작 시 읽어온 사용자 정보로 잔여 크레딧 확인.
+2. 프로젝트에 `credit_charged_at` 기록.
+3. `users.credits_used`를 다시 읽고 `현재값 + 1`로 갱신.
+
+각 단계가 별도 Supabase REST 요청이어서 하나의 트랜잭션으로 묶이지 않는다.
+
+### 발생 가능한 시나리오
+- **같은 프로젝트 동시 진입**: 두 요청이 모두 미차감으로 판단해 `credits_used`가 두 번 증가할 수 있음.
+- **사용량 증가 누락**: 두 요청이 `credits_used=0`을 동시에 읽고 모두 1을 저장하면 실제 두 번 사용했지만 1로 기록됨(Lost Update).
+- **한도 초과 사용**: 무료 한도가 1회 남은 사용자가 서로 다른 두 프로젝트에 동시에 진입하면 두 요청이 모두 한도 검사를 통과할 수 있음.
+- **부분 실패**: 프로젝트에 `credit_charged_at`은 기록됐지만 사용자 카운트 증가가 실패하면 재시도해도 카운트가 영구 누락될 수 있음.
+
+### 근본 원인
+1. 과금 상태를 바꾸는 여러 쿼리가 DB 트랜잭션 밖에서 실행됨.
+2. `_increment_credits`가 `SELECT → Python에서 +1 → UPDATE` 방식이라 동시 요청을 직렬화하지 못함.
+3. `_check_credits(user)`가 요청 시작 시점의 오래된 사용자 스냅샷을 사용함.
+4. 프로젝트별 멱등 표시(`credit_charged_at`)를 조건부 갱신·사용자 카운트와 같은 트랜잭션으로 묶지 않음.
+
+### 해결 방향
+Supabase PostgreSQL RPC 함수 하나에서 설계 결정과 차감을 원자적으로 처리한다. 예: `set_design_decision_atomic(project_id, user_id, decision)`.
+
+함수 내부 동작:
+1. 대상 프로젝트와 사용자의 DB 행을 `SELECT ... FOR UPDATE`로 잠근다.
+2. 프로젝트가 요청 사용자의 소유인지, 삭제/완료 상태가 아닌지 확인한다.
+3. `decision='skip'`이면 차감 없이 상태만 `evaluating`으로 변경한다.
+4. `decision='design'`이고 이미 `credit_charged_at`이 있으면 재차감 없이 기존 결과를 반환한다.
+5. 최초 설계 진입이면 잠금 상태의 최신 `credits_used`로 플랜 한도를 확인한다.
+6. 프로젝트 `status='designing'`·`credit_charged_at=NOW()`와 사용자 `credits_used=credits_used+1`을 같은 트랜잭션에서 갱신한다.
+7. 어느 단계든 실패하면 전체를 롤백해 프로젝트 표시와 사용자 카운트가 항상 일치하게 한다.
+
+백엔드 `set_design_decision`은 `_check_credits`와 `_increment_credits`를 따로 호출하지 않고 위 RPC 결과만 사용한다. 관리자·개발 우회 계정의 카운트를 기록할지 면제할지는 함수 구현 전에 정책을 확정한다.
+
+### 적용한 수정 (2026-07-20)
+- **DB 마이그레이션** `supabase/migrations/011_atomic_credit_charge.sql`: `set_design_decision_atomic` RPC 추가. 프로젝트·사용자 행을 `FOR UPDATE`로 잠그고 소유권·완료 상태·기존 차감·최신 사용량을 확인한 뒤 프로젝트 상태/차감 시각과 `credits_used + 1`을 한 트랜잭션에서 처리한다.
+- **권한 제한**: 신규 RPC의 `PUBLIC`·`anon`·`authenticated` 실행 권한을 회수하고 백엔드 `service_role`에만 실행 권한 부여.
+- **백엔드** `backend/app/api/projects.py`: `_check_credits`·`_increment_credits`와 다중 REST 갱신을 제거하고 RPC 1회 호출로 교체. 한도 소진·프로젝트/사용자 없음·잘못된 결정 오류를 기존 HTTP 응답으로 매핑.
+- **기존 정책 유지**: 완료 프로젝트 상태 강등 방지, 설계 재진입 추가 차감 방지, 설계 건너뛰기 무차감, `DEV_BYPASS_AUTH` 한도 우회(사용량 기록은 유지).
+- **테스트 인프라** `backend/tests/_fakes.py`: RPC 핸들러·호출 기록 지원 추가.
+- **회귀 테스트**: 최초 차감·재진입·한도 소진 시 무변경·개발 우회·건너뛰기·완료 프로젝트·404와 SQL 잠금/권한 계약 검증.
+- **검증**: 대상 테스트 23개 통과, 전체 백엔드 62개 통과, 커버리지 64%.
+- **DB 적용**: `011_atomic_credit_charge.sql`을 실제 Supabase에 적용 완료.
+- **잔여**: 같은 프로젝트/서로 다른 프로젝트 동시 요청을 실제 Supabase 환경에서 실측해야 최종 완료 처리.
+
+### 테스트 계획
+- 같은 프로젝트에 동시 설계 진입 요청 2개 → 프로젝트는 1회만 차감되고 `credits_used`도 정확히 +1.
+- 크레딧 1회가 남은 상태에서 서로 다른 프로젝트 2개에 동시 진입 → 하나만 성공, 다른 하나는 403.
+- 이미 차감된 프로젝트 재진입 → 성공하지만 추가 차감 없음.
+- `decision='skip'` → `evaluating`으로 이동하고 차감 없음.
+- 완료 프로젝트 재요청 → 상태 강등·추가 차감 없음.
+- RPC 내부 오류 → 프로젝트와 사용자 데이터가 모두 변경되지 않음(롤백).
+
+### 예상 변경 범위
+- 신규 Supabase SQL 마이그레이션(예: `011_atomic_credit_charge.sql`)과 RPC 함수.
+- `backend/app/api/projects.py` 차감 흐름을 RPC 1회 호출로 교체.
+- `FakeSupabase`의 RPC 지원 또는 별도 DB 통합 테스트 추가.
+- 프론트엔드 요청 형식은 유지 가능.
+
+### 완료 조건
+- 프로젝트 차감 표시와 사용자 크레딧 증가가 하나의 DB 트랜잭션에서 처리된다.
+- 같은 프로젝트 재요청은 멱등이며 추가 차감되지 않는다.
+- 서로 다른 프로젝트의 동시 요청도 플랜 한도를 초과하지 못한다.
+- 중간 실패 시 부분 저장 없이 전체 롤백된다.
+- 단일 요청·재시도·동시 요청·한도 초과 테스트가 자동화되어 통과한다.
+- 프로덕션 배포 전 실제 Supabase 환경에서 동시성 검증을 완료한다.
+
+---
+
+## BL-023 · 인터뷰 1회 + 설계·평가 세트 1회 단계별 과금 및 패스 흐름 🟠
+
+**상태**: 🚧 **1~4단계 구현 및 Supabase 적용 완료 · 실제 동시성/E2E 검증 대기 (2026-07-20)** — 단계별 원자 과금 SQL·백엔드 RPC/가드·프론트엔드 단계 이동과 크레딧 갱신을 구현했다. `012`의 실제 Supabase 적용은 완료됐고, 프로덕션 환경 동시 요청 및 브라우저 E2E 검증이 남아 있다.
+**심각도**: High — 과금 정책 불일치, 사용자 이동 흐름 오류
+**발견일**: 2026-07-20 (과금 정책 재확인)
+**관련 영역**: `supabase/migrations/012_phase_credit_charges.sql`, `backend/app/api/_shared.py`, `backend/app/api/interview.py`, `backend/app/api/projects.py`, `backend/app/api/design.py`, `backend/app/api/finalize.py`, `backend/tests/test_phase_credit_charges.py`, `backend/tests/test_design_phase_access.py`, `backend/tests/test_phase_credit_frontend_contract.py`, `frontend/src/hooks/useAuth.ts`, `frontend/src/pages/InterviewPage.tsx`, `frontend/src/pages/DesignPage.tsx`, `frontend/src/pages/FinalizePage.tsx`, `frontend/src/pages/MyProjectsPage.tsx`, `frontend/src/components/design/DesignWelcome.tsx`, `frontend/src/components/design/DesignComplete.tsx`
+**연관**: [[BL-022]]의 원자적 설계 차감은 유지하되, 인터뷰 차감과 단계별 이동 정책을 추가한다. 실제 Supabase에 적용된 `011`은 수정하지 않고 `012`에서 보완한다.
+
+### 확정 요구사항
+1. 사용자가 프로젝트의 인터뷰에 최초 진입하면 크레딧을 1회 차감한다.
+2. 같은 프로젝트의 인터뷰를 새로고침·재접속·재시도·일시정지 후 재개해도 추가 차감하지 않는다.
+3. 인터뷰 완료 후 `설계 진행`을 선택해 설계에 최초 진입하면 크레딧을 1회 추가 차감한다.
+4. 설계와 평가는 하나의 유료 단계 세트이며, 설계를 마치고 평가에 진입할 때는 추가 차감하지 않는다.
+5. 인터뷰 완료 후 `건너뛰기`를 선택하면 설계와 평가를 모두 건너뛰고 인터뷰 요약 문서 페이지로 바로 이동한다.
+6. 설계·평가를 건너뛴 경우에도 기존 Markdown 내보내기 API로 인터뷰 요약 `.md` 파일을 다운로드할 수 있어야 한다.
+7. 모든 단계를 진행한 프로젝트의 총 차감은 정확히 2회다.
+
+### 기대 사용량
+| 사용자 흐름 | 인터뷰 차감 | 설계·평가 차감 | 총 차감 |
+|---|---:|---:|---:|
+| 인터뷰만 시작하고 종료 | 1 | 0 | 1 |
+| 인터뷰 완료 후 설계·평가 패스 | 1 | 0 | 1 |
+| 인터뷰 완료 후 설계·평가 모두 진행 | 1 | 1 | 2 |
+| 인터뷰 또는 설계 재접속 | 추가 없음 | 추가 없음 | 기존 값 유지 |
+
+### 구현 전 코드와의 차이
+- `POST /api/interview/start`는 프로젝트와 기존 세션을 확인하고 Claude 첫 질문을 생성하지만 크레딧을 차감하지 않는다. 따라서 인터뷰만 사용한 뒤 종료하면 사용량이 0으로 남는다.
+- `POST /api/projects/{project_id}/design-decision`에서 `decision='design'`인 경우에만 `011` RPC가 1회 차감하므로 전체 과정을 완료해도 현재 총 차감은 1회다.
+- 인터뷰 화면의 `decision='skip'`은 현재 프로젝트를 `evaluating`으로 바꾸고 `/finalize`로 이동하므로, 설계·평가 전체 패스 및 인터뷰 요약 페이지 이동 요구사항과 다르다.
+- 설계 완료 후 평가 진입도 같은 `decision='skip'`을 재사용한다. 인터뷰 직후의 전체 패스와 설계 완료 후 평가 진입은 의미가 다르므로 하나의 동작으로 유지하면 상태 전환 오류가 발생할 수 있다.
+- 평가·문서 미리보기·Markdown 내보내기에는 별도 크레딧 차감이 없어 설계와 평가를 한 세트로 처리하는 부분은 이미 요구사항에 맞는다.
+
+### DB 변경 방향 — `012_phase_credit_charges.sql`
+이미 적용된 `011` 파일은 수정하지 않는다. 새 `012` 마이그레이션에서 다음을 수행한다.
+
+1. `projects.interview_credit_charged_at TIMESTAMPTZ` 컬럼을 추가한다.
+   - `NULL`: 이 프로젝트의 인터뷰는 아직 미차감.
+   - 값 있음: 인터뷰 차감 완료. 재접속해도 다시 차감하지 않음.
+   - 기존 `projects.credit_charged_at`은 설계·평가 세트의 차감 표시로 계속 사용한다.
+2. `start_interview_atomic(project_id, user_id, bypass_limit)` RPC를 추가한다.
+   - 프로젝트와 사용자 행을 `SELECT ... FOR UPDATE`로 잠근다.
+   - 프로젝트 소유권·삭제 여부를 확인한다.
+   - 인터뷰가 이미 차감됐으면 `charged=false`로 성공 반환한다.
+   - 최초 인터뷰이면 최신 `credits_used`와 플랜 한도를 확인한다.
+   - `users.credits_used = credits_used + 1`과 `projects.interview_credit_charged_at = NOW()`를 같은 트랜잭션에서 처리한다.
+   - 어느 한 작업이라도 실패하면 두 변경을 모두 롤백한다.
+3. 기존 인터뷰 세션이 있는 프로젝트는 재접속 시 갑자기 차감되지 않도록 `interview_credit_charged_at`을 기존 세션 생성 시각으로 백필한다. 기존 `credits_used`는 소급 증가시키지 않는다.
+4. `set_design_decision_atomic`은 `CREATE OR REPLACE FUNCTION`으로 교체한다.
+   - `design`: 기존처럼 설계 최초 진입만 1회 차감하고 `designing`으로 전환한다.
+   - `skip`: 설계·평가 세트를 모두 건너뛰고 차감 없이 문서 결과를 볼 수 있는 종료 상태로 전환한다.
+5. 신규/교체 RPC는 브라우저에서 직접 실행하지 못하도록 `PUBLIC`·`anon`·`authenticated` 권한을 회수하고 `service_role`에만 실행 권한을 부여한다.
+
+### 적용한 수정 (2026-07-20, 1·2단계)
+- **계약 테스트** `backend/tests/test_phase_credit_charges.py`: 인터뷰 차감 도장·기존 세션 백필·프로젝트→사용자 행 잠금 순서·한도 검사·완료 인터뷰 선행 조건·`skip → completed`·설계 차감 도장·RPC 실행 권한·브라우저 직접 쓰기 차단을 검증하는 테스트 6개 추가.
+- **DB 마이그레이션 초안** `supabase/migrations/012_phase_credit_charges.sql`: `interview_credit_charged_at` 추가, 기존 인터뷰 세션 최초 생성 시각 백필(사용량 소급 증가 없음), `start_interview_atomic` 신규 추가, `set_design_decision_atomic` 단계별 정책으로 교체, 두 RPC의 `service_role` 전용 권한 설정. 브라우저 역할(`anon`·`authenticated`)이 `credits_used`·상태·차감 도장·세션을 직접 위조하지 못하도록 `public` 테이블 쓰기 권한과 이후 기본 쓰기 권한도 회수한다.
+- **추가 방어**: 인터뷰 최초 차감은 `in_progress` 프로젝트에서만 허용하고, 설계 진행/패스 결정은 완료된 인터뷰 세션이 있을 때만 허용한다.
+- **검증**: 전체 백엔드 테스트 87개 통과. 로컬 PostgreSQL/Docker 미실행 상태이므로 실제 SQL 실행·동시성 검증은 아직 수행하지 않았다.
+
+### 백엔드 변경 방향 → ✅ 구현 완료 (2026-07-20, 3단계)
+1. `POST /api/interview/start`가 Claude를 호출하기 전에 `start_interview_atomic`을 호출한다.
+   - 한도를 소진했으면 403을 반환하고 Claude 비용을 발생시키지 않는다.
+   - Claude 첫 질문 생성이 실패해 사용자가 재시도해도 인터뷰 크레딧은 다시 차감하지 않는다.
+2. 인터뷰 직후 설계 여부 결정은 기존 `POST /api/projects/{project_id}/design-decision`을 사용한다.
+   - `design`: 설계·평가 세트 1회 차감.
+   - `skip`: 추가 차감 없이 요약 문서 단계로 종료.
+3. 설계 완료 후 평가 진입은 별도 `POST /api/projects/{project_id}/enter-evaluation` API로 분리한다.
+   - 로그인 사용자와 프로젝트 소유권을 확인한다.
+   - 현재 프로젝트가 `designing` 상태인지 확인한다.
+   - 프로젝트 상태만 `evaluating`으로 변경하고 크레딧은 변경하지 않는다.
+
+### 적용한 수정 (2026-07-20, 3단계)
+- **공통 RPC 처리** `backend/app/api/_shared.py`: 크레딧 한도·프로젝트/사용자 없음·인터뷰 미완료·잘못된 프로젝트 상태 오류를 403/404/409로 일관되게 변환하고 `{project, charged}` 응답을 검증한다.
+- **인터뷰 시작** `backend/app/api/interview.py`: 프로젝트 조회/Claude 호출보다 먼저 `start_interview_atomic`을 호출한다. 한도·상태 오류 시 Claude를 호출하지 않고, 차감 후 Claude가 실패해도 같은 프로젝트 재시도는 DB 도장으로 추가 차감되지 않는다.
+- **평가 진입** `backend/app/api/projects.py`: `POST /{project_id}/enter-evaluation` 추가. 소유권·삭제 여부·`designing` 상태·설계 차감 도장을 확인하고 상태만 조건부 갱신하며, 이미 `evaluating`이면 성공 반환해 재시도에 안전하다.
+- **유료 단계 서버 가드** `backend/app/api/design.py`·`finalize.py`: 설계 생성 5개 API는 `designing + credit_charged_at`, 평가/완료 생성은 `evaluating|completed + credit_charged_at`을 요구한다. 기존 평가 API가 `in_progress/designing`을 스스로 `evaluating`으로 올리던 우회 경로는 제거했다.
+- **API 회귀 테스트**: 인터뷰 한도 소진 시 Claude 미호출, Claude 실패 재시도 1회 차감, 설계 생성 5개 우회 차단, 평가 진입 무차감·멱등성, 무차감/잘못된 상태/타 사용자 접근 차단을 자동화했다.
+
+### 프론트엔드 변경 방향
+1. `InterviewPage`의 `설계 진행`은 기존처럼 `/projects/{id}/design`으로 이동한다.
+2. `InterviewPage`의 `건너뛰기`는 `/projects/{id}/finalize`가 아니라 `/projects/{id}/document`로 이동한다.
+3. `DesignPage`의 설계 완료 동작은 `decision='skip'`을 보내지 않고 신규 `enter-evaluation` API를 호출한 뒤 `/projects/{id}/finalize`로 이동한다.
+4. `MyProjectsPage`에서 완료 프로젝트를 다시 열 때 `/finalize`가 아니라 `/document`로 이동해 결과와 Markdown 다운로드를 바로 제공한다.
+5. 기존 `DocumentPreviewPage`와 `GET /api/projects/{project_id}/export/markdown`을 재사용하므로 별도 다운로드 기능은 새로 만들지 않는다.
+
+### 적용한 수정 (2026-07-20, 4단계)
+- **인터뷰 분기** `InterviewPage.tsx`: `design`은 설계 화면, `skip`은 평가를 거치지 않고 문서 화면으로 이동한다. 인터뷰 시작 요청과 설계 결정 요청 뒤 사용자 프로필을 다시 조회해 차감된 크레딧이 다음 화면과 프로젝트 목록에 즉시 반영된다.
+- **단계별 재접속**: 인터뷰 URL로 설계·평가·완료 프로젝트를 열면 각각 현재 설계·평가·문서 화면으로 교정한다. `FinalizePage`도 `designing` 상태를 직접 허용하지 않고 설계 화면으로 되돌려 평가 진입 API 우회를 막는다.
+- **평가 진입 분리** `DesignPage.tsx`: 기존 `decision='skip'` 재사용을 제거하고 `POST /projects/{id}/enter-evaluation` 성공 후에만 평가 화면으로 이동한다. 실패 시 현재 화면과 오류/재시도를 유지하고, 완료된 설계 세션 재접속도 완료 화면에서 같은 전환을 거친다.
+- **완료 프로젝트** `MyProjectsPage.tsx`: 프로젝트명 클릭과 `결과 보기`가 모두 `/document`를 열도록 통일했다. 목록 진입 때 프로필을 갱신하며, 프로필 갱신 함수는 안정적인 콜백으로 고정해 재렌더링에 따른 인터뷰 시작 재호출을 방지했다.
+- **안내 문구·중복 클릭 방지**: 인터뷰 선택 화면에 설계·평가 세트 1크레딧/패스 추가 차감 없음을 표시하고, 설계→평가 이동 중 버튼을 잠근다. 기존 “인터뷰 무제한” 안내도 단계별 과금 정책에 맞게 교체했다.
+- **프론트 계약 테스트** `backend/tests/test_phase_credit_frontend_contract.py`: 인터뷰 분기, 전용 평가 API, 완료 설계 재접속, 완료 프로젝트 문서 경로, 평가 우회 차단, 과금 문구 계약 6개를 추가했다.
+- **검증**: 전체 백엔드/계약 테스트 **93개 통과**, `npx tsc -b` 통과, `npx vite build --configLoader native` 프로덕션 번들 성공. 기본 ESLint 전체 실행은 이번 변경 전부터 존재한 React Hooks/`any` 규칙 오류로 실패하며, 이번 변경 범위에서 새 타입 오류는 없다.
+- **DB 적용**: 사용자 확인 기준 `012_phase_credit_charges.sql` 실제 Supabase 적용 완료. 실제 Supabase를 대상으로 한 동시 요청/E2E 검증은 아직 수행하지 않았다.
+
+### 오류·재시도 정책
+- 인터뷰 차감 RPC가 실패하면 인터뷰를 시작하지 않는다.
+- 크레딧 차감이 성공한 뒤 Claude 호출이 실패하면 차감 표시는 유지한다. 같은 프로젝트의 재시도에서는 추가 차감 없이 Claude 호출만 다시 수행한다.
+- 설계 진입 요청을 여러 번 보내도 `credit_charged_at`으로 프로젝트당 1회만 차감한다.
+- 평가 진입·문서 조회·Markdown 다운로드는 크레딧을 변경하지 않는다.
+
+### 테스트 계획
+- 신규 프로젝트의 첫 `/api/interview/start` → `credits_used` 정확히 +1, `interview_credit_charged_at` 기록.
+- 같은 프로젝트 인터뷰 시작 요청 2개 동시 실행 → 인터뷰 차감은 정확히 1회.
+- 인터뷰 새로고침·재접속·재시도·resume → 추가 차감 없음.
+- 인터뷰 한도 소진 → 403, 인터뷰 세션 및 Claude 호출 없음, DB 변경 없음.
+- 인터뷰 완료 후 `design` → `credits_used` 추가 +1, 전체 누적 2회.
+- 설계 재진입 → 추가 차감 없음.
+- 설계 완료 후 평가 진입 → 상태만 `evaluating`, 사용량 변화 없음.
+- 인터뷰 완료 후 `skip` → 사용량 변화 없음, 문서 페이지 이동, 인터뷰 요약 Markdown 다운로드 성공.
+- 전체 흐름 완료 → 인터뷰 1회 + 설계·평가 1회로 총 2회.
+- 기존 인터뷰 세션 보유 프로젝트 재접속 → 소급 또는 중복 차감 없음.
+- 다른 사용자의 프로젝트 ID로 인터뷰·설계·평가 상태 변경 요청 → 404, 사용량과 프로젝트 모두 변경 없음.
+
+### 완료 조건
+- 인터뷰와 설계·평가 세트가 서로 독립적인 프로젝트별 차감 표시를 가진다.
+- 각 단계는 최초 진입 시에만 1회 차감되고 새로고침·재접속·동시 요청으로 중복 차감되지 않는다.
+- 인터뷰만 사용하면 1회, 전체 과정을 사용하면 정확히 2회 차감된다.
+- 설계·평가 패스 사용자는 추가 차감 없이 인터뷰 요약 문서와 Markdown 다운로드로 바로 이동한다.
+- 설계 완료 후 평가 진입에는 추가 차감이 없다.
+- 신규 단위·API 테스트와 실제 Supabase 동시성 검증이 통과한다.

@@ -66,6 +66,20 @@ def _verify_project(sb, project_id: str, user_id: str) -> dict:
     return project.data
 
 
+def _require_evaluation_access(sb, project_id: str, user_id: str) -> dict:
+    """Require the paid design/evaluation set before AI finalize generation."""
+    project = _verify_project(sb, project_id, user_id)
+    if (
+        project.get("status") not in ("evaluating", "completed")
+        or not project.get("credit_charged_at")
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="설계·평가 단계 진입 후 평가를 생성할 수 있습니다.",
+        )
+    return project
+
+
 def _get_or_create_finalize_session(project_id: str) -> dict:
     """Return the project's canonical finalize session, creating one only if none
     exists yet.
@@ -164,12 +178,8 @@ def _finalize_complete(sb, project: dict, project_id: str, session: dict) -> Non
 def _generate(step: str, body: FinalizeGenerateRequest, user: dict) -> FinalizeSessionOut:
     cfg = STEP_CONFIG[step]
     sb = get_supabase()
-    project = _verify_project(sb, body.project_id, user["id"])
+    project = _require_evaluation_access(sb, body.project_id, user["id"])
     session = _get_or_create_finalize_session(body.project_id)
-
-    # Entering evaluation moves the project from designing/in_progress to evaluating.
-    if step == "evaluate" and project.get("status") not in ("evaluating", "completed"):
-        sb.table("projects").update({"status": "evaluating"}).eq("id", body.project_id).execute()
 
     interview_ctx = get_interview_context(body.project_id)
     design_ctx = get_design_context(body.project_id)
@@ -242,7 +252,7 @@ async def complete_finalize(body: FinalizeGenerateRequest, user: dict = Depends(
     the completion, without regenerating the checklist.
     """
     sb = get_supabase()
-    project = _verify_project(sb, body.project_id, user["id"])
+    project = _require_evaluation_access(sb, body.project_id, user["id"])
     session = _get_or_create_finalize_session(body.project_id)
     if not session.get("checklist"):
         raise HTTPException(status_code=400, detail="착수 체크리스트까지 먼저 생성해주세요.")

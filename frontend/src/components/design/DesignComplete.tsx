@@ -4,6 +4,7 @@ import type { DesignIconKind, DesignSession } from './types'
 interface DesignCompleteProps {
   session?: DesignSession | null
   onNext?: () => void
+  transitioning?: boolean
 }
 
 function buildSummary(session: DesignSession | null | undefined): { n: string; t: string; icon: DesignIconKind; stats: string }[] {
@@ -45,7 +46,11 @@ function countTotalItems(session: DesignSession | null | undefined): number {
   return reqs + comps + fields
 }
 
-export default function DesignComplete({ session, onNext }: DesignCompleteProps) {
+export default function DesignComplete({
+  session,
+  onNext,
+  transitioning = false,
+}: DesignCompleteProps) {
   const SUMMARY = buildSummary(session)
   const totalItems = countTotalItems(session)
   const completedSteps = SUMMARY.filter((s) => s.stats !== '미정의' && s.stats !== '건너뜀').length
@@ -118,18 +123,19 @@ export default function DesignComplete({ session, onNext }: DesignCompleteProps)
             <div className="text-[10.5px] font-mono opacity-70 font-bold mb-1" style={{ letterSpacing: 0.5 }}>
               NEXT · PHASE 3
             </div>
-            <div className="text-base font-bold mb-1">구현 단계로 넘어갈까요?</div>
+            <div className="text-base font-bold mb-1">평가 및 마무리 단계로 넘어갈까요?</div>
             <div className="text-xs opacity-85 leading-relaxed">
-              개발 착수 체크리스트와 .env 변수, 폴더 구조까지 함께 만들어드려요.
+              추가 크레딧 없이 설계 결과를 점검하고 개발 착수 체크리스트를 만들어요.
             </div>
           </div>
           <button
             type="button"
             onClick={onNext}
-            className="px-5 py-3 text-sm font-bold bg-white border-none rounded-[9px] cursor-pointer inline-flex items-center gap-[7px] shrink-0"
+            disabled={transitioning}
+            className="px-5 py-3 text-sm font-bold bg-white border-none rounded-[9px] cursor-pointer inline-flex items-center gap-[7px] shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ fontFamily: 'inherit', color: 'var(--color-accent-deep)' }}
           >
-            시작하기
+            {transitioning ? '이동 중...' : '평가 시작하기'}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
           </button>
         </div>

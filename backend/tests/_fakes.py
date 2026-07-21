@@ -15,6 +15,15 @@ class _Result:
         self.data = data
 
 
+class _RpcQuery:
+    def __init__(self, handler, params):
+        self._handler = handler
+        self._params = params
+
+    def execute(self):
+        return _Result(self._handler(self._params))
+
+
 class _Query:
     def __init__(self, store, name, counter):
         self._store = store
@@ -22,10 +31,9 @@ class _Query:
         self._counter = counter
         self._op = "select"
         self._payload = None
-        self._filters = []   # (col, val) 또는 (col, values, "in")
+        self._filters = []
         self._single = False
 
-    # ── 빌더 ──────────────────────────────────────────────
     def select(self, *a, **k):
         self._op = "select"
         return self
@@ -47,7 +55,6 @@ class _Query:
         return self
 
     def is_(self, col, val):
-        # .is_("deleted_at", "null") → deleted_at IS NULL
         self._filters.append((col, None if val == "null" else val))
         return self
 
@@ -69,17 +76,16 @@ class _Query:
         self._single = True
         return self
 
-    # ── 실행 ──────────────────────────────────────────────
     def _rows(self):
         return self._store.setdefault(self._name, [])
 
     def _match(self, row):
-        for f in self._filters:
-            col = f[0]
-            if len(f) == 3 and f[2] == "in":
-                if row.get(col) not in f[1]:
+        for item in self._filters:
+            column = item[0]
+            if len(item) == 3 and item[2] == "in":
+                if row.get(column) not in item[1]:
                     return False
-            elif row.get(col) != f[1]:
+            elif row.get(column) != item[1]:
                 return False
         return True
 
@@ -97,15 +103,15 @@ class _Query:
                 created.append(new)
             data = created
         elif self._op == "update":
-            data = [r for r in rows if self._match(r)]
-            for r in data:
-                r.update(self._payload)
+            data = [row for row in rows if self._match(row)]
+            for row in data:
+                row.update(self._payload)
         elif self._op == "delete":
-            data = [r for r in rows if self._match(r)]
-            for r in data:
-                rows.remove(r)
-        else:  # select
-            data = [r for r in rows if self._match(r)]
+            data = [row for row in rows if self._match(row)]
+            for row in data:
+                rows.remove(row)
+        else:
+            data = [row for row in rows if self._match(row)]
 
         if self._single:
             return _Result(data[0] if data else None)
@@ -113,17 +119,25 @@ class _Query:
 
 
 class FakeSupabase:
-    """테이블별 행 딕셔너리를 들고 있는 가짜 클라이언트.
-
-    tables: {"projects": [ {...}, ... ], "users": [...], ...}
-    """
+    """테이블별 행 딕셔너리를 들고 있는 가짜 클라이언트."""
 
     def __init__(self, tables=None):
-        self._store = {k: [dict(r) for r in v] for k, v in (tables or {}).items()}
+        self._store = {key: [dict(row) for row in rows] for key, rows in (tables or {}).items()}
         self._counter = itertools.count(1)
+        self._rpc_handlers = {}
+        self.rpc_calls = []
 
     def table(self, name):
         return _Query(self._store, name, self._counter)
+
+    def register_rpc(self, name, handler):
+        self._rpc_handlers[name] = handler
+
+    def rpc(self, name, params):
+        self.rpc_calls.append((name, dict(params)))
+        if name not in self._rpc_handlers:
+            raise AssertionError(f"RPC handler not registered: {name}")
+        return _RpcQuery(self._rpc_handlers[name], params)
 
     def rows(self, name):
         """테스트 단언용 — 현재 저장된 행 목록."""

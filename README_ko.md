@@ -156,7 +156,7 @@ prequel/
 ├── scripts/
 │   └── sync_harness.py            # ⛔ 폐기 (BL-002) — backend/skills가 단일 원본
 ├── supabase/
-│   └── migrations/                # SQL 마이그레이션 파일 (001~010)
+│   └── migrations/                # SQL 마이그레이션 파일 (001~011)
 ├── Phase/
 │   ├── Phase1_ProjectSetup.md     # ✅ 프로젝트 셋업 & 인프라
 │   ├── Phase2_AuthSystem.md       # ✅ 인증 & 사용자 시스템

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { apiFetch } from '../lib/api'
@@ -22,14 +22,14 @@ export function useAuth() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
     try {
       const profile = await apiFetch<UserProfile>('/users/me')
       setUser(profile)
     } catch {
       setUser(null)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true') {
@@ -59,7 +59,7 @@ export function useAuth() {
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [fetchProfile])
 
   async function signOut() {
     await supabase.auth.signOut()

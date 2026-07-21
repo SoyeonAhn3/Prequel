@@ -119,6 +119,22 @@ export default function DesignPage() {
   const [templatesError, setTemplatesError] = useState(false)
   const { error, retry, run, clear } = useRetryable()
   const [lastSavedLabel, setLastSavedLabel] = useState('자동 저장됨')
+  const [enteringEvaluation, setEnteringEvaluation] = useState(false)
+
+  const goToEvaluation = useCallback(async () => {
+    if (!projectId || enteringEvaluation) return
+    await run(async () => {
+      setEnteringEvaluation(true)
+      try {
+        await apiFetch(`/projects/${projectId}/enter-evaluation`, {
+          method: 'POST',
+        })
+        navigate(`/projects/${projectId}/finalize`)
+      } finally {
+        setEnteringEvaluation(false)
+      }
+    })
+  }, [projectId, enteringEvaluation, navigate, run])
 
   useEffect(() => {
     if (!projectId) return
@@ -131,6 +147,14 @@ export default function DesignPage() {
           setScreen({ kind: 'error', message: '프로젝트를 찾을 수 없습니다' })
           return
         }
+        if (proj.status === 'evaluating') {
+          navigate(`/projects/${projectId}/finalize`, { replace: true })
+          return
+        }
+        if (proj.status === 'completed') {
+          navigate(`/projects/${projectId}/document`, { replace: true })
+          return
+        }
         if (proj.status !== 'designing') {
           navigate('/projects')
           return
@@ -139,9 +163,12 @@ export default function DesignPage() {
 
         try {
           const designSession = await apiFetch<DesignSession>(`/design/session/${projectId}`)
-          // Design already finished — don't drop the user back into a design step; send them to finalize.
+          // A completed design session still needs the explicit, no-charge
+          // project transition before evaluation can be opened.
           if (designSession.status === 'completed') {
-            navigate(`/projects/${projectId}/finalize`)
+            setSession(designSession)
+            updateStepStatuses(designSession)
+            setScreen({ kind: 'complete' })
             return
           }
           setSession(designSession)
@@ -249,21 +276,6 @@ export default function DesignPage() {
     setScreen({ kind: 'step', stepId })
   }, [generating])
 
-  // Leave design and advance to the evaluation phase: persist status -> evaluating, then route.
-  // Used both when skipping design from the welcome screen and after design completes.
-  const goToEvaluation = useCallback(async () => {
-    if (!projectId) return
-    try {
-      await apiFetch(`/projects/${projectId}/design-decision`, {
-        method: 'POST',
-        body: JSON.stringify({ decision: 'skip' }),
-      })
-    } catch {
-      // Non-fatal: even if the status update fails, still let the user into finalize.
-    }
-    navigate(`/projects/${projectId}/finalize`)
-  }, [projectId, navigate])
-
   // --- SCREEN ROUTING ---
 
   if (screen.kind === 'loading') {
@@ -299,15 +311,21 @@ export default function DesignPage() {
   if (screen.kind === 'welcome') {
     return (
       <Frame>
-        <DesignWelcome
-          onStart={() => {
-            setActiveStep('requirements')
-            setStepStatuses((prev) => ({ ...prev, requirements: 'active' }))
-            setScreen({ kind: 'step', stepId: 'requirements' })
-          }}
-          onSkipToEval={goToEvaluation}
-          onSaveExit={() => navigate('/projects')}
-        />
+        <div className="h-full flex flex-col">
+          {error && <ErrorBanner message={error} onRetry={retry ?? undefined} onClose={clear} />}
+          <div className="flex-1 min-h-0">
+            <DesignWelcome
+              onStart={() => {
+                setActiveStep('requirements')
+                setStepStatuses((prev) => ({ ...prev, requirements: 'active' }))
+                setScreen({ kind: 'step', stepId: 'requirements' })
+              }}
+              onSkipToEval={goToEvaluation}
+              onSaveExit={() => navigate('/projects')}
+              transitioning={enteringEvaluation}
+            />
+          </div>
+        </div>
       </Frame>
     )
   }
@@ -336,7 +354,16 @@ export default function DesignPage() {
   if (screen.kind === 'complete') {
     return (
       <Frame>
-        <DesignComplete session={session} onNext={goToEvaluation} />
+        <div className="h-full flex flex-col">
+          {error && <ErrorBanner message={error} onRetry={retry ?? undefined} onClose={clear} />}
+          <div className="flex-1 min-h-0">
+            <DesignComplete
+              session={session}
+              onNext={goToEvaluation}
+              transitioning={enteringEvaluation}
+            />
+          </div>
+        </div>
       </Frame>
     )
   }

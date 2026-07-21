@@ -4,11 +4,20 @@
 """
 import app.api.interview as iv
 import app.core.usage as usage_mod
+from fastapi import HTTPException
 
 
 class _Result:
     def __init__(self, data):
         self.data = data
+
+
+class _RpcQuery:
+    def __init__(self, handler, params):
+        self.handler, self.params = handler, params
+
+    def execute(self):
+        return _Result(self.handler(self.params))
 
 
 class _Table:
@@ -64,24 +73,55 @@ class _Table:
 
 
 class _SB:
-    def __init__(self, tables):
+    def __init__(self, tables, rpc_handler=None):
         self.tables = tables
+        self.rpc_calls = []
+        self.chat_calls = []
+        self._rpc_handler = rpc_handler or self._start_interview_rpc
 
     def table(self, name):
         return _Table(name, self.tables.get(name, []))
 
+    def rpc(self, name, params):
+        self.rpc_calls.append((name, dict(params)))
+        assert name == "start_interview_atomic"
+        return _RpcQuery(self._rpc_handler, params)
 
-def _install(monkeypatch, tables, chat_json):
-    sb = _SB(tables)
+    def _start_interview_rpc(self, params):
+        project = next(
+            (
+                row for row in self.tables.get("projects", [])
+                if row.get("id") == params["p_project_id"]
+                and row.get("user_id") == params["p_user_id"]
+            ),
+            None,
+        )
+        if project is None:
+            raise RuntimeError("PROJECT_NOT_FOUND")
+        charged = not project.get("interview_credit_charged_at")
+        if charged:
+            project["interview_credit_charged_at"] = "2026-01-01T00:00:00+00:00"
+        return {"project": dict(project), "charged": charged}
+
+
+def _install(monkeypatch, tables, chat_json, rpc_handler=None):
+    sb = _SB(tables, rpc_handler=rpc_handler)
     monkeypatch.setattr(iv, "get_supabase", lambda: sb)
     monkeypatch.setattr(usage_mod, "get_supabase", lambda: sb)
-    monkeypatch.setattr(iv, "chat", lambda **k: (chat_json, {"input_tokens": 10, "output_tokens": 5}))
+    monkeypatch.setattr(iv.settings, "DEV_BYPASS_AUTH", False)
+
+    def fake_chat(**kwargs):
+        sb.chat_calls.append(kwargs)
+        return chat_json, {"input_tokens": 10, "output_tokens": 5}
+
+    monkeypatch.setattr(iv, "chat", fake_chat)
+    return sb
 
 
 def test_start_creates_session_and_returns_first_question(client, monkeypatch):
     project = {"id": "p1", "name": "P", "project_type": "Web", "language": "ko",
                "description": "d", "user_id": "u1"}
-    _install(
+    sb = _install(
         monkeypatch,
         {"projects": [project], "interview_sessions": []},
         '{"message":"첫질문","step_complete":false,"insights":[],"topics":[],"example_answers":[]}',
@@ -91,6 +131,76 @@ def test_start_creates_session_and_returns_first_question(client, monkeypatch):
     body = r.json()
     assert body["question"] == "첫질문"
     assert body["current_step"] == 0
+    assert sb.rpc_calls == [("start_interview_atomic", {
+        "p_project_id": "p1", "p_user_id": "u1", "p_bypass_limit": False,
+    })]
+    assert len(sb.chat_calls) == 1
+
+
+def test_start_credit_exhaustion_stops_before_claude(client, monkeypatch):
+    def exhausted(_params):
+        raise RuntimeError("CREDIT_LIMIT_EXCEEDED:2")
+
+    sb = _install(
+        monkeypatch,
+        {"projects": [], "interview_sessions": []},
+        "{}",
+        rpc_handler=exhausted,
+    )
+    r = client.post("/api/interview/start", json={"project_id": "p1"})
+    assert r.status_code == 403
+    assert "2회" in r.json()["detail"]
+    assert sb.chat_calls == []
+
+
+def test_start_wrong_project_phase_stops_before_claude(client, monkeypatch):
+    def wrong_phase(_params):
+        raise RuntimeError("INVALID_PROJECT_STATE:designing")
+
+    sb = _install(
+        monkeypatch,
+        {"projects": [], "interview_sessions": []},
+        "{}",
+        rpc_handler=wrong_phase,
+    )
+    r = client.post("/api/interview/start", json={"project_id": "p1"})
+    assert r.status_code == 409
+    assert sb.chat_calls == []
+
+
+def test_start_retry_after_claude_failure_does_not_recharge(client, monkeypatch):
+    project = {
+        "id": "p1", "name": "P", "project_type": "Web", "language": "ko",
+        "description": "d", "user_id": "u1", "status": "in_progress",
+    }
+    charge_state = {"marked": False, "credits_used": 0}
+
+    def atomic_charge(_params):
+        charged = not charge_state["marked"]
+        if charged:
+            charge_state["marked"] = True
+            charge_state["credits_used"] += 1
+        return {"project": dict(project), "charged": charged}
+
+    sb = _install(
+        monkeypatch,
+        {"projects": [project], "interview_sessions": []},
+        "{}",
+        rpc_handler=atomic_charge,
+    )
+
+    def failed_chat(**kwargs):
+        sb.chat_calls.append(kwargs)
+        raise HTTPException(status_code=503, detail="AI service temporarily unavailable")
+
+    monkeypatch.setattr(iv, "chat", failed_chat)
+    first = client.post("/api/interview/start", json={"project_id": "p1"})
+    second = client.post("/api/interview/start", json={"project_id": "p1"})
+
+    assert first.status_code == second.status_code == 503
+    assert charge_state["credits_used"] == 1
+    assert len(sb.rpc_calls) == 2
+    assert len(sb.chat_calls) == 2
 
 
 def test_answer_advances_step_when_complete(client, monkeypatch):

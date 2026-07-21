@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api._shared import raise_credit_rpc_error, unpack_credit_rpc_project
 from app.config import settings
 from app.core.doc_engine import generate_kickoff_document
 from app.core.usage import record_token_usage
@@ -14,30 +15,9 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
-PLAN_LIMITS = {"free": 2, "basic": 10, "pro": 30, "admin": 999999}
-
-
-def _check_credits(user: dict):
-    if settings.DEV_BYPASS_AUTH:
-        return
-    plan = user.get("plan", "free")
-    if plan == "admin" or user.get("role") == "admin":
-        return
-    limit = PLAN_LIMITS.get(plan, 2)
-    used = user.get("credits_used", 0)
-    if used >= limit:
-        raise HTTPException(
-            status_code=403,
-            detail=f"사용 횟수({limit}회)를 모두 소진했습니다. 유료 플랜으로 업그레이드하세요.",
-        )
-
-
-def _increment_credits(user_id: str):
-    sb = get_supabase()
-    user = sb.table("users").select("credits_used").eq("id", user_id).single().execute()
-    current = user.data.get("credits_used", 0)
-    sb.table("users").update({"credits_used": current + 1}).eq("id", user_id).execute()
-
+def _raise_design_decision_error(exc: Exception) -> None:
+    """Backward-compatible wrapper retained for existing callers/tests."""
+    raise_credit_rpc_error(exc)
 
 @router.get("", response_model=list[ProjectOut])
 async def list_projects(user: dict = Depends(get_current_user)):
@@ -137,6 +117,42 @@ async def set_design_decision(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
+    try:
+        result = sb.rpc(
+            "set_design_decision_atomic",
+            {
+                "p_project_id": project_id,
+                "p_user_id": user["id"],
+                "p_decision": body.decision,
+                "p_bypass_limit": settings.DEV_BYPASS_AUTH,
+            },
+        ).execute()
+    except Exception as exc:
+        _raise_design_decision_error(exc)
+
+    project, charged = unpack_credit_rpc_project(result.data)
+
+    logger.info(
+        "design_decision_set",
+        project_id=project_id,
+        decision=body.decision,
+        new_status=project.get("status"),
+        charged=charged,
+    )
+    return project
+
+
+@router.post("/{project_id}/enter-evaluation", response_model=ProjectOut)
+async def enter_evaluation(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Advance a paid design project into evaluation without another charge.
+
+    Returning an already-evaluating project makes retries safe when the first
+    response was lost after the state update committed.
+    """
+    sb = get_supabase()
     existing = (
         sb.table("projects")
         .select("*")
@@ -149,42 +165,49 @@ async def set_design_decision(
     if not existing.data:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Never move a finished project backwards. Re-entering design/skip on a
-    # completed kickoff must not downgrade its status (or re-charge credits).
-    if existing.data["status"] == "completed":
-        return existing.data
-
-    # Charge a credit only the FIRST time this project enters design. Re-entry
-    # must not re-charge (idempotent per project) and must not be blocked by the
-    # quota check for a design the user already paid for.
-    charge = body.decision == "design" and not existing.data.get("credit_charged_at")
-
-    if charge:
-        _check_credits(user)
-
-    new_status = "designing" if body.decision == "design" else "evaluating"
-    updates: dict = {"status": new_status}
-    if charge:
-        updates["credit_charged_at"] = datetime.now(timezone.utc).isoformat()
-    result = (
+    project = existing.data
+    if (
+        project.get("status") in ("designing", "evaluating")
+        and not project.get("credit_charged_at")
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="설계·평가 단계의 크레딧 차감이 확인되지 않습니다.",
+        )
+    if project.get("status") == "evaluating":
+        return project
+    if project.get("status") != "designing":
+        raise HTTPException(
+            status_code=409,
+            detail="설계 중인 프로젝트만 평가 단계로 이동할 수 있습니다.",
+        )
+    updated = (
         sb.table("projects")
-        .update(updates)
+        .update({"status": "evaluating"})
         .eq("id", project_id)
+        .eq("user_id", user["id"])
+        .eq("status", "designing")
+        .is_("deleted_at", "null")
         .execute()
     )
+    if not updated.data:
+        # A concurrent successful retry may have performed the transition first.
+        current = (
+            sb.table("projects")
+            .select("*")
+            .eq("id", project_id)
+            .eq("user_id", user["id"])
+            .is_("deleted_at", "null")
+            .maybe_single()
+            .execute()
+        )
+        if current.data and current.data.get("status") == "evaluating":
+            return current.data
+        raise HTTPException(status_code=409, detail="프로젝트 상태가 변경되어 다시 확인이 필요합니다.")
 
-    if charge:
-        _increment_credits(user["id"])
-
-    logger.info(
-        "design_decision_set",
-        project_id=project_id,
-        decision=body.decision,
-        new_status=new_status,
-        charged=charge,
-    )
-    return result.data[0]
-
+    project = updated.data[0]
+    logger.info("evaluation_entered", project_id=project_id, user_id=user["id"])
+    return project
 
 @router.post("/{project_id}/generate-doc")
 async def generate_doc(

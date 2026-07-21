@@ -28,9 +28,51 @@ def _project(pid="p1", user_id="u1", **over):
     return base
 
 
+def _design_decision_rpc(fake, params):
+    project = next(
+        (
+            row for row in fake.rows("projects")
+            if row["id"] == params["p_project_id"]
+            and row["user_id"] == params["p_user_id"]
+            and not row.get("deleted_at")
+        ),
+        None,
+    )
+    if project is None:
+        raise RuntimeError("PROJECT_NOT_FOUND")
+    if project["status"] == "completed":
+        return {"project": dict(project), "charged": False}
+    if params["p_decision"] == "skip":
+        project["status"] = "completed"
+        return {"project": dict(project), "charged": False}
+    if project.get("credit_charged_at"):
+        project["status"] = "designing"
+        return {"project": dict(project), "charged": False}
+
+    user = next((row for row in fake.rows("users") if row["id"] == params["p_user_id"]), None)
+    if user is None:
+        raise RuntimeError("USER_NOT_FOUND")
+
+    limit = None
+    if not params["p_bypass_limit"] and user.get("role") != "admin":
+        limit = {"free": 2, "basic": 10, "pro": 30}.get(user.get("plan", "free"), 2)
+    if limit is not None and user.get("credits_used", 0) >= limit:
+        raise RuntimeError(f"CREDIT_LIMIT_EXCEEDED:{limit}")
+
+    user["credits_used"] = user.get("credits_used", 0) + 1
+    project["status"] = "designing"
+    project["credit_charged_at"] = _TS
+    return {"project": dict(project), "charged": True}
+
+
 def _install(monkeypatch, fake):
     monkeypatch.setattr(pr, "get_supabase", lambda: fake)
     monkeypatch.setattr(usage_mod, "get_supabase", lambda: fake)
+    monkeypatch.setattr(pr.settings, "DEV_BYPASS_AUTH", False)
+    fake.register_rpc(
+        "set_design_decision_atomic",
+        lambda params: _design_decision_rpc(fake, params),
+    )
 
 
 # ── 목록 / 조회 ────────────────────────────────────────────
@@ -114,12 +156,65 @@ def test_design_decision_charges_credit_first_time(client, monkeypatch):
     assert fake.rows("users")[0]["credits_used"] == 1    # 1회 증가
 
 
-def test_design_decision_skip_sets_evaluating(client, monkeypatch):
+def test_design_decision_reentry_does_not_charge_again(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project("p1", "u1", status="evaluating", credit_charged_at=_TS)],
+        "users": [{"id": "u1", "plan": "free", "role": "user", "credits_used": 2}],
+    })
+    _install(monkeypatch, fake)
+    r = client.post("/api/projects/p1/design-decision", json={"decision": "design"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "designing"
+    assert fake.rows("users")[0]["credits_used"] == 2
+    assert len(fake.rpc_calls) == 1
+
+
+def test_design_decision_exhausted_rolls_back(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project("p1", "u1", status="in_progress")],
+        "users": [{"id": "u1", "plan": "free", "role": "user", "credits_used": 2}],
+    })
+    _install(monkeypatch, fake)
+    r = client.post("/api/projects/p1/design-decision", json={"decision": "design"})
+    assert r.status_code == 403
+    assert "2회" in r.json()["detail"]
+    assert fake.rows("projects")[0]["status"] == "in_progress"
+    assert not fake.rows("projects")[0].get("credit_charged_at")
+    assert fake.rows("users")[0]["credits_used"] == 2
+
+
+def test_design_decision_dev_bypass_skips_limit_but_records_usage(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project("p1", "u1", status="in_progress")],
+        "users": [{"id": "u1", "plan": "free", "role": "user", "credits_used": 999}],
+    })
+    _install(monkeypatch, fake)
+    monkeypatch.setattr(pr.settings, "DEV_BYPASS_AUTH", True)
+    r = client.post("/api/projects/p1/design-decision", json={"decision": "design"})
+    assert r.status_code == 200
+    assert fake.rows("users")[0]["credits_used"] == 1000
+    assert fake.rpc_calls[0][1]["p_bypass_limit"] is True
+
+
+def test_design_decision_skip_completes_without_charge(client, monkeypatch):
     fake = FakeSupabase({"projects": [_project("p1", "u1")]})
     _install(monkeypatch, fake)
     r = client.post("/api/projects/p1/design-decision", json={"decision": "skip"})
     assert r.status_code == 200
-    assert r.json()["status"] == "evaluating"
+    assert r.json()["status"] == "completed"
+
+
+def test_design_decision_requires_completed_interview(client, monkeypatch):
+    fake = FakeSupabase({"projects": [_project("p1", "u1")]})
+    _install(monkeypatch, fake)
+
+    def incomplete(_params):
+        raise RuntimeError("INTERVIEW_NOT_COMPLETED")
+
+    fake.register_rpc("set_design_decision_atomic", incomplete)
+    r = client.post("/api/projects/p1/design-decision", json={"decision": "design"})
+    assert r.status_code == 409
+    assert "인터뷰" in r.json()["detail"]
 
 
 def test_design_decision_completed_is_noop(client, monkeypatch):
@@ -134,6 +229,53 @@ def test_design_decision_project_not_found(client, monkeypatch):
     _install(monkeypatch, FakeSupabase({"projects": []}))
     r = client.post("/api/projects/none/design-decision", json={"decision": "design"})
     assert r.status_code == 404
+
+
+# ── 평가 진입 (추가 차감 없음) ─────────────────────────────
+
+def test_enter_evaluation_changes_only_project_status(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project("p1", "u1", status="designing", credit_charged_at=_TS)],
+        "users": [{"id": "u1", "credits_used": 2}],
+    })
+    _install(monkeypatch, fake)
+    r = client.post("/api/projects/p1/enter-evaluation")
+    assert r.status_code == 200
+    assert r.json()["status"] == "evaluating"
+    assert fake.rows("users")[0]["credits_used"] == 2
+    assert fake.rpc_calls == []
+
+
+def test_enter_evaluation_retry_is_idempotent(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project("p1", "u1", status="evaluating", credit_charged_at=_TS)],
+        "users": [{"id": "u1", "credits_used": 2}],
+    })
+    _install(monkeypatch, fake)
+    first = client.post("/api/projects/p1/enter-evaluation")
+    second = client.post("/api/projects/p1/enter-evaluation")
+    assert first.status_code == second.status_code == 200
+    assert fake.rows("users")[0]["credits_used"] == 2
+
+
+def test_enter_evaluation_rejects_unpaid_or_wrong_phase(client, monkeypatch):
+    unpaid = FakeSupabase({"projects": [_project("p1", "u1", status="designing")]})
+    _install(monkeypatch, unpaid)
+    assert client.post("/api/projects/p1/enter-evaluation").status_code == 409
+
+    wrong_phase = FakeSupabase({
+        "projects": [_project("p1", "u1", status="in_progress", credit_charged_at=_TS)],
+    })
+    _install(monkeypatch, wrong_phase)
+    assert client.post("/api/projects/p1/enter-evaluation").status_code == 409
+
+
+def test_enter_evaluation_hides_other_users_project(client, monkeypatch):
+    fake = FakeSupabase({
+        "projects": [_project("p1", "u2", status="designing", credit_charged_at=_TS)],
+    })
+    _install(monkeypatch, fake)
+    assert client.post("/api/projects/p1/enter-evaluation").status_code == 404
 
 
 # ── 문서 생성 ──────────────────────────────────────────────

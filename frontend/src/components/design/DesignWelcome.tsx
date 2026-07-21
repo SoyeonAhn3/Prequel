@@ -5,6 +5,7 @@ interface DesignWelcomeProps {
   onStart: () => void
   onSkipToEval: () => void
   onSaveExit: () => void
+  transitioning?: boolean
 }
 
 const STEPS: { n: string; icon: DesignIconKind; t: string; q: string; time: string }[] = [
@@ -14,7 +15,12 @@ const STEPS: { n: string; icon: DesignIconKind; t: string; q: string; time: stri
   { n: '04', icon: 'ai', t: 'AI 흐름', q: 'AI에게 뭘 시킬지?', time: '~5분' },
 ]
 
-export default function DesignWelcome({ onStart, onSkipToEval, onSaveExit }: DesignWelcomeProps) {
+export default function DesignWelcome({
+  onStart,
+  onSkipToEval,
+  onSaveExit,
+  transitioning = false,
+}: DesignWelcomeProps) {
   return (
     <div className="h-full flex items-center justify-center bg-bg p-10 overflow-auto">
       <div className="w-full max-w-[760px]">
@@ -80,7 +86,8 @@ export default function DesignWelcome({ onStart, onSkipToEval, onSaveExit }: Des
           <button
             type="button"
             onClick={onStart}
-            className="px-7 py-3.5 text-[15px] font-bold bg-accent text-white border-none rounded-[10px] cursor-pointer inline-flex items-center gap-2"
+            disabled={transitioning}
+            className="px-7 py-3.5 text-[15px] font-bold bg-accent text-white border-none rounded-[10px] cursor-pointer inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               fontFamily: 'inherit',
               boxShadow: '0 4px 16px -4px color-mix(in srgb, var(--color-accent) 50%, transparent)',
@@ -92,16 +99,21 @@ export default function DesignWelcome({ onStart, onSkipToEval, onSaveExit }: Des
           <button
             type="button"
             onClick={onSkipToEval}
-            className="px-6 py-3 text-[13.5px] font-semibold bg-surface text-text border border-border-strong rounded-[10px] cursor-pointer inline-flex items-center gap-2"
+            disabled={transitioning}
+            className="px-6 py-3 text-[13.5px] font-semibold bg-surface text-text border border-border-strong rounded-[10px] cursor-pointer inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ fontFamily: 'inherit' }}
           >
-            설계 건너뛰고 평가로
+            {transitioning ? '평가 단계로 이동 중...' : '설계 건너뛰고 평가로'}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
           </button>
+          <p className="m-0 text-[11.5px] text-text-subtle">
+            평가 단계로 이동할 때는 크레딧이 추가로 차감되지 않습니다.
+          </p>
           <button
             type="button"
             onClick={onSaveExit}
-            className="px-4 py-2 text-[12.5px] font-medium bg-transparent text-text-muted border-none cursor-pointer"
+            disabled={transitioning}
+            className="px-4 py-2 text-[12.5px] font-medium bg-transparent text-text-muted border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ fontFamily: 'inherit' }}
           >
             저장 후 나가기

@@ -30,7 +30,8 @@ function formatDate(iso: string) {
 // Resume into the correct phase based on project status.
 function resumeRoute(project: Project): string {
   if (project.status === 'designing') return `/projects/${project.id}/design`
-  if (project.status === 'evaluating' || project.status === 'completed') return `/projects/${project.id}/finalize`
+  if (project.status === 'evaluating') return `/projects/${project.id}/finalize`
+  if (project.status === 'completed') return `/projects/${project.id}/document`
   return `/projects/${project.id}/interview`
 }
 
@@ -56,6 +57,10 @@ export default function MyProjectsPage() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  useEffect(() => {
+    void refetchProfile()
+  }, [refetchProfile])
 
   const filtered = projects.filter((p) => {
     if (activeTab !== 'all' && p.status !== activeTab) return false
@@ -302,7 +307,7 @@ export default function MyProjectsPage() {
                           설계 이어하기
                         </button>
                       )}
-                      {(project.status === 'evaluating' || project.status === 'completed') && (
+                      {project.status === 'evaluating' && (
                         <button
                           onClick={() => {
                             setMenuOpenId(null)
@@ -310,7 +315,7 @@ export default function MyProjectsPage() {
                           }}
                           className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
                         >
-                          {project.status === 'completed' ? '결과 보기' : '평가 이어하기'}
+                          평가 이어하기
                         </button>
                       )}
                       {project.status === 'completed' && (
@@ -321,7 +326,7 @@ export default function MyProjectsPage() {
                           }}
                           className="w-full text-left px-3 py-1.5 text-sm text-accent hover:bg-bg transition-colors cursor-pointer"
                         >
-                          문서 보기
+                          결과 보기
                         </button>
                       )}
                       <button

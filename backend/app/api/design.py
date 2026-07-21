@@ -61,6 +61,28 @@ _AI_COMPONENT_RE = re.compile(r"\b(?:ai|ml|gpt|claude|llm)\b")
 _AI_COMPONENT_KO = ("모델", "추천", "분석", "임베딩")
 
 
+def _require_design_access(sb, project_id: str, user_id: str) -> dict:
+    """Require ownership plus the paid design phase before AI generation."""
+    result = (
+        sb.table("projects")
+        .select("*")
+        .eq("id", project_id)
+        .eq("user_id", user_id)
+        .is_("deleted_at", "null")
+        .maybe_single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project = result.data
+    if project.get("status") != "designing" or not project.get("credit_charged_at"):
+        raise HTTPException(
+            status_code=409,
+            detail="설계·평가 단계 진입 후 설계를 생성할 수 있습니다.",
+        )
+    return project
+
+
 def _is_ai_component(blob: str) -> bool:
     low = blob.lower()
     return bool(_AI_COMPONENT_RE.search(low)) or any(k in low for k in _AI_COMPONENT_KO)
@@ -217,23 +239,13 @@ async def generate_requirements(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = (
-        sb.table("projects")
-        .select("*")
-        .eq("id", body.project_id)
-        .eq("user_id", user["id"])
-        .is_("deleted_at", "null")
-        .maybe_single()
-        .execute()
-    )
-    if not project.data:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = _require_design_access(sb, body.project_id, user["id"])
 
     session = _get_or_create_session(body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
     skill_text = load_skill("design-requirements")
 
-    proj = project.data
+    proj = project
     user_message = (
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
@@ -366,17 +378,7 @@ async def generate_arch_templates(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = (
-        sb.table("projects")
-        .select("*")
-        .eq("id", body.project_id)
-        .eq("user_id", user["id"])
-        .is_("deleted_at", "null")
-        .maybe_single()
-        .execute()
-    )
-    if not project.data:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = _require_design_access(sb, body.project_id, user["id"])
 
     session = _get_or_create_session(body.project_id, user["id"])
 
@@ -392,7 +394,7 @@ async def generate_arch_templates(
             f"- [{r['priority'].upper()}] {r['text']}" for r in reqs
         )
 
-    proj = project.data
+    proj = project
     user_message = (
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
@@ -427,17 +429,7 @@ async def generate_architecture(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = (
-        sb.table("projects")
-        .select("*")
-        .eq("id", body.project_id)
-        .eq("user_id", user["id"])
-        .is_("deleted_at", "null")
-        .maybe_single()
-        .execute()
-    )
-    if not project.data:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = _require_design_access(sb, body.project_id, user["id"])
 
     session = _get_or_create_session(body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
@@ -472,7 +464,7 @@ async def generate_architecture(
             "사용자가 예시로 든 모델명을 결정으로 간주하지 마세요."
         )
 
-    proj = project.data
+    proj = project
     user_message = (
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
@@ -548,17 +540,7 @@ async def generate_data_model(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = (
-        sb.table("projects")
-        .select("*")
-        .eq("id", body.project_id)
-        .eq("user_id", user["id"])
-        .is_("deleted_at", "null")
-        .maybe_single()
-        .execute()
-    )
-    if not project.data:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = _require_design_access(sb, body.project_id, user["id"])
 
     session = _get_or_create_session(body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
@@ -576,7 +558,7 @@ async def generate_data_model(
             f"- {c['name']} ({c['technology']}): {c['description']}" for c in arch.get("components", [])
         )
 
-    proj = project.data
+    proj = project
     user_message = (
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"
@@ -651,17 +633,7 @@ async def generate_ai_workflow(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = (
-        sb.table("projects")
-        .select("*")
-        .eq("id", body.project_id)
-        .eq("user_id", user["id"])
-        .is_("deleted_at", "null")
-        .maybe_single()
-        .execute()
-    )
-    if not project.data:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = _require_design_access(sb, body.project_id, user["id"])
 
     session = _get_or_create_session(body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
@@ -712,7 +684,7 @@ async def generate_ai_workflow(
             f"그 부가설명은 제거해 summary로 옮기고, model_version에는 버전만(모호하면 비움) 두세요."
         )
 
-    proj = project.data
+    proj = project
     user_message = (
         f"프로젝트명: {proj['name']}\n"
         f"프로젝트 유형: {proj.get('project_type', '미정')}\n"

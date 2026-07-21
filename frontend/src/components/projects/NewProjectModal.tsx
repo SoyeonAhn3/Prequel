@@ -44,7 +44,7 @@ export default function NewProjectModal({ isQuotaExceeded, onClose, onCreate }: 
             <div className="bg-red-soft rounded-xl p-4">
               <p className="text-sm font-semibold text-red">무료 횟수를 모두 사용했습니다</p>
               <p className="text-xs text-text-muted mt-1">
-                무료 플랜은 설계 단계를 2회까지 진행할 수 있습니다. (프로젝트 생성·인터뷰는 무제한) 유료 플랜으로 업그레이드하면 월 10~30회 이용 가능합니다.
+                무료 플랜은 총 2크레딧을 제공하며, 인터뷰 시작과 설계·평가 세트 진입에 각각 1크레딧을 사용합니다. 재접속과 문서 확인에는 추가 차감이 없습니다.
               </p>
             </div>
             <div className="flex justify-end mt-4">
