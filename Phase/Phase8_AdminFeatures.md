@@ -121,7 +121,7 @@ Using `slowapi` (IP-based, `get_remote_address`):
 | Activity-log actor in dev | Always `dev@localhost` under `DEV_BYPASS_AUTH` | Intended; real attribution verified at deploy (BL-004) |
 | Admin access | Backend role check, not separate app | Single deployment, simpler architecture |
 
-> **Known follow-ups** (see `BACKLOG.md`): BL-003 prompt-caching inefficiency (interview re-sends volatile content inside the cached prefix → low cache-read %), BL-004 dev-bypass activity-log attribution (verify at deploy).
+> **Follow-up status** (see `BACKLOG.md`): BL-003 was completed on 2026-07-21; real Anthropic A/B verification measured an 83.10% warm cache-read ratio and 88.47% lower full-price input tokens. See BL-004 separately for dev-bypass activity-log attribution.
 
 ---
 
@@ -143,6 +143,7 @@ Using `slowapi` (IP-based, `get_remote_address`):
 |---|---|
 | 2026-05-19 | Initial creation |
 | 2026-06-29 | Phase 8 completed (S1–S8). Rate limiting IP-based, auth tier dropped. Token logging records counts incl. cache (no cost). Announcements page = `NoticesPage` (`/notices`). Admin dashboard gained token chart (S4) + activity log. Follow-ups: BL-003, BL-004. |
+| 2026-07-21 | BL-003 follow-up completed: the cache metrics also surfaced by S4 were measured in a real Anthropic A/B run (83.10% warm cache-read ratio, 88.47% lower full-price input tokens). |
 
 ---
 ---
@@ -270,7 +271,7 @@ Using `slowapi` (IP-based, `get_remote_address`):
 | dev 환경 활동로그 행위자 | `DEV_BYPASS_AUTH` 시 항상 `dev@localhost` | 의도된 동작; 실제 귀속은 배포 시 검증 (BL-004) |
 | Admin 접근 | 별도 앱이 아닌 백엔드 역할 체크 | 단일 배포, 단순한 아키텍처 |
 
-> **알려진 후속 과제** (`BACKLOG.md` 참고): BL-003 프롬프트 캐싱 비효율(인터뷰가 캐시 prefix 안에 매번 바뀌는 내용을 넣어 캐시읽기 % 낮음), BL-004 dev 우회 활동로그 귀속(배포 시 검증).
+> **후속 과제 상태** (`BACKLOG.md` 참고): BL-003은 2026-07-21 완료했다. 실제 Anthropic A/B에서 워밍 후 캐시 읽기 비율 83.10%, 풀가격 input 토큰 88.47% 감소를 확인했다. dev 우회 활동로그 귀속은 BL-004를 별도로 참고한다.
 
 ---
 
@@ -292,3 +293,4 @@ Using `slowapi` (IP-based, `get_remote_address`):
 |---|---|
 | 2026-05-19 | 최초 작성 |
 | 2026-06-29 | Phase 8 완료 (S1–S8). 레이트리밋 IP기준·인증 티어 드롭. 토큰 로깅은 캐시 포함 토큰량 기록(비용 X). 공지 페이지 = `NoticesPage`(`/notices`). 대시보드에 토큰 차트(S4) + 활동 로그 추가. 후속: BL-003, BL-004. |
+| 2026-07-21 | BL-003 후속 과제 완료: S4에도 표시되는 캐시 지표를 실제 Anthropic A/B로 측정해 워밍 후 캐시 읽기 비율 83.10%, 풀가격 input 토큰 88.47% 감소를 확인했다. |

@@ -107,6 +107,7 @@ Build the project management layer that allows users to create, list, and delete
 |---|---|
 | 2026-05-19 | Initial creation |
 | 2026-05-20 | Phase 3 completed: CRUD API, quota enforcement, My Projects page, new project modal, delete modal, DB migration 005 |
+| 2026-07-21 | BL-022 real Supabase concurrency verification completed. Added four opt-in integration scenarios in `backend/tests/integration/test_supabase_credit_concurrency.py`; the design-charge cases prove same-project concurrent requests charge once, cross-project requests with one remaining free credit allow only one charge, retries are idempotent, and rejected competitors leave no partial project mutation. All disposable rows were removed. The real integration run passed 4 tests; the default backend suite passed 143 tests with those 4 safely skipped. |
 
 ---
 ---
@@ -220,3 +221,4 @@ Build the project management layer that allows users to create, list, and delete
 |---|---|
 | 2026-05-19 | 최초 작성 |
 | 2026-05-20 | Phase 3 완료: CRUD API, 쿼터 검증, 내 프로젝트 페이지, 생성 모달, 삭제 모달, DB 마이그레이션 005 |
+| 2026-07-21 | BL-022 실제 Supabase 동시성 검증 완료. `backend/tests/integration/test_supabase_credit_concurrency.py`에 opt-in 통합 시나리오 4개를 추가했다. 설계 차감 검증에서 같은 프로젝트 동시 요청은 1회만 차감되고, 무료 크레딧이 1회 남은 서로 다른 프로젝트 경쟁은 하나만 성공하며, 재시도는 멱등이고 거부된 요청은 프로젝트에 부분 변경을 남기지 않음을 확인했다. 임시 행은 모두 삭제했다. 실제 통합 테스트 4개, 기본 백엔드 테스트 143개 통과(통합 4개 안전 skip). |

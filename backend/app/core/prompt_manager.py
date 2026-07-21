@@ -62,12 +62,52 @@ def compress_history(messages: list[dict], keep_recent: int = 6) -> list[dict]:
     return [summary_msg] + recent
 
 
+def build_cached_interview_messages(
+    messages: list[dict],
+    insights: list[dict] | None = None,
+) -> list[dict]:
+    """Build a cache-friendly Claude message list without mutating DB messages.
+
+    The cache breakpoint ends at the latest user answer. Accumulated insights are
+    appended after that breakpoint so their turn-to-turn changes do not
+    invalidate the reusable conversation prefix.
+
+    This helper intentionally keeps the full history. The live answer path uses
+    it instead of ``compress_history()`` so previously cached conversation
+    prefixes remain byte-stable across turns.
+    """
+    if not messages or messages[-1].get("role") != "user":
+        raise ValueError("Interview messages must end with a user message")
+
+    api_messages = []
+    for message in messages:
+        role = message.get("role")
+        content = message.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str):
+            raise ValueError("Interview messages require a valid role and text content")
+
+        api_messages.append({
+            "role": role,
+            "content": [{"type": "text", "text": content}],
+        })
+
+    latest_user_blocks = api_messages[-1]["content"]
+    latest_user_blocks[0]["cache_control"] = {"type": "ephemeral"}
+
+    if insights:
+        collected = "\n수집된 정보:\n"
+        for insight in insights:
+            collected += f"- {insight['label']}: {insight['value']}\n"
+        latest_user_blocks.append({"type": "text", "text": collected})
+
+    return api_messages
+
+
 def build_system_prompt(
     step_index: int,
     project_name: str,
     project_type: str | None = None,
     language: str = "ko",
-    insights: list[dict] | None = None,
 ) -> list[dict]:
     try:
         skill_text = load_skill("kickoff-interview")
@@ -92,8 +132,8 @@ def build_system_prompt(
     # Role + rules + project meta + response-format spec. None of this changes
     # turn-to-turn, so it forms a byte-identical cache prefix that later calls
     # can reuse (cache_read instead of full-price input). Volatile `insights`
-    # used to live in the middle of this block, which invalidated the cache
-    # every answer — they are now a separate uncached block at the end (BL-003).
+    # are carried after the message breakpoint by
+    # `build_cached_interview_messages()` (BL-003).
     stable = (
         f"당신은 Prequel의 AI 인터뷰어입니다. "
         f"프로젝트 킥오프 문서에 필요한 정보를 수집하기 위해 사용자에게 구조화된 질문을 합니다.\n\n"
@@ -147,18 +187,6 @@ def build_system_prompt(
             "type": "text",
             "text": f"\n현재 단계 지시사항:\n{step_content}",
             "cache_control": {"type": "ephemeral"},
-        })
-
-    # ── Block 3 · VOLATILE (uncached) ───────────────────────────────────────
-    # Insights accumulate with every answer. Kept AFTER the cache breakpoints so
-    # the growing list never invalidates the stable prefix above.
-    if insights:
-        collected = "\n수집된 정보:\n"
-        for ins in insights:
-            collected += f"- {ins['label']}: {ins['value']}\n"
-        blocks.append({
-            "type": "text",
-            "text": collected,
         })
 
     return blocks

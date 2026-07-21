@@ -152,7 +152,7 @@ prequel/
 │   │   └── middleware/            # Auth, Rate Limiting, CORS
 │   ├── skills/                    # Runtime AI prompts (.md) — single source of truth
 │   ├── references/                # Reference files for prompts
-│   └── tests/                     # pytest suite — 143 passing tests (latest full run: 2026-07-21)
+│   └── tests/                     # pytest — 148 unit/API + 4 opt-in real Supabase integration tests
 ├── scripts/
 │   └── sync_harness.py            # ⛔ Deprecated (BL-002) — backend/skills is the source of truth
 ├── supabase/
@@ -206,7 +206,7 @@ Payment integration is planned for MVP-2.
 | Phase 5: Design (How) | ✅ Done | 9-screen guided wizard (requirements → architecture → data model → AI workflow), dynamic design pipeline, interview insights persistence |
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
 | Phase 7: Doc Preview & Generation | ✅ Done | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. Note: progressive v1→v2→v3 generation dropped in favor of live assembly; **Mermaid diagram rendering removed from scope** |
-| Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. Follow-ups logged: BL-003 (prompt caching), BL-004 (dev-bypass log attribution) |
+| Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. BL-003 prompt caching completed with real Anthropic A/B verification; BL-004 tracked separately. |
 | Phase 9: i18n, Testing & Deploy | 🚧 In Progress | **Steps 1-3 done**: legal pages (`/terms`, `/privacy`) + landing footer & login legal links; **error handling integration (NFR-003)** — Claude timeout/retry → 503 friendly errors, `apiFetch` timeout + `ApiError`, retry buttons (4 screens), Error Boundary, interview offline draft/auto-resend; **pytest coverage 64%** (#7, ≥60% DoD — +25 projects/finalize endpoint tests + stateful `FakeSupabase` helper) + **E2E demo scenario authored** (#6, 16 manual TCs, TC-015 AI-preverified, not yet executed). Remaining: multilingual UI (i18n), E2E execution, Netlify + Railway deploy. Follow-up: BL-008 (project name/description edit UI) |
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
@@ -219,6 +219,7 @@ Security hardening update: **BL-021 is complete**. All eight design/finalization
 |---|---|---|
 | Phase 3: Project Management | ✅ Pass (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 | BL-021: Session ownership / IDOR | ✅ Pass (real Supabase Auth A/B JWT verification) | [BACKLOG.md](BACKLOG.md) |
+| BL-022/023: Atomic phase credits | ✅ Real Supabase concurrency Pass (4/4); browser flow E2E pending for BL-023 | [BACKLOG.md](BACKLOG.md) |
 | Phase 9: E2E Demo Scenario | 🚧 Authored (16 TCs, TC-015 AI-preverified Pass) | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## Roadmap

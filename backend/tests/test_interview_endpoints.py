@@ -224,6 +224,63 @@ def test_answer_advances_step_when_complete(client, monkeypatch):
     assert r.json()["current_step"] == 4  # step_complete → 한 칸 진행
 
 
+def test_answer_uses_full_history_cache_boundary_and_uncached_insights(client, monkeypatch):
+    history = []
+    for index in range(4):
+        history.extend([
+            {"role": "user", "content": f"이전 답변 {index}"},
+            {"role": "assistant", "content": f"이전 질문 {index}", "_meta": {}},
+        ])
+    session = {
+        "id": "s1", "status": "active", "current_question": 3, "token_used": 0,
+        "project_id": "p1", "messages": history,
+        "_insights": [{"label": "주요 사용자", "value": "학생", "step": 1}],
+        "projects": {"name": "P", "project_type": "Web", "language": "ko", "user_id": "u1"},
+    }
+    sb = _install(
+        monkeypatch,
+        {"interview_sessions": [session], "projects": [{"id": "p1", "user_id": "u1"}]},
+        '{"message":"다음","step_complete":false,"insights":[],"topics":[],"example_answers":[]}',
+    )
+
+    response = client.post(
+        "/api/interview/answer",
+        json={"session_id": "s1", "answer": "새 답변", "answer_id": "NEW"},
+    )
+
+    assert response.status_code == 200
+    call = sb.chat_calls[0]
+    assert len(call["messages"]) == 9  # 8개 기존 이력 + 최신 답변, 압축 없음
+    assert all(
+        "[이전 대화 요약]" not in block["text"]
+        for message in call["messages"]
+        for block in message["content"]
+    )
+
+    system_text = "".join(block["text"] for block in call["system"])
+    assert "\n수집된 정보:\n" not in system_text
+    assert "- 주요 사용자: 학생" not in system_text
+
+    latest_blocks = call["messages"][-1]["content"]
+    assert latest_blocks[0] == {
+        "type": "text",
+        "text": "새 답변",
+        "cache_control": {"type": "ephemeral"},
+    }
+    assert "학생" in latest_blocks[1]["text"]
+    assert "cache_control" not in latest_blocks[1]
+
+    breakpoints = sum(
+        "cache_control" in block for block in call["system"]
+    ) + sum(
+        "cache_control" in block
+        for message in call["messages"]
+        for block in message["content"]
+    )
+    assert breakpoints == 3
+    assert breakpoints <= 4
+
+
 def test_status_returns_session_info(client, monkeypatch):
     session = {
         "id": "s1", "status": "active", "current_question": 2, "token_used": 42,

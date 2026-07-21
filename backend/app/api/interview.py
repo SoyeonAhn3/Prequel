@@ -12,8 +12,8 @@ from app.core.ratelimit import limiter
 from app.core.usage import record_token_usage
 from app.core.prompt_manager import (
     INTERVIEW_STEPS,
+    build_cached_interview_messages,
     build_system_prompt,
-    compress_history,
     get_step_info,
 )
 from app.middleware.auth import get_current_user
@@ -376,12 +376,9 @@ async def submit_answer(
         project_name=project["name"],
         project_type=project.get("project_type"),
         language=project.get("language", "ko"),
-        insights=all_insights,
     )
 
-    api_messages = compress_history([
-        {"role": m["role"], "content": m["content"]} for m in messages
-    ])
+    api_messages = build_cached_interview_messages(messages, insights=all_insights)
 
     ai_text, usage = chat(system=system_prompt, messages=api_messages, max_tokens=2048)
     parsed = _parse_ai_response(ai_text)

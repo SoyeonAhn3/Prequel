@@ -152,7 +152,7 @@ prequel/
 │   │   └── middleware/            # Auth, Rate Limiting, CORS
 │   ├── skills/                    # 런타임 AI 프롬프트 (.md) — 단일 원본
 │   ├── references/                # 프롬프트용 Reference 파일
-│   └── tests/                     # pytest 스위트 — 전체 143개 통과 (최근 실행: 2026-07-21)
+│   └── tests/                     # pytest — 단위/API 148개 + 실제 Supabase opt-in 통합 4개
 ├── scripts/
 │   └── sync_harness.py            # ⛔ 폐기 (BL-002) — backend/skills가 단일 원본
 ├── supabase/
@@ -206,7 +206,7 @@ prequel/
 | Phase 5: 설계 (How) | ✅ 완료 | 9화면 가이드 위저드 (요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우), 동적 설계 파이프라인, 인터뷰 인사이트 영속화 |
 | Phase 6: 평가 & 마무리 | ✅ 완료 | `finalize.py` API (평가 → 완료조건 → 갭 → 체크리스트), 스킬 4종 재작성, 마이그레이션 008, doc v3 엔진, FinalizePage 카드 위저드 — E2E 테스트 대기 |
 | Phase 7: 문서 미리보기 & 생성 | ✅ 완료 | 읽을 때 조립 방식 (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2컬럼 TOC + 완성도 + Markdown 다운로드). **대시보드 요약 섹션 렌더링** — 섹션 `kind`별 빌딩블록(스탯 스트립 / 표+chip / 미터 / 레이어 밴드 / 콜아웃), markdown 내보내기 불변. 참고: 점진적 v1→v2→v3 생성은 실시간 조립으로 폐기; **Mermaid 다이어그램 렌더링은 스코프 제외** |
-| Phase 8: Admin & 부가 기능 | ✅ 완료 | Admin 대시보드(사용자 관리 + 토큰 사용량 차트 + 활동 로그), 공지 CRUD + 페이지, 호출별 토큰 로깅(캐시 포함), `slowapi` Rate Limiting(인터뷰 20/분, 일반 60/분), `structlog` JSON 로깅, 사용자 가이드 페이지. 후속: BL-003(프롬프트 캐싱), BL-004(dev 우회 로그 귀속) |
+| Phase 8: Admin & 부가 기능 | ✅ 완료 | Admin 대시보드(사용자 관리 + 토큰 사용량 차트 + 활동 로그), 공지 CRUD + 페이지, 호출별 토큰 로깅(캐시 포함), `slowapi` Rate Limiting(인터뷰 20/분, 일반 60/분), `structlog` JSON 로깅, 사용자 가이드 페이지. BL-003 프롬프트 캐싱은 실제 Anthropic A/B 검증으로 완료했으며 BL-004는 별도 추적. |
 | Phase 9: 다국어·테스트·배포 | 🚧 진행 중 | **Step 1-3 완료**: 이용약관/개인정보 페이지(`/terms`, `/privacy`) + 랜딩 푸터·로그인 법적 링크; **에러 처리 통합(NFR-003)** — Claude 타임아웃/재시도 → 503 친절 에러, `apiFetch` 타임아웃 + `ApiError`, 재시도 버튼(4개 화면), Error Boundary, 인터뷰 오프라인 임시저장/자동 재전송; **pytest 커버리지 64%**(#7, DoD 60% 초과 — projects·finalize 엔드포인트 테스트 25개 + 상태유지 `FakeSupabase` 헬퍼) + **E2E 데모 시나리오 작성**(#6, 수동 16 TC, TC-015 AI 선검증, 미실행). 잔여: 다국어 UI(i18n), E2E 실행, Netlify + Railway 배포. 후속: BL-008(프로젝트 이름·설명 수정 UI) |
 | MVP-2 (5개 기능) | 📋 예정 | 결제 + 토큰 추적 + 비용 미터 + 갤러리 + 모델 라우팅 |
 | v2 | 📋 Planned | 갭 분석, DOCX 내보내기, 공유 링크 |
@@ -219,6 +219,7 @@ prequel/
 |---|---|---|
 | Phase 3: 프로젝트 관리 | ✅ 전체 통과 (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 | BL-021: 세션 소유권 / IDOR | ✅ 통과 (실제 Supabase Auth 사용자 A/B JWT 검증) | [BACKLOG.md](BACKLOG.md) |
+| BL-022/023: 단계별 원자 과금 | ✅ 실제 Supabase 동시성 통과 (4/4), BL-023 브라우저 흐름 E2E 대기 | [BACKLOG.md](BACKLOG.md) |
 | Phase 9: E2E 데모 시나리오 | 🚧 작성됨 (16 TC, TC-015 AI 선검증 Pass) | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## 로드맵

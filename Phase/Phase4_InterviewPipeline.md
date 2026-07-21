@@ -70,10 +70,31 @@ Implemented optimizations:
 1. **STEP splitting** (`extract_step()`) — regex-based extraction of current STEP section from skill `.md`, sends only relevant instructions
 2. **CLI removal** (`remove_cli_directives()`) — strips bash/shell code blocks and CLI keywords from prompts
 3. **Reference filtering** — 🔲 Not yet implemented (planned for type-specific reference inclusion)
-4. **Conversation compression** (`compress_history()`) — summarizes older messages, keeps recent 6 turns
-5. **Prompt Caching** (`build_system_prompt()`) — applies `cache_control: {"type": "ephemeral"}` to system prompt blocks
+4. **Conversation compression** (`compress_history()`) — retained as a legacy utility but no longer used by the live interview answer path because rolling summaries invalidate the reusable prefix
+5. **Prompt Caching** (`build_system_prompt()`, `build_cached_interview_messages()`) — the live answer path sends full history, places one message breakpoint on the latest user answer, and appends volatile insights after it
 
 Additional: `INTERVIEW_STEPS` list (10 steps with title and topic), `build_system_prompt()` constructs cached system prompt with JSON response format instruction.
+
+#### BL-003 Direction B — Step 1 (2026-07-21)
+
+- Added the pure `build_cached_interview_messages()` helper. It copies persisted messages into Claude text blocks without mutating the database-shaped input.
+- The latest user answer owns the single message cache breakpoint. Accumulated insights are appended after that breakpoint as an uncached block, preserving the reusable conversation prefix across turns.
+- Added contract coverage for breakpoint placement, volatile-block ordering, input immutability, next-turn common-prefix stability, and invalid terminal roles; all 11 `test_prompt_manager.py` tests pass.
+- At this preparation step runtime integration was still pending; Step 2 below supersedes that limitation.
+
+#### BL-003 Direction B — Step 2 (2026-07-21)
+
+- `build_system_prompt()` no longer accepts or renders accumulated insights, preventing volatile session data from re-entering the system cache prefix.
+- `POST /api/interview/answer` now calls `build_cached_interview_messages()` instead of `compress_history()`. Persisted messages remain unchanged strings; only the outbound Claude request uses content blocks.
+- The runtime contract test verifies that 8 stored messages plus the latest answer are all retained, insight data exists only after the message breakpoint, and the request has exactly 3 cache breakpoints (2 system + 1 message, below the limit of 4).
+- 21 focused prompt/interview/idempotency tests and the full backend suite passed at this step: 148 passed, with 4 opt-in real-Supabase tests safely skipped. Step 3 below supplies the live Claude evidence.
+
+#### BL-003 Direction B — Step 3 (2026-07-21)
+
+- Used a local-only harness guarded by `RUN_ANTHROPIC_INTEGRATION=1` to compare three sequential full-history cache calls with three calls reproducing the preceding rolling-compression runtime. Unique project names isolated the variants. At the user's request, the paid harness is retained locally through `.git/info/exclude` and is not part of the GitHub test suite.
+- Free token counting confirmed a 1,539-token prefix at the message breakpoint, above the 1,024-token minimum. All six real `claude-sonnet-4-6` responses parsed as interview JSON with a non-empty `message`.
+- After warm-up, the candidate achieved an 83.10% cache-read ratio and reduced average full-price input tokens from 1,934.5 to 223 versus the legacy control, an 88.47% reduction. Candidate totals were 3,166 cache-read tokens versus 1,734 cache-creation tokens.
+- The local paid integration test passed in 51.68 seconds. Excluding that local-only file, the Git-tracked backend suite passed 148 tests and safely skipped 4 opt-in Supabase tests. These results satisfy BL-003's completion criteria without publishing the paid measurement code.
 
 ### Claude Client
 
@@ -224,6 +245,11 @@ Event-based saving triggers:
 | 2026-05-25 | Restructured: #27 kickoff-suggest reverted to 🔲 (hardcoded → load_skill), removed API cost criteria, updated suggest section with harness integration (ADR-006) |
 | 2026-05-25 | Phase references updated: Design = Phase 5, Evaluation = Phase 6. Added design decision deliverable (#29) |
 | 2026-05-26 | Phase 4 complete: #27 load_skill() conversion confirmed ✅, #29 design decision UI confirmed ✅. All 29 deliverables done. Billing changed to usage-based credits (credits_used). Test scenarios 28/28 Pass |
+| 2026-07-21 | BL-023 real Supabase concurrency verification completed. Added four opt-in integration scenarios in `backend/tests/integration/test_supabase_credit_concurrency.py`: concurrent interview starts charge once per project, two projects competing for one remaining free credit cannot exceed the limit, the full interview→design path charges exactly twice, and skip/retry remains free. Fixtures verified zero disposable user/project residue. The real run passed 4 tests; the default backend suite passed 143 tests with 4 integration tests skipped. Browser skip→document→Markdown E2E remains pending. |
+| 2026-07-21 | BL-003 Direction B Step 1: added cache-friendly full-history message builder and contract tests; live interview integration and usage measurement remain pending |
+| 2026-07-21 | BL-003 Direction B Step 2: wired full-history message caching into `/api/interview/answer`, removed insights from the system prompt, and passed 148 backend tests; live Claude usage measurement remains pending |
+| 2026-07-21 | BL-003 completed: real Anthropic A/B test passed with an 83.10% warm cache-read ratio and 88.47% full-price input-token reduction; default suite 148 passed / 5 opt-in skipped |
+| 2026-07-21 | Kept the paid BL-003 Anthropic A/B harness local via `.git/info/exclude`; verified the Git-tracked suite separately at 148 passed / 4 Supabase opt-in skipped |
 
 ---
 ---
@@ -300,10 +326,31 @@ Event-based saving triggers:
 1. **STEP 분할** (`extract_step()`) — 정규식 기반으로 스킬 `.md`에서 현재 STEP 섹션만 추출, 관련 지시만 전송
 2. **CLI 제거** (`remove_cli_directives()`) — bash/shell 코드 블록 및 CLI 키워드 제거
 3. **Reference 필터링** — 🔲 미구현 (유형별 Reference 포함 계획)
-4. **대화 압축** (`compress_history()`) — 오래된 메시지 요약, 최근 6개 턴 유지
-5. **Prompt Caching** (`build_system_prompt()`) — 시스템 프롬프트 블록에 `cache_control: {"type": "ephemeral"}` 적용
+4. **대화 압축** (`compress_history()`) — 레거시 유틸리티로 유지하지만, 매번 달라지는 요약이 재사용 prefix를 무효화하므로 실제 인터뷰 답변 경로에서는 더 이상 사용하지 않음
+5. **Prompt Caching** (`build_system_prompt()`, `build_cached_interview_messages()`) — 실제 답변 경로가 전체 이력을 전송하고 최신 사용자 답변에 메시지 breakpoint 1개를 둔 뒤 가변 insights를 그 뒤에 배치
 
 추가: `INTERVIEW_STEPS` 리스트 (10개 스텝, 제목+주제), `build_system_prompt()`가 JSON 응답 형식 지시를 포함한 캐시된 시스템 프롬프트 구성.
+
+#### BL-003 방향 B — 1단계 (2026-07-21)
+
+- 순수 함수 `build_cached_interview_messages()`를 추가했다. DB 형태의 원본 입력을 변경하지 않고 저장된 메시지를 Claude text block으로 복사한다.
+- 최신 사용자 답변에 메시지 cache breakpoint 1개를 두고, 누적 insights는 breakpoint 뒤의 비캐시 블록으로 붙여 다음 턴에서도 재사용 가능한 대화 prefix를 보존한다.
+- breakpoint 위치, 가변 블록 순서, 원본 불변, 다음 턴 공통 prefix 안정성, 잘못된 마지막 role을 검증하는 계약 테스트를 추가했으며 `test_prompt_manager.py` 테스트 11개가 모두 통과했다.
+- 이 준비 단계 시점에는 런타임 연동이 남아 있었으며, 아래 2단계에서 해당 제한을 해소했다.
+
+#### BL-003 방향 B — 2단계 (2026-07-21)
+
+- `build_system_prompt()`가 더 이상 누적 insights를 인자로 받거나 렌더링하지 않아 가변 세션 데이터가 system cache prefix에 다시 들어가지 못한다.
+- `POST /api/interview/answer`가 `compress_history()` 대신 `build_cached_interview_messages()`를 호출한다. 저장 메시지는 기존 문자열 형태를 유지하고 외부 Claude 요청만 content block을 사용한다.
+- 런타임 계약 테스트에서 저장 이력 8개와 최신 답변이 모두 유지되고, 실제 insight 데이터는 메시지 breakpoint 뒤에만 있으며, 요청의 cache breakpoint가 정확히 3개(system 2 + message 1, 허용 4개 이하)임을 검증했다.
+- 프롬프트·인터뷰·멱등성 관련 테스트 21개와 전체 백엔드 테스트가 이 단계에서 통과했다(148 passed, 실제 Supabase opt-in 4개 안전 skip). 아래 3단계에서 실제 Claude 근거를 추가했다.
+
+#### BL-003 방향 B — 3단계 (2026-07-21)
+
+- `RUN_ANTHROPIC_INTEGRATION=1`로만 실행되는 로컬 전용 하네스로 전체 이력 캐시 방식 3회와 직전 rolling compression 런타임 재현 방식 3회를 순차 비교했다. 두 방식은 고유 프로젝트 이름으로 캐시를 격리했다. 사용자 요청에 따라 유료 하네스는 `.git/info/exclude`로 로컬에만 보관하며 GitHub 테스트에는 포함하지 않는다.
+- 무료 토큰 계산으로 메시지 breakpoint까지의 prefix가 1,539토큰이며 최소 기준 1,024를 넘음을 확인했다. 실제 `claude-sonnet-4-6` 응답 6건 모두 비어 있지 않은 `message`를 가진 인터뷰 JSON으로 파싱됐다.
+- 워밍 후 후보의 캐시 읽기 비율은 83.10%였고, 변경 전 대조군 대비 평균 풀가격 input 토큰은 1,934.5에서 223으로 줄어 88.47% 감소했다. 후보 합계는 cache read 3,166, cache creation 1,734였다.
+- 로컬 유료 통합 테스트는 51.68초에 통과했다. 해당 로컬 전용 파일을 제외한 Git 추적 대상 백엔드 테스트는 148개 통과, 실제 Supabase opt-in 4개 안전 skip했다. 유료 측정 코드를 공개하지 않고도 BL-003 완료 근거를 문서화했다.
 
 ### Claude 클라이언트
 
@@ -454,3 +501,8 @@ Event-based saving triggers:
 | 2026-05-25 | 재구조화: #27 kickoff-suggest 🔲로 변경 (하드코딩 → load_skill 전환), API 비용 기준 삭제, suggest 섹션 하네스 통합 반영 (ADR-006) |
 | 2026-05-25 | Phase 참조 업데이트: 설계 = Phase 5, 평가 = Phase 6. 설계 진행 여부 선택 deliverable (#29) 추가 |
 | 2026-05-26 | Phase 4 완료: #27 load_skill() 전환 확인 ✅, #29 설계 진행 여부 선택 UI 확인 ✅. 전체 29개 deliverable 완료. 과금 모델 횟수제(credits_used)로 변경. 테스트 시나리오 28/28 Pass |
+| 2026-07-21 | BL-023 실제 Supabase 동시성 검증 완료. `backend/tests/integration/test_supabase_credit_concurrency.py`에 opt-in 통합 시나리오 4개를 추가해 같은 프로젝트의 인터뷰 동시 시작은 1회만 차감되고, 무료 크레딧 1회를 두 프로젝트가 경쟁해도 한도를 넘지 않으며, 인터뷰→설계 전체 흐름은 정확히 2회 차감되고, 패스·재시도는 무차감임을 확인했다. fixture가 임시 사용자·프로젝트 잔존 0건을 검증했다. 실제 통합 테스트 4개, 기본 백엔드 테스트 143개 통과(통합 4개 skip). 브라우저 패스→문서→Markdown E2E는 남아 있다. |
+| 2026-07-21 | BL-003 방향 B 1단계: 캐시 친화적 전체 이력 메시지 빌더와 계약 테스트 추가; 실제 인터뷰 연동과 사용량 측정은 잔여 |
+| 2026-07-21 | BL-003 방향 B 2단계: `/api/interview/answer`에 전체 이력 메시지 캐싱을 연동하고 system prompt에서 insights를 제거했으며 백엔드 테스트 148개 통과; 실제 Claude 사용량 측정은 잔여 |
+| 2026-07-21 | BL-003 완료: 실제 Anthropic A/B에서 워밍 후 캐시 읽기 비율 83.10%, 풀가격 input 토큰 88.47% 감소 확인; 기본 테스트 148개 통과 / opt-in 5개 skip |
+| 2026-07-21 | BL-003 유료 Anthropic A/B 하네스를 `.git/info/exclude`로 로컬에만 보관; Git 추적 대상 테스트를 별도로 실행해 148개 통과 / Supabase opt-in 4개 skip 확인 |

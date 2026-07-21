@@ -63,9 +63,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-003 · 프롬프트 캐싱이 작동 안 함 (인터뷰 토큰 과소비) 🟡
+## BL-003 · 프롬프트 캐싱이 작동 안 함 (인터뷰 토큰 과소비) ✅
 
-**상태**: 🟡 구조 수정 완료(방향 A) — **단, Phase 1 측정 결과 캐시 prefix가 1024 토큰 미만이라 캐싱 미작동.** 실제 절감은 방향 B(메시지 이력 캐싱) 필요.
+**상태**: ✅ **완료 (2026-07-21)** — 방향 B 런타임 연동 후 실제 `claude-sonnet-4-6` A/B 6회 호출에서 워밍 후 캐시 읽기 비율 **83.10%**, 변경 전 대비 풀가격 입력 토큰 **88.47% 감소**, `cache_read 3,166 > cache_creation 1,734`를 확인했다.
 
 ### 적용한 수정 (2026-07-01, 방향 A · 시스템 프롬프트 재구조화)
 `build_system_prompt`(`prompt_manager.py`)를 캐시 friendly 구조로 재배치. 시그니처·반환 타입(list[dict]) 불변이라 호출부(`interview.py` 2곳) 영향 없음.
@@ -73,7 +73,7 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 - **캐시 블록 2** (`cache_control`, 2번째 breakpoint) = `step_content`(현재 단계 스킬 섹션). 기존엔 유일 breakpoint *뒤*라 아예 캐시 안 됐음(원인 ②) → 이제 한 step 내 모든 턴에서 read 적중.
 - **블록 3** (캐시 X) = 누적 `insights`를 breakpoint *뒤* 별도 블록으로 분리. 매 답변마다 커지지만 앞의 안정 prefix를 더 이상 무효화하지 않음(원인 ① 해소).
 - 로컬 구조 검증: 같은 step 두 턴에서 블록0·블록1 바이트 동일, 블록2(insights)만 변화, breakpoint 2개 확인.
-- 미적용(차기): 원인 ③ 메시지 캐싱(`compress_history`와 상충) / 원인 ⑤ 출력 형식 축소 — 효과 측정 후 판단.
+- 당시 미적용이던 원인 ③ 메시지 캐싱은 2026-07-21 방향 B 1·2단계에서 구현했다. 원인 ⑤ 출력 형식 축소는 캐시 효과 측정 후 판단한다.
 
 ### 적용 범위 & 후속 단계 현황 (2026-07-01 코드 전수 점검)
 `cache_control` 관점에서 백엔드 전체를 grep 점검한 결과:
@@ -95,11 +95,37 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 - **역설**: 옛 코드는 insights가 캐시 블록 안에 쌓여 크기를 1024 위로 채워 캐시가 *생성*은 됐으나 매 턴 무효화되어 못 읽음(낭비). 새 코드는 prefix가 고정 ~900토큰이라 아예 미생성 — 낭비되던 cache_write 프리미엄(25%)은 사라졌으나 목표 절감은 미달성.
 - **무료 검증 이득**: Phase 2(유료 실호출) 전에 count_tokens(무과금)로 판정 → 헛돈 방지.
 
-### 다음 단계 (방향 B · 메시지 이력 캐싱)
-토큰 대부분은 system이 아니라 **대화 이력(messages)** 에 있고 턴이 쌓이며 금방 1024를 넘음. 실제 절감은:
-1. 캐시 breakpoint를 **마지막 메시지**(system 아님)에 부여 → system+messages 전체 prefix가 캐시됨.
-2. `compress_history`(매 턴 이력 재작성 → prefix 불안정)를 재설계 — 압축 임계 상향 or 안정 prefix + 말미 breakpoint.
-   → 토큰 절감(압축) ↔ 캐싱(prefix 유지) 트레이드오프 측정 후 결정.
+### 방향 B 1단계 구현 (2026-07-21 · 메시지 빌더/계약 테스트)
+- `prompt_manager.build_cached_interview_messages()`를 추가했다. DB의 원본 메시지를 변경하지 않고 전체 대화 이력을 Claude text block 형식으로 변환한다.
+- 최신 사용자 답변 블록에 메시지 cache breakpoint 1개를 배치하고, 매 턴 달라지는 누적 `insights`는 같은 메시지의 breakpoint 뒤 비캐시 블록으로 이동할 수 있게 구성했다.
+- 입력이 최신 사용자 답변으로 끝나지 않거나 role/content 계약이 잘못된 경우 즉시 실패하도록 경계를 명시했다.
+- `test_prompt_manager.py`에 breakpoint 위치·insights 순서·원본 불변·다음 턴 공통 prefix 보존·입력 계약 테스트를 추가했으며, 해당 파일 **11개 테스트가 통과**했다.
+- 이 1단계 시점에는 런타임 미적용이었으며, 아래 2단계에서 실제 `/answer` 경로까지 연결했다.
+
+### 방향 B 2단계 구현 (2026-07-21 · 인터뷰 런타임 연동)
+- `build_system_prompt()`에서 `insights` 인자와 가변 system 블록을 제거했다. 시스템 프롬프트는 인터뷰 고정 규칙·프로젝트 메타·현재 step 지시만 포함한다.
+- `POST /api/interview/answer`가 `compress_history()` 대신 `build_cached_interview_messages()`를 사용한다. DB에는 기존 문자열 메시지를 그대로 저장하고 Claude 요청만 text block으로 변환하므로 API·DB 스키마 변경은 없다.
+- 6개 초과 이력도 요약문으로 다시 쓰지 않고 전체를 전달한다. 최신 사용자 답변까지를 캐시 prefix로 지정하고 누적 insights는 breakpoint 뒤에 둔다.
+- API 계약 테스트에서 기존 8개 메시지 + 최신 답변 1개가 모두 유지되고, system에 실제 insight 데이터가 없으며, insights가 메시지 breakpoint 뒤에 있고, 전체 breakpoint가 **3개(허용 4개 이하)**임을 확인했다.
+- **검증**: 관련 테스트 21개 통과, 전체 백엔드 테스트 **148개 통과·실제 Supabase opt-in 4개 안전 skip**.
+
+### 방향 B 3단계 완료 (2026-07-21 · 실제 Anthropic A/B 검증)
+- **로컬 전용 자동화**: 실제 A/B 측정 하네스는 `RUN_ANTHROPIC_INTEGRATION=1`에서만 비용을 쓰도록 만들었고, 사용자 요청에 따라 `.git/info/exclude`에 등록해 로컬에만 보관한다. GitHub에는 해당 유료 테스트 코드를 올리지 않는다.
+- **비교 조건**: 0-based step 3(네 번째 단계인 데이터 소스), 동일한 9개 초기 메시지와 누적 insights를 사용했다. 후보와 변경 전 방식은 고유 프로젝트 이름으로 캐시를 격리하고 각각 3회씩 5분 TTL 안에 순차 호출했다.
+- **사전 검사**: 후보 메시지 breakpoint까지의 prefix는 **1,539토큰**으로 Sonnet 최소 캐시 크기 1,024를 넘었다.
+
+| 방식/호출 | input | cache creation | cache read | output |
+|---|---:|---:|---:|---:|
+| 방향 B 1회(워밍) | 117 | 1,536 | 0 | 510 |
+| 방향 B 2회 | 185 | 94 | 1,536 | 511 |
+| 방향 B 3회 | 261 | 104 | 1,630 | 463 |
+| 변경 전 1회 | 1,675 | 0 | 0 | 442 |
+| 변경 전 2회 | 1,842 | 0 | 0 | 432 |
+| 변경 전 3회 | 2,027 | 0 | 0 | 463 |
+
+- **판정**: 워밍 후 `cache_read / (input + cache_read + cache_creation) = 83.10%`로 목표 30%를 넘었다. 워밍 후 평균 풀가격 input은 변경 전 1,934.5에서 방향 B 223으로 줄어 **88.47% 감소**했다.
+- **기능 확인**: 실제 응답 6건 모두 인터뷰 JSON으로 파싱됐고 `message`가 존재했다. 로컬 실측 테스트 **1개 통과(51.68초)**. 로컬 전용 파일을 제외한 Git 추적 대상 기준 백엔드 테스트는 **148개 통과·실제 Supabase opt-in 4개 안전 skip**.
+- 장기 대화용 고정 청크 압축과 출력 형식 축소는 이번 완료 조건에 필요하지 않아 별도 최적화 후보로 남긴다.
 **발견일**: 2026-06-29
 **관련 영역**: `backend/app/core/prompt_manager.py`, `backend/app/api/interview.py`, `backend/app/core/claude_client.py` (부차: `design.py`, `doc_engine.py`)
 **대표 사례**: 새 프로젝트를 인터뷰 step4(데이터 소스)까지 진행 → 21회 호출·73,120 토큰. 모델 `claude-sonnet-4-6`. 비용 약 $0.31(≈430원).
@@ -109,7 +135,7 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 > 캐싱 원리: 프롬프트는 **prefix 바이트 완전 일치**일 때만 캐시 재사용됨. breakpoint 앞부분이 1바이트라도 바뀌면 그 뒤 전부 무효화.
 
-### 근본 원인 (인과 사슬)
+### 근본 원인 (인과 사슬 · 수정 전 진단)
 **원인 ① (최대 원인) — 인터뷰 시스템 프롬프트의 캐시 블록 안에 매 턴 바뀌는 내용이 박힘.**
 - `prompt_manager.build_system_prompt`: `cache_control: ephemeral`이 `blocks[0]`(=`base`)에 붙음(`prompt_manager.py:131-137`). 그런데 `base` 안에 **누적되는 `insights`**(`:112-115`)와 `project_type`(`:109-110`)이 포함됨.
 - 답변마다 인사이트가 쌓여 `base` 텍스트가 매번 달라짐 → 캐시 prefix가 매 호출 무효화 → 매번 cache write, cross-call read = 0. → **`cache_creation > cache_read`의 직접 원인.**
@@ -131,7 +157,7 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 - `design.py:235` 등: `system=[스킬텍스트만]`(순수 안정), 휘발 내용은 user_message에 둠 → 구조 OK. 단 각 설계 단계는 **1회성(one-shot) 생성**이고 단계별 스킬이 달라 cross-call 캐시 효과는 작음(같은 단계 5분내 재생성 때만 도움).
 - `doc_engine.py:83`: 캐시 블록에 `생성일: {today}` 포함 → 날짜 바뀌면 무효화(경미). 문서 생성도 1회성이라 영향 작음.
 
-### 해결 방향
+### 해결 방향 (수정 전 계획 · A/B/C 완료)
 **A. 인터뷰 시스템 프롬프트 재구조화 (핵심·최대 효과)** — `build_system_prompt`를 prefix 안정 순서로:
   1. **캐시 블록 1** = 전 인터뷰 동안 불변인 것만: 역할 + 규칙 + 응답형식 JSON 스펙 + project_name + project_type. 여기에 `cache_control`.
   2. **캐시 블록 2** = `step_content`(현재 단계 스킬 섹션). 여기에도 `cache_control`(2번째 breakpoint). → 한 step 내 모든 턴에서 read 적중.
@@ -141,7 +167,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 **D. 부차** — design/doc는 현 구조 유지(영향 작음). 여력 시 `doc_engine`의 `생성일`만 캐시 블록 밖으로(경미 개선).
 
 ### 완료 조건
-동일 step4 인터뷰 재현 시 캐시 적중률 `cache_read / (input + cache_read + cache_creation)` 유의미 상승 + 풀가격 input 토큰 대폭 감소. (Phase 8 S4/S5/S6와 독립된 최적화 항목.)
+- ✅ 동일 step4 인터뷰 재현에서 워밍 후 캐시 읽기 비율 83.10%(목표 30% 이상).
+- ✅ 변경 전 방식 대비 워밍 후 풀가격 input 토큰 88.47% 감소.
+- ✅ `cache_read 3,166 > cache_creation 1,734`, 실제 응답 JSON 6/6 파싱 성공.
 
 > 갱신(2026-06-29): S4 토큰 차트가 캐시읽기 비율(<30% 시 "⚠ 낮음(BL-003)")을 표시 → 이 수정의 **측정 도구**로 활용. 수정 전후를 `/admin` 차트로 비교 가능.
 
@@ -762,9 +790,9 @@ def validate_models(client) -> None:
 
 ---
 
-## BL-022 · 크레딧 확인·차감이 비원자적 — 동시 요청 시 중복/누락·한도 초과 가능 🔴
+## BL-022 · 크레딧 확인·차감이 비원자적 — 동시 요청 시 중복/누락·한도 초과 가능 ✅
 
-**상태**: 🚧 **코드 구현·Supabase DB 적용 완료 · 동시성 실측 대기 (2026-07-20)** — `011_atomic_credit_charge.sql`의 행 잠금 기반 RPC를 실제 Supabase에 적용하고 백엔드 차감 흐름을 RPC 1회 호출로 교체했다. 단계별 과금 정책과 설계·평가 패스 흐름 보완은 후속 [[BL-023]]에서 진행한다.
+**상태**: ✅ **완료 (2026-07-21)** — `011`·`012`의 행 잠금 기반 RPC와 백엔드 원자 차감 흐름을 실제 Supabase에서 병렬 검증했다. 같은 프로젝트의 동시 설계 요청은 정확히 1회만 차감됐고, 잔여 1크레딧으로 서로 다른 프로젝트가 경쟁할 때 하나만 성공해 무료 한도를 초과하지 않았다.
 **심각도**: Critical — 과금/사용량 무결성, Race Condition
 **발견일**: 2026-07-20 (코드 전수 점검, 기존 `pre-requirement/code-review-report.txt`의 Critical #2 재확인)
 **관련 영역**: `backend/app/api/projects.py`(`_check_credits`, `_increment_credits`, `set_design_decision`), `supabase/migrations/010_credit_charged_at.sql`, 신규 DB RPC 마이그레이션, 동시성 테스트
@@ -814,35 +842,35 @@ Supabase PostgreSQL RPC 함수 하나에서 설계 결정과 차감을 원자적
 - **회귀 테스트**: 최초 차감·재진입·한도 소진 시 무변경·개발 우회·건너뛰기·완료 프로젝트·404와 SQL 잠금/권한 계약 검증.
 - **검증**: 대상 테스트 23개 통과, 전체 백엔드 62개 통과, 커버리지 64%.
 - **DB 적용**: `011_atomic_credit_charge.sql`을 실제 Supabase에 적용 완료.
-- **잔여**: 같은 프로젝트/서로 다른 프로젝트 동시 요청을 실제 Supabase 환경에서 실측해야 최종 완료 처리.
+- **실제 동시성 검증 완료 (2026-07-21)**: `backend/tests/integration/test_supabase_credit_concurrency.py`를 추가해 독립 Supabase 클라이언트의 병렬 RPC로 같은 프로젝트 멱등 차감과 서로 다른 프로젝트의 한도 경쟁을 검증했다. 실패한 경쟁 요청은 프로젝트 상태·차감 도장을 남기지 않았고, 모든 임시 사용자·프로젝트·세션은 fixture 종료 시 삭제됐다.
 
-### 테스트 계획
-- 같은 프로젝트에 동시 설계 진입 요청 2개 → 프로젝트는 1회만 차감되고 `credits_used`도 정확히 +1.
-- 크레딧 1회가 남은 상태에서 서로 다른 프로젝트 2개에 동시 진입 → 하나만 성공, 다른 하나는 403.
-- 이미 차감된 프로젝트 재진입 → 성공하지만 추가 차감 없음.
-- `decision='skip'` → `evaluating`으로 이동하고 차감 없음.
-- 완료 프로젝트 재요청 → 상태 강등·추가 차감 없음.
-- RPC 내부 오류 → 프로젝트와 사용자 데이터가 모두 변경되지 않음(롤백).
+### 검증 결과
+- ✅ 같은 프로젝트에 동시 설계 진입 요청 2개 → 프로젝트와 `credits_used`가 정확히 1회만 차감.
+- ✅ 크레딧 1회가 남은 상태에서 서로 다른 프로젝트 2개에 동시 진입 → 하나만 성공하고 다른 요청은 `CREDIT_LIMIT_EXCEEDED:2`로 거부.
+- ✅ 이미 차감된 프로젝트 재진입 → 성공하지만 추가 차감 없음.
+- ✅ `decision='skip'` → `completed`로 이동하고 재시도에도 차감 없음 (`012`의 확정 단계별 정책).
+- ✅ 완료 프로젝트 재요청 → 상태 강등·추가 차감 없음(로컬 API/SQL 계약 테스트).
+- ✅ 한도 경쟁에서 거부된 프로젝트는 상태·차감 도장이 변경되지 않아 부분 저장 없음.
 
-### 예상 변경 범위
+### 실제 변경 범위
 - 신규 Supabase SQL 마이그레이션(예: `011_atomic_credit_charge.sql`)과 RPC 함수.
 - `backend/app/api/projects.py` 차감 흐름을 RPC 1회 호출로 교체.
 - `FakeSupabase`의 RPC 지원 또는 별도 DB 통합 테스트 추가.
 - 프론트엔드 요청 형식은 유지 가능.
 
 ### 완료 조건
-- 프로젝트 차감 표시와 사용자 크레딧 증가가 하나의 DB 트랜잭션에서 처리된다.
-- 같은 프로젝트 재요청은 멱등이며 추가 차감되지 않는다.
-- 서로 다른 프로젝트의 동시 요청도 플랜 한도를 초과하지 못한다.
-- 중간 실패 시 부분 저장 없이 전체 롤백된다.
-- 단일 요청·재시도·동시 요청·한도 초과 테스트가 자동화되어 통과한다.
-- 프로덕션 배포 전 실제 Supabase 환경에서 동시성 검증을 완료한다.
+- ✅ 프로젝트 차감 표시와 사용자 크레딧 증가가 하나의 DB 트랜잭션에서 처리된다.
+- ✅ 같은 프로젝트 재요청은 멱등이며 추가 차감되지 않는다.
+- ✅ 서로 다른 프로젝트의 동시 요청도 플랜 한도를 초과하지 못한다.
+- ✅ 중간 실패 시 부분 저장 없이 전체 롤백된다.
+- ✅ 단일 요청·재시도·동시 요청·한도 초과 테스트가 자동화되어 통과한다.
+- ✅ 프로덕션 배포 전 실제 Supabase 환경에서 동시성 검증을 완료한다.
 
 ---
 
 ## BL-023 · 인터뷰 1회 + 설계·평가 세트 1회 단계별 과금 및 패스 흐름 🟠
 
-**상태**: 🚧 **1~4단계 구현 및 Supabase 적용 완료 · 실제 동시성/E2E 검증 대기 (2026-07-20)** — 단계별 원자 과금 SQL·백엔드 RPC/가드·프론트엔드 단계 이동과 크레딧 갱신을 구현했다. `012`의 실제 Supabase 적용은 완료됐고, 프로덕션 환경 동시 요청 및 브라우저 E2E 검증이 남아 있다.
+**상태**: 🚧 **1~5단계 및 실제 Supabase 동시성 검증 완료 · 브라우저 E2E 대기 (2026-07-21)** — 단계별 원자 과금 SQL·백엔드 RPC/가드·프론트엔드 단계 이동과 크레딧 갱신을 구현했다. 실제 Supabase에서 인터뷰·설계 동시 차감, 무료 한도 경쟁, 총 2회 차감, 패스 무차감을 검증했으며 브라우저의 패스→문서→Markdown 흐름 E2E만 남아 있다.
 **심각도**: High — 과금 정책 불일치, 사용자 이동 흐름 오류
 **발견일**: 2026-07-20 (과금 정책 재확인)
 **관련 영역**: `supabase/migrations/012_phase_credit_charges.sql`, `backend/app/api/_shared.py`, `backend/app/api/interview.py`, `backend/app/api/projects.py`, `backend/app/api/design.py`, `backend/app/api/finalize.py`, `backend/tests/test_phase_credit_charges.py`, `backend/tests/test_design_phase_access.py`, `backend/tests/test_phase_credit_frontend_contract.py`, `frontend/src/hooks/useAuth.ts`, `frontend/src/pages/InterviewPage.tsx`, `frontend/src/pages/DesignPage.tsx`, `frontend/src/pages/FinalizePage.tsx`, `frontend/src/pages/MyProjectsPage.tsx`, `frontend/src/components/design/DesignWelcome.tsx`, `frontend/src/components/design/DesignComplete.tsx`
@@ -940,6 +968,14 @@ Supabase PostgreSQL RPC 함수 하나에서 설계 결정과 차감을 원자적
 - 설계 진입 요청을 여러 번 보내도 `credit_charged_at`으로 프로젝트당 1회만 차감한다.
 - 평가 진입·문서 조회·Markdown 다운로드는 크레딧을 변경하지 않는다.
 
+### 실제 Supabase 동시성 검증 (2026-07-21, 5단계)
+- **자동화**: `backend/tests/integration/test_supabase_credit_concurrency.py`에 `RUN_SUPABASE_INTEGRATION=1` opt-in 테스트 4개를 추가했다. 기본 단위 테스트에서는 실제 DB 쓰기를 막기 위해 skip한다.
+- **같은 프로젝트**: 인터뷰 병렬 요청 2개와 설계 병렬 요청 2개에서 각 단계별 `charged`가 정확히 `true` 1건·`false` 1건이었고, 최종 `credits_used=2`를 확인했다. 설계 재시도도 추가 차감하지 않았다.
+- **서로 다른 프로젝트**: 잔여 1크레딧 상태의 인터뷰 경쟁과 설계 경쟁에서 각각 하나만 성공하고 다른 하나는 `CREDIT_LIMIT_EXCEEDED:2`로 거부됐다. 최종 사용량은 한도 2를 넘지 않았고 거부된 프로젝트는 변경되지 않았다.
+- **패스**: 완료 인터뷰 후 `skip`과 재시도 모두 무차감이며 프로젝트가 `completed`로 유지됐다.
+- **격리·정리**: 테스트별 고유 사용자·프로젝트를 사용했고 fixture가 인터뷰 세션→프로젝트→사용자 순서로 삭제한 뒤 잔존 행 0건을 검증했다.
+- **결과**: 실제 Supabase 통합 테스트 4개 통과, 기본 백엔드 회귀 테스트 143개 통과·통합 테스트 4개 안전 skip.
+
 ### 테스트 계획
 - 신규 프로젝트의 첫 `/api/interview/start` → `credits_used` 정확히 +1, `interview_credit_charged_at` 기록.
 - 같은 프로젝트 인터뷰 시작 요청 2개 동시 실행 → 인터뷰 차감은 정확히 1회.
@@ -954,9 +990,9 @@ Supabase PostgreSQL RPC 함수 하나에서 설계 결정과 차감을 원자적
 - 다른 사용자의 프로젝트 ID로 인터뷰·설계·평가 상태 변경 요청 → 404, 사용량과 프로젝트 모두 변경 없음.
 
 ### 완료 조건
-- 인터뷰와 설계·평가 세트가 서로 독립적인 프로젝트별 차감 표시를 가진다.
-- 각 단계는 최초 진입 시에만 1회 차감되고 새로고침·재접속·동시 요청으로 중복 차감되지 않는다.
-- 인터뷰만 사용하면 1회, 전체 과정을 사용하면 정확히 2회 차감된다.
-- 설계·평가 패스 사용자는 추가 차감 없이 인터뷰 요약 문서와 Markdown 다운로드로 바로 이동한다.
-- 설계 완료 후 평가 진입에는 추가 차감이 없다.
-- 신규 단위·API 테스트와 실제 Supabase 동시성 검증이 통과한다.
+- ✅ 인터뷰와 설계·평가 세트가 서로 독립적인 프로젝트별 차감 표시를 가진다.
+- ✅ 각 단계는 최초 진입 시에만 1회 차감되고 새로고침·재접속·동시 요청으로 중복 차감되지 않는다.
+- ✅ 인터뷰만 사용하면 1회, 전체 과정을 사용하면 정확히 2회 차감된다.
+- 🚧 설계·평가 패스 사용자의 무차감·완료 상태는 검증했으며, 브라우저에서 인터뷰 요약 문서와 Markdown 다운로드로 바로 이동하는 E2E가 남아 있다.
+- ✅ 설계 완료 후 평가 진입에는 추가 차감이 없다(백엔드·프론트 계약 테스트).
+- ✅ 신규 단위·API 테스트와 실제 Supabase 동시성 검증이 통과한다.
