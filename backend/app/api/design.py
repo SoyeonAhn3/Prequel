@@ -9,6 +9,7 @@ from app.api._shared import (
     get_interview_context as _get_interview_context,
     parse_json_response as _parse_json_response,
     pick_canonical_session,
+    require_owned_session,
 )
 from app.core.claude_client import chat
 from app.core.usage import record_token_usage
@@ -116,9 +117,8 @@ def _coerce_ai_workflow(value):
     return None
 
 
-def _get_or_create_session(project_id: str, user_id: str) -> dict:
-    """Return the project's canonical design session, creating one only if none
-    exists yet.
+def _get_or_create_session(sb, project_id: str, user_id: str) -> tuple[dict, dict]:
+    """Authorize the project, then return it with its canonical design session.
 
     Reuses the session holding the most step content (see pick_canonical_session).
     Previously this reused only sessions with status == "in_progress"; because the
@@ -126,8 +126,11 @@ def _get_or_create_session(project_id: str, user_id: str) -> dict:
     found no in_progress row and inserted a fresh, mostly-empty session — stranding
     the real data in an older row that readers then ignored. Use
     DELETE /design/session/{id} to start over from scratch.
+
+    Authorization deliberately happens before any session lookup or insert so
+    this helper remains safe even if a future caller omits an outer access check.
     """
-    sb = get_supabase()
+    project = _require_design_access(sb, project_id, user_id)
     existing = (
         sb.table("design_sessions")
         .select("*")
@@ -137,19 +140,7 @@ def _get_or_create_session(project_id: str, user_id: str) -> dict:
     )
     canonical = pick_canonical_session(existing.data, DESIGN_STEP_COLS)
     if canonical:
-        return canonical
-
-    project = (
-        sb.table("projects")
-        .select("id, user_id")
-        .eq("id", project_id)
-        .eq("user_id", user_id)
-        .is_("deleted_at", "null")
-        .maybe_single()
-        .execute()
-    )
-    if not project.data:
-        raise HTTPException(status_code=404, detail="Project not found")
+        return project, canonical
 
     new_session = (
         sb.table("design_sessions")
@@ -160,7 +151,7 @@ def _get_or_create_session(project_id: str, user_id: str) -> dict:
         })
         .execute()
     )
-    return new_session.data[0]
+    return project, new_session.data[0]
 
 
 def _session_to_out(session: dict) -> DesignSessionOut:
@@ -239,9 +230,7 @@ async def generate_requirements(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = _require_design_access(sb, body.project_id, user["id"])
-
-    session = _get_or_create_session(body.project_id, user["id"])
+    project, session = _get_or_create_session(sb, body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
     skill_text = load_skill("design-requirements")
 
@@ -284,16 +273,10 @@ async def get_requirements(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    result = (
-        sb.table("design_sessions")
-        .select("requirements")
-        .eq("id", session_id)
-        .maybe_single()
-        .execute()
+    session = require_owned_session(
+        sb, "design_sessions", session_id, user["id"]
     )
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return {"requirements": result.data.get("requirements", [])}
+    return {"requirements": session.get("requirements", [])}
 
 
 @router.put("/requirements/{session_id}/{req_id}")
@@ -304,17 +287,10 @@ async def update_requirement(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    result = (
-        sb.table("design_sessions")
-        .select("requirements")
-        .eq("id", session_id)
-        .maybe_single()
-        .execute()
+    session = require_owned_session(
+        sb, "design_sessions", session_id, user["id"]
     )
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    requirements = result.data.get("requirements", [])
+    requirements = session.get("requirements", [])
     updated = False
     for req in requirements:
         if req["id"] == req_id:
@@ -341,6 +317,7 @@ async def replace_requirements(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
+    require_owned_session(sb, "design_sessions", session_id, user["id"])
     requirements = body.get("requirements", [])
     sb.table("design_sessions").update({"requirements": requirements}).eq("id", session_id).execute()
     return {"requirements": requirements}
@@ -378,9 +355,7 @@ async def generate_arch_templates(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = _require_design_access(sb, body.project_id, user["id"])
-
-    session = _get_or_create_session(body.project_id, user["id"])
+    project, session = _get_or_create_session(sb, body.project_id, user["id"])
 
     if session.get("arch_templates"):
         return {"templates": session["arch_templates"]}
@@ -429,9 +404,7 @@ async def generate_architecture(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = _require_design_access(sb, body.project_id, user["id"])
-
-    session = _get_or_create_session(body.project_id, user["id"])
+    project, session = _get_or_create_session(sb, body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
     skill_text = load_skill("design-architecture")
 
@@ -509,16 +482,10 @@ async def get_architecture(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    result = (
-        sb.table("design_sessions")
-        .select("architecture")
-        .eq("id", session_id)
-        .maybe_single()
-        .execute()
+    session = require_owned_session(
+        sb, "design_sessions", session_id, user["id"]
     )
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return {"architecture": result.data.get("architecture")}
+    return {"architecture": session.get("architecture")}
 
 
 @router.put("/architecture/{session_id}")
@@ -528,6 +495,7 @@ async def update_architecture(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
+    require_owned_session(sb, "design_sessions", session_id, user["id"])
     sb.table("design_sessions").update({"architecture": body}).eq("id", session_id).execute()
     return {"architecture": body}
 
@@ -540,9 +508,7 @@ async def generate_data_model(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = _require_design_access(sb, body.project_id, user["id"])
-
-    session = _get_or_create_session(body.project_id, user["id"])
+    project, session = _get_or_create_session(sb, body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
     skill_text = load_skill("design-data-model")
 
@@ -602,16 +568,10 @@ async def get_data_model(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    result = (
-        sb.table("design_sessions")
-        .select("data_model")
-        .eq("id", session_id)
-        .maybe_single()
-        .execute()
+    session = require_owned_session(
+        sb, "design_sessions", session_id, user["id"]
     )
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return {"data_model": result.data.get("data_model")}
+    return {"data_model": session.get("data_model")}
 
 
 @router.put("/data-model/{session_id}")
@@ -621,6 +581,7 @@ async def update_data_model(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
+    require_owned_session(sb, "design_sessions", session_id, user["id"])
     sb.table("design_sessions").update({"data_model": body}).eq("id", session_id).execute()
     return {"data_model": body}
 
@@ -633,9 +594,7 @@ async def generate_ai_workflow(
     user: dict = Depends(get_current_user),
 ):
     sb = get_supabase()
-    project = _require_design_access(sb, body.project_id, user["id"])
-
-    session = _get_or_create_session(body.project_id, user["id"])
+    project, session = _get_or_create_session(sb, body.project_id, user["id"])
     context = _get_interview_context(body.project_id)
     skill_text = load_skill("design-ai-workflow")
 

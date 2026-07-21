@@ -152,7 +152,7 @@ prequel/
 │   │   └── middleware/            # Auth, Rate Limiting, CORS
 │   ├── skills/                    # Runtime AI prompts (.md) — single source of truth
 │   ├── references/                # Reference files for prompts
-│   └── tests/                     # pytest suite — 59 tests, 64% coverage (Phase 9 #7)
+│   └── tests/                     # pytest suite — 143 passing tests (latest full run: 2026-07-21)
 ├── scripts/
 │   └── sync_harness.py            # ⛔ Deprecated (BL-002) — backend/skills is the source of truth
 ├── supabase/
@@ -211,11 +211,14 @@ Payment integration is planned for MVP-2.
 | MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
 
+Security hardening update: **BL-021 is complete**. All eight design/finalization APIs that accept a `session_id` now validate session → active project → authenticated owner before reads or writes. The regression suite passed with two real Supabase Auth users and actual login JWTs: 8/8 owner requests succeeded, 8/8 cross-user requests were hidden with 404 and caused no mutation, and 8/8 requests were denied after project soft deletion. The full backend suite passes 143 tests.
+
 ### Test Scenarios
 
 | Phase | Status | Link |
 |---|---|---|
 | Phase 3: Project Management | ✅ Pass (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
+| BL-021: Session ownership / IDOR | ✅ Pass (real Supabase Auth A/B JWT verification) | [BACKLOG.md](BACKLOG.md) |
 | Phase 9: E2E Demo Scenario | 🚧 Authored (16 TCs, TC-015 AI-preverified Pass) | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## Roadmap

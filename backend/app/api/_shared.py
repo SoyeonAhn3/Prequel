@@ -14,6 +14,7 @@ from app.core.supabase import get_supabase
 
 DESIGN_STEP_COLS = ("requirements", "architecture", "data_model", "ai_workflow")
 FINALIZE_STEP_COLS = ("evaluation", "done_criteria", "gaps", "checklist")
+OWNED_SESSION_TABLES = frozenset({"design_sessions", "finalize_sessions"})
 _CREDIT_LIMIT_ERROR = re.compile(r"CREDIT_LIMIT_EXCEEDED:(\d+)")
 
 
@@ -58,6 +59,48 @@ def unpack_credit_rpc_project(data) -> tuple[dict, bool]:
     if not isinstance(payload, dict) or not isinstance(payload.get("project"), dict):
         raise HTTPException(status_code=500, detail="Invalid credit transaction response")
     return payload["project"], payload.get("charged") is True
+
+
+def require_owned_session(
+    sb,
+    table_name: str,
+    session_id: str,
+    user_id: str,
+) -> dict:
+    """Return a design/finalize session only when its active project is owned.
+
+    The backend Supabase client uses the service role, so row-level security does
+    not authorize these API requests for us. Missing sessions, sessions owned by
+    another user, and sessions attached to soft-deleted projects deliberately
+    share the same 404 response to avoid disclosing resource existence.
+    """
+    if table_name not in OWNED_SESSION_TABLES:
+        raise ValueError(f"Unsupported owned-session table: {table_name}")
+
+    session_result = (
+        sb.table(table_name)
+        .select("*")
+        .eq("id", session_id)
+        .maybe_single()
+        .execute()
+    )
+    session = getattr(session_result, "data", None)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    project_result = (
+        sb.table("projects")
+        .select("id")
+        .eq("id", session["project_id"])
+        .eq("user_id", user_id)
+        .is_("deleted_at", "null")
+        .maybe_single()
+        .execute()
+    )
+    if not getattr(project_result, "data", None):
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    return session
 
 
 def session_content_score(session: dict, columns: tuple[str, ...]) -> int:

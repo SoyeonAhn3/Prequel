@@ -152,7 +152,7 @@ prequel/
 │   │   └── middleware/            # Auth, Rate Limiting, CORS
 │   ├── skills/                    # 런타임 AI 프롬프트 (.md) — 단일 원본
 │   ├── references/                # 프롬프트용 Reference 파일
-│   └── tests/                     # pytest 스위트 — 59개, 커버리지 64% (Phase 9 #7)
+│   └── tests/                     # pytest 스위트 — 전체 143개 통과 (최근 실행: 2026-07-21)
 ├── scripts/
 │   └── sync_harness.py            # ⛔ 폐기 (BL-002) — backend/skills가 단일 원본
 ├── supabase/
@@ -211,11 +211,14 @@ prequel/
 | MVP-2 (5개 기능) | 📋 예정 | 결제 + 토큰 추적 + 비용 미터 + 갤러리 + 모델 라우팅 |
 | v2 | 📋 Planned | 갭 분석, DOCX 내보내기, 공유 링크 |
 
+보안 강화 현황: **BL-021 완료**. `session_id`를 받는 설계·마감 API 8개가 조회·수정 전에 세션 → 삭제되지 않은 프로젝트 → 로그인 사용자 소유권을 확인한다. 실제 Supabase Auth 사용자 A/B와 각 사용자의 로그인 JWT로 회귀 검증해 소유자 요청 8/8 성공, 타 사용자 요청 8/8 동일한 404 및 데이터 불변, 프로젝트 soft delete 후 요청 8/8 거부를 확인했다. 백엔드 전체 테스트는 143개가 통과한다.
+
 ### 테스트 시나리오
 
 | Phase | 상태 | 링크 |
 |---|---|---|
 | Phase 3: 프로젝트 관리 | ✅ 전체 통과 (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
+| BL-021: 세션 소유권 / IDOR | ✅ 통과 (실제 Supabase Auth 사용자 A/B JWT 검증) | [BACKLOG.md](BACKLOG.md) |
 | Phase 9: E2E 데모 시나리오 | 🚧 작성됨 (16 TC, TC-015 AI 선검증 Pass) | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## 로드맵

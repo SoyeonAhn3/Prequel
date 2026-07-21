@@ -15,6 +15,7 @@ from app.api._shared import (
     get_interview_context,
     parse_json_response,
     pick_canonical_session,
+    require_owned_session,
 )
 from app.core.claude_client import chat
 from app.core.usage import record_token_usage
@@ -80,16 +81,22 @@ def _require_evaluation_access(sb, project_id: str, user_id: str) -> dict:
     return project
 
 
-def _get_or_create_finalize_session(project_id: str) -> dict:
-    """Return the project's canonical finalize session, creating one only if none
-    exists yet.
+def _get_or_create_finalize_session(
+    sb,
+    project_id: str,
+    user_id: str,
+) -> tuple[dict, dict]:
+    """Authorize the project, then return it with its canonical finalize session.
 
     Reuses the session holding the most step content (see pick_canonical_session)
     so re-running a step updates the existing row instead of forking a new one. The
     checklist step flips status to "completed", which the old in_progress-only
     filter could not reuse — the same duplicate-row bug fixed in design.
+
+    Authorization deliberately happens before any session lookup or insert so
+    this helper remains safe even if a future caller omits an outer access check.
     """
-    sb = get_supabase()
+    project = _require_evaluation_access(sb, project_id, user_id)
     existing = (
         sb.table("finalize_sessions")
         .select("*")
@@ -99,7 +106,7 @@ def _get_or_create_finalize_session(project_id: str) -> dict:
     )
     canonical = pick_canonical_session(existing.data, FINALIZE_STEP_COLS)
     if canonical:
-        return canonical
+        return project, canonical
 
     new_session = (
         sb.table("finalize_sessions")
@@ -110,7 +117,7 @@ def _get_or_create_finalize_session(project_id: str) -> dict:
         })
         .execute()
     )
-    return new_session.data[0]
+    return project, new_session.data[0]
 
 
 def _finalize_to_out(session: dict) -> FinalizeSessionOut:
@@ -178,8 +185,9 @@ def _finalize_complete(sb, project: dict, project_id: str, session: dict) -> Non
 def _generate(step: str, body: FinalizeGenerateRequest, user: dict) -> FinalizeSessionOut:
     cfg = STEP_CONFIG[step]
     sb = get_supabase()
-    project = _require_evaluation_access(sb, body.project_id, user["id"])
-    session = _get_or_create_finalize_session(body.project_id)
+    project, session = _get_or_create_finalize_session(
+        sb, body.project_id, user["id"]
+    )
 
     interview_ctx = get_interview_context(body.project_id)
     design_ctx = get_design_context(body.project_id)
@@ -252,8 +260,9 @@ async def complete_finalize(body: FinalizeGenerateRequest, user: dict = Depends(
     the completion, without regenerating the checklist.
     """
     sb = get_supabase()
-    project = _require_evaluation_access(sb, body.project_id, user["id"])
-    session = _get_or_create_finalize_session(body.project_id)
+    project, session = _get_or_create_finalize_session(
+        sb, body.project_id, user["id"]
+    )
     if not session.get("checklist"):
         raise HTTPException(status_code=400, detail="착수 체크리스트까지 먼저 생성해주세요.")
     _finalize_complete(sb, project, body.project_id, session)
@@ -290,6 +299,7 @@ async def update_finalize_step(
         raise HTTPException(status_code=400, detail="Invalid step")
     column = STEP_CONFIG[step]["column"]
     sb = get_supabase()
+    require_owned_session(sb, "finalize_sessions", session_id, user["id"])
     result = (
         sb.table("finalize_sessions")
         .update({column: body.data})
