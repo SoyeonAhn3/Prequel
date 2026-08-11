@@ -1,0 +1,4 @@
+interface:
+  display_name: "README Generator"
+  short_description: "Generate evidence-based bilingual project README files"
+  default_prompt: "Use $readme-gen to analyze this repository and draft synchronized English and Korean README files."

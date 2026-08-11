@@ -30,10 +30,11 @@ export default function EditProjectModal({ initialName, initialDescription, onCl
         <h3 className="text-base font-bold text-text">프로젝트 수정</h3>
         <p className="text-xs text-text-subtle mt-1">이름과 설명을 수정할 수 있어요.</p>
 
-        <label className="block text-xs font-semibold text-text-muted mt-5 mb-1.5">
+        <label htmlFor="edit-project-name" className="block text-xs font-semibold text-text-muted mt-5 mb-1.5">
           프로젝트 이름 <span className="text-red">*</span>
         </label>
         <input
+          id="edit-project-name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -41,10 +42,11 @@ export default function EditProjectModal({ initialName, initialDescription, onCl
           className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm text-text outline-none focus:border-accent"
         />
 
-        <label className="block text-xs font-semibold text-text-muted mt-4 mb-1.5">
+        <label htmlFor="edit-project-description" className="block text-xs font-semibold text-text-muted mt-4 mb-1.5">
           간단한 설명 (선택)
         </label>
         <textarea
+          id="edit-project-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}

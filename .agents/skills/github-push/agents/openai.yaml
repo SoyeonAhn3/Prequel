@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Push"
+  short_description: "Safely review, commit, and push repository changes"
+  default_prompt: "Use $github-push to review, commit, and push the current repository changes safely."

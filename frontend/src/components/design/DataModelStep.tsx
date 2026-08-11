@@ -228,22 +228,25 @@ export default function DataModelStep({ session, generating, onGenerate, onUpdat
   )
 }
 
+// `structured`는 두 정식 포맷 중 하나로 파싱됐는지를 뜻한다. 공백 분리 폴백은
+// 어떤 문자열이든 그럴듯한 값을 만들어내므로, 파싱 결과를 문장으로 쓰는 쪽
+// (deriveValidationRules)은 이 플래그로 폴백 결과를 걸러야 한다.
 function parseRelationship(rel: string) {
   // Canonical skill format: "테이블A 1--N 테이블B: 설명" (cardinality uses --, e.g. 1--N, N--N, 1--1)
   const card = rel.match(/^(.+?)\s+(\S*--\S*)\s+(.+?)\s*:\s*(.+)$/)
   if (card) {
-    return { from: card[1].trim(), to: card[3].trim(), desc: card[4].trim(), cardinality: card[2].replace(/--/, ' : ') }
+    return { from: card[1].trim(), to: card[3].trim(), desc: card[4].trim(), cardinality: card[2].replace(/--/, ' : '), structured: true }
   }
   // Legacy arrow format: "테이블A → 테이블B: 설명"
   const arrow = rel.match(/^(.+?)\s*→\s*(.+?):\s*(.+)$/)
   if (arrow) {
-    return { from: arrow[1].trim(), to: arrow[2].trim(), desc: arrow[3].trim(), cardinality: '1 : N' }
+    return { from: arrow[1].trim(), to: arrow[2].trim(), desc: arrow[3].trim(), cardinality: '1 : N', structured: true }
   }
   const parts = rel.split(/\s+/).filter((p) => p !== '→')
   if (parts.length >= 2) {
-    return { from: parts[0], to: parts[parts.length - 1], desc: rel.replace(/→/g, '').trim(), cardinality: '1 : N' }
+    return { from: parts[0], to: parts[parts.length - 1], desc: rel.replace(/→/g, '').trim(), cardinality: '1 : N', structured: false }
   }
-  return { from: rel.replace(/→/g, '').trim(), to: '', desc: '', cardinality: '' }
+  return { from: rel.replace(/→/g, '').trim(), to: '', desc: '', cardinality: '', structured: false }
 }
 
 function deriveValidationRules(dm: DataModel): { ok: boolean; t: string }[] {
@@ -270,10 +273,13 @@ function deriveValidationRules(dm: DataModel): { ok: boolean; t: string }[] {
     }
   }
 
+  // 스킬이 실제로 내보내는 포맷은 `테이블A 1--N 테이블B: 설명`이다. 예전에는 여기서
+  // `→` 전용 정규식을 따로 써서 관계 규칙이 한 건도 표시되지 않았다(P5-14 후속).
+  // 파싱은 parseRelationship 한 곳에만 두고 여기서는 재사용한다.
   for (const rel of rels) {
-    const parsed = rel.match(/^(.+?)\s*→\s*(.+?):\s*(.+)$/)
-    if (parsed) {
-      rules.push({ ok: true, t: `${parsed[2]} 기록은 반드시 ${parsed[1]} 정보가 있어야 해요` })
+    const { from, to, structured } = parseRelationship(rel)
+    if (structured && from && to) {
+      rules.push({ ok: true, t: `${to} 기록은 반드시 ${from} 정보가 있어야 해요` })
     }
   }
 

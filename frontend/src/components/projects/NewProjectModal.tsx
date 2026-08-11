@@ -103,8 +103,9 @@ export default function NewProjectModal({ isQuotaExceeded, onClose, onCreate }: 
           <div className="px-6 pb-6">
             <div className="space-y-4 mt-2">
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-1.5">프로젝트 이름 *</label>
+                <label htmlFor="new-project-name" className="block text-xs font-medium text-text-muted mb-1.5">프로젝트 이름 *</label>
                 <input
+                  id="new-project-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -115,8 +116,9 @@ export default function NewProjectModal({ isQuotaExceeded, onClose, onCreate }: 
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-1.5">간단한 설명 (선택)</label>
+                <label htmlFor="new-project-description" className="block text-xs font-medium text-text-muted mb-1.5">간단한 설명 (선택)</label>
                 <textarea
+                  id="new-project-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="프로젝트의 목적이나 주요 기능을 한 줄로 설명해주세요"

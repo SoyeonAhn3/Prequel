@@ -1,0 +1,4 @@
+interface:
+  display_name: "Phase Documentation"
+  short_description: "Create and synchronize bilingual Phase documentation"
+  default_prompt: "Use $phase-doc to update the relevant bilingual Phase document from the current repository changes."

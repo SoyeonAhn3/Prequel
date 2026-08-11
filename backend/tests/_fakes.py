@@ -118,6 +118,24 @@ class _Query:
         return _Result(data)
 
 
+class _FakeAuthAdmin:
+    """auth.admin 최소 구현 — 계정 파기(BL-005) 검증용."""
+
+    def __init__(self):
+        self.deleted_users = []
+        self.error = None  # 테스트에서 삭제 실패를 주입할 때 사용
+
+    def delete_user(self, user_id):
+        if self.error is not None:
+            raise self.error
+        self.deleted_users.append(user_id)
+
+
+class _FakeAuth:
+    def __init__(self):
+        self.admin = _FakeAuthAdmin()
+
+
 class FakeSupabase:
     """테이블별 행 딕셔너리를 들고 있는 가짜 클라이언트."""
 
@@ -126,6 +144,7 @@ class FakeSupabase:
         self._counter = itertools.count(1)
         self._rpc_handlers = {}
         self.rpc_calls = []
+        self.auth = _FakeAuth()
 
     def table(self, name):
         return _Query(self._store, name, self._counter)

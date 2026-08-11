@@ -56,8 +56,10 @@ export default function AnnouncementModal({ editing, onClose, onSubmit }: Props)
         <div className="px-6 pb-6 space-y-4">
           {/* 유형 */}
           <div>
-            <label className="block text-xs font-medium text-text-muted mb-1.5">유형</label>
-            <div className="flex gap-3">
+            {/* 입력칸이 아니라 버튼 묶음이라 label/htmlFor로는 연결할 수 없다.
+                그룹에 이름을 붙이고 각 버튼이 선택 상태를 알리도록 한다. */}
+            <span id="announcement-type-label" className="block text-xs font-medium text-text-muted mb-1.5">유형</span>
+            <div className="flex gap-3" role="group" aria-labelledby="announcement-type-label">
               {([
                 { value: 'notice' as const, label: '공지' },
                 { value: 'patch' as const, label: '패치내역' },
@@ -65,6 +67,7 @@ export default function AnnouncementModal({ editing, onClose, onSubmit }: Props)
                 <button
                   key={opt.value}
                   onClick={() => setType(opt.value)}
+                  aria-pressed={type === opt.value}
                   className={`flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-lg border-2 text-left cursor-pointer transition-all ${
                     type === opt.value
                       ? 'border-accent bg-accent-soft'
@@ -87,10 +90,11 @@ export default function AnnouncementModal({ editing, onClose, onSubmit }: Props)
           {/* 제목 */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-medium text-text-muted">제목 *</label>
+              <label htmlFor="announcement-title" className="text-xs font-medium text-text-muted">제목 *</label>
               <span className="text-[11px] text-text-subtle font-mono">{title.length} / {TITLE_MAX}</span>
             </div>
             <input
+              id="announcement-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -104,10 +108,11 @@ export default function AnnouncementModal({ editing, onClose, onSubmit }: Props)
           {/* 본문 */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-medium text-text-muted">본문 *</label>
+              <label htmlFor="announcement-content" className="text-xs font-medium text-text-muted">본문 *</label>
               <span className="text-[11px] text-text-subtle font-mono">{content.length} / {CONTENT_MAX}</span>
             </div>
             <textarea
+              id="announcement-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="공지 내용을 입력하세요..."
@@ -121,10 +126,11 @@ export default function AnnouncementModal({ editing, onClose, onSubmit }: Props)
           <div className="flex gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-1.5 mb-1.5">
-                <label className="text-xs font-medium text-text-muted">버전</label>
+                <label htmlFor="announcement-version" className="text-xs font-medium text-text-muted">버전</label>
                 <span className="text-[10px] px-1.5 py-0.5 bg-surface-alt text-text-subtle rounded">선택</span>
               </div>
               <input
+                id="announcement-version"
                 type="text"
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
@@ -135,9 +141,12 @@ export default function AnnouncementModal({ editing, onClose, onSubmit }: Props)
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-text-muted mb-1.5">상단 고정</label>
+              {/* 토글도 버튼이라 htmlFor 대상이 아니다 — 이름과 on/off 상태를 직접 알린다. */}
+              <span id="announcement-pinned-label" className="block text-xs font-medium text-text-muted mb-1.5">상단 고정</span>
               <button
                 onClick={() => setPinned(!pinned)}
+                aria-pressed={pinned}
+                aria-labelledby="announcement-pinned-label"
                 className={`flex items-center gap-2 px-3 h-[38px] rounded-lg border transition-colors cursor-pointer ${
                   pinned ? 'border-accent bg-accent-soft' : 'border-border bg-bg'
                 }`}

@@ -28,6 +28,10 @@ def chat(
     system: list[dict],
     messages: list[dict],
     max_tokens: int = 1024,
+    # 이 프로젝트의 유일한 모델 지정 지점 — 호출부는 model을 넘기지 않는다.
+    # ⚠️ 세대를 올릴 때 문자열만 바꾸면 깨진다. Sonnet 5 이상은 thinking이 기본
+    # 켜짐이라 content[0]이 thinking 블록이 되고, 아래 content[0].text가 터진다.
+    # 갱신 절차와 나머지 변경점은 BACKLOG.md의 BL-020 "수동 갱신" 항목 참고.
     model: str = "claude-sonnet-4-6",
     timeout: float | None = None,
 ) -> tuple[str, dict]:

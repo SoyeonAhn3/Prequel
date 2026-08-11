@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthContext } from '../../contexts/AuthContext'
+import DeleteAccountModal from './DeleteAccountModal'
 
+// 템플릿 갤러리는 미구현 계획 항목이라 탭을 두지 않는다.
+// `/templates` 라우트가 없어 catch-all이 랜딩으로 되돌리므로, 탭이 있으면
+// 로그인 사용자가 앱 밖으로 튕겨 나간다. 갤러리 구현 시 라우트와 함께 추가할 것.
 const NAV_TABS = [
   { label: '내 프로젝트', path: '/projects' },
-  { label: '템플릿', path: '/templates' },
   { label: '공지사항', path: '/notices' },
   { label: '가이드', path: '/guide' },
 ]
@@ -14,6 +17,7 @@ export default function TopBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -29,6 +33,13 @@ export default function TopBar() {
   async function handleSignOut() {
     await signOut()
     navigate('/login')
+  }
+
+  /** 계정이 사라진 뒤에는 남은 세션으로 아무것도 할 수 없으므로 즉시 로그아웃한다. */
+  async function handleAccountDeleted() {
+    setDeleteOpen(false)
+    await signOut()
+    navigate('/', { replace: true })
   }
 
   const devBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
@@ -132,14 +143,34 @@ export default function TopBar() {
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="w-full text-left px-4 py-2 text-sm text-red hover:bg-bg transition-colors cursor-pointer bg-transparent border-none"
+                  className="w-full text-left px-4 py-2 text-sm text-text hover:bg-bg transition-colors cursor-pointer bg-transparent border-none"
                 >
                   로그아웃
                 </button>
+                {/* 관리자 본인 삭제는 서버에서 막혀 있으므로 메뉴에도 노출하지 않는다. */}
+                {user.role !== 'admin' && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setDeleteOpen(true)
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-red hover:bg-bg transition-colors cursor-pointer bg-transparent border-none border-t border-border"
+                  >
+                    계정 삭제
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
+      )}
+
+      {deleteOpen && user && (
+        <DeleteAccountModal
+          email={user.email}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={handleAccountDeleted}
+        />
       )}
     </header>
   )

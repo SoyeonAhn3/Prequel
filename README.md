@@ -18,7 +18,7 @@ Built for planners and developers who want to validate project ideas through AI-
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Screens](#screens)
-- [Pricing](#pricing)
+- [Credits & Cost Model](#credits--cost-model)
 - [Current Status](#current-status)
 - [Roadmap](#roadmap)
 - [Limitations](#limitations)
@@ -42,7 +42,6 @@ User enters project idea
 |---|---|---|
 | React (Vite) | Frontend SPA | Lightweight, clear separation from backend, fast HMR |
 | TailwindCSS | Styling | Utility-first rapid prototyping, small bundle |
-| react-i18next | Multilingual (ko/en) — *planned, Phase 9 (not yet installed)* | JSON key separation, runtime language switching |
 | FastAPI | Backend API | Claude SDK Python-first, Pydantic validation, auto OpenAPI |
 | Supabase | DB + Auth + RLS | PostgreSQL + OAuth + Row-Level Security, all-in-one free tier |
 | Claude API | AI interview + doc generation | Reuses harness skill prompts, Prompt Caching (90% cost cut) |
@@ -67,7 +66,7 @@ Harness skill definitions (`.md` files) are used directly as Claude API prompts 
 4. **Conversation compression** — summarizes older turns to reduce tokens
 5. **Prompt Caching** — Anthropic cache for repeated prompt blocks
 
-Estimated cost per kickoff: **$0.4–0.7** (MVP-2 model routing targets $0.3–0.5).
+Estimated cost per kickoff: **$0.4–0.7**. A real Anthropic A/B run measured an 83% cache-read ratio and an **88% cut in full-price input tokens** after the caching rework (BL-003). Further per-phase model tiering was dropped together with monetization — see [BL-020](BACKLOG.md).
 
 ## Quick Start
 
@@ -136,7 +135,6 @@ prequel/
 │   │   │   └── common/            # Badge, ProgressBar, Header, Footer
 │   │   ├── pages/                 # Route pages (8 screens)
 │   │   ├── hooks/                 # useInterview, useAuth, etc.
-│   │   ├── i18n/                  # ko.json, en.json (planned — Phase 9)
 │   │   └── lib/                   # API client, Supabase client
 │   └── package.json
 ├── backend/                       # FastAPI [Railway]
@@ -166,7 +164,7 @@ prequel/
 │   ├── Phase6_EvalFinalize.md     # ✅ Evaluation & finalization
 │   ├── Phase7_DocGeneration.md    # ✅ Document preview & generation (Markdown export; Mermaid out of scope)
 │   ├── Phase8_AdminFeatures.md    # ✅ Admin & supporting features
-│   └── Phase9_IntegrationDeploy.md # 🚧 i18n, testing & deployment (Steps 1-3 done: legal + error handling + pytest 64%)
+│   └── Phase9_IntegrationDeploy.md # 🚧 Testing & deployment (Playwright 9/9 + real Supabase 3/3; 16/18 TCs)
 ├── .env.example
 └── README.md
 ```
@@ -175,7 +173,7 @@ prequel/
 
 | # | Screen | Description |
 |---|---|---|
-| 1 | Landing page | Service intro + template gallery + "Get Started" |
+| 1 | Landing page | Service intro + stats + "Get Started" (template gallery not built) |
 | 2 | Login / Signup | OAuth (Google + GitHub) |
 | 3 | My Projects | Project list + management |
 | 4 | Interview (Chat UI) | Core — structured Q&A with progress bar |
@@ -184,15 +182,22 @@ prequel/
 | 7 | User Guide | How-to + FAQ |
 | 8 | Announcements | Updates + patch notes |
 
-## Pricing
+## Credits & Cost Model
 
-| Plan | Price | Includes |
+The service runs entirely on free credits. Each account gets **2 credits**, charged per phase on first entry:
+
+| Phase | Credits | Notes |
 |---|---|---|
-| Free | ₩0 | 2 kickoffs per account |
-| Basic | ₩9,900/mo | 10 kickoffs/month |
-| Pro | ₩24,900/mo | 30 kickoffs/month |
+| Interview (first entry) | 1 | Refresh, re-entry, resume, and retry never re-charge |
+| Design + Evaluation (first entry) | 1 | One set — entering evaluation after design is free |
+| Skip design/evaluation | 0 | Goes straight to the document |
+| Document preview / Markdown export | 0 | Always free |
 
-Payment integration is planned for MVP-2.
+Charging is **atomic**: each phase is stamped on the project row (`interview_credit_charged_at` / `credit_charged_at`) inside a Postgres RPC that takes `SELECT ... FOR UPDATE` row locks and is executable by `service_role` only — browsers cannot write `credits_used` directly. Verified against real Supabase: concurrent requests on the same project charge exactly once, and two projects racing for the last credit produce exactly one success (4/4 concurrency + 3/3 real-JWT browser tests).
+
+### Paid plans — designed, deliberately not built
+
+Basic (₩9,900/mo · 10 kickoffs) and Pro (₩24,900/mo · 30 kickoffs) were specified during planning, but payment integration is **intentionally out of scope**. Turning on real payments requires business registration and e-commerce filing — non-engineering prerequisites with no bearing on the product. The project therefore ships the metering layer that a payment provider would sit on top of, and stops there.
 
 ## Current Status
 
@@ -207,11 +212,11 @@ Payment integration is planned for MVP-2.
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
 | Phase 7: Doc Preview & Generation | ✅ Done | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. Note: progressive v1→v2→v3 generation dropped in favor of live assembly; **Mermaid diagram rendering removed from scope** |
 | Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. BL-003 prompt caching completed with real Anthropic A/B verification; BL-004 tracked separately. |
-| Phase 9: i18n, Testing & Deploy | 🚧 In Progress | **Steps 1-3 done**: legal pages (`/terms`, `/privacy`) + landing footer & login legal links; **error handling integration (NFR-003)** — Claude timeout/retry → 503 friendly errors, `apiFetch` timeout + `ApiError`, retry buttons (4 screens), Error Boundary, interview offline draft/auto-resend; **pytest coverage 64%** (#7, ≥60% DoD — +25 projects/finalize endpoint tests + stateful `FakeSupabase` helper) + **E2E demo scenario authored** (#6, 16 manual TCs, TC-015 AI-preverified, not yet executed). Remaining: multilingual UI (i18n), E2E execution, Netlify + Railway deploy. Follow-up: BL-008 (project name/description edit UI) |
-| MVP-2 (5 features) | 📋 Planned | Payment + token tracking + cost meter + gallery + model routing |
+| Phase 9: Testing & Deploy | 🚧 In Progress | Legal pages, integrated error handling, account purge, and pytest ≥60% are done. Deterministic Playwright is **9/9 Pass**, the opt-in real-Supabase billing suite is **3/3 Pass**, and the numbered E2E contract is **16/18 Pass**. Multilingual UI was dropped from scope. Remaining: real OAuth, TC-018's AI-generation remainder, and Netlify + Railway deploy. |
+| Monetization | ❌ Out of scope | Payment, cost meter, and model tiering deliberately dropped — the verified free-credit metering layer ships instead |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
 
-Security hardening update: **BL-021 is complete**. All eight design/finalization APIs that accept a `session_id` now validate session → active project → authenticated owner before reads or writes. The regression suite passed with two real Supabase Auth users and actual login JWTs: 8/8 owner requests succeeded, 8/8 cross-user requests were hidden with 404 and caused no mutation, and 8/8 requests were denied after project soft deletion. The full backend suite passes 143 tests.
+Security hardening update: **BL-021 is complete**. All eight design/finalization APIs that accept a `session_id` now validate session → active project → authenticated owner before reads or writes. The regression suite passed with two real Supabase Auth users and actual login JWTs: 8/8 owner requests succeeded, 8/8 cross-user requests were hidden with 404 and caused no mutation, and 8/8 requests were denied after project soft deletion. The current backend suite passes 148 tests with 5 opt-in integration tests skipped by default.
 
 ### Test Scenarios
 
@@ -219,8 +224,8 @@ Security hardening update: **BL-021 is complete**. All eight design/finalization
 |---|---|---|
 | Phase 3: Project Management | ✅ Pass (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 | BL-021: Session ownership / IDOR | ✅ Pass (real Supabase Auth A/B JWT verification) | [BACKLOG.md](BACKLOG.md) |
-| BL-022/023: Atomic phase credits | ✅ Real Supabase concurrency Pass (4/4); browser flow E2E pending for BL-023 | [BACKLOG.md](BACKLOG.md) |
-| Phase 9: E2E Demo Scenario | 🚧 Authored (16 TCs, TC-015 AI-preverified Pass) | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
+| BL-022/023: Atomic phase credits | ✅ Real Supabase concurrency 4/4 + actual-JWT browser billing 3/3 Pass; TC-018 AI generation remains | [BACKLOG.md](BACKLOG.md) |
+| Phase 9: E2E Demo Scenario | 🚧 18 TCs (16 Pass); deterministic Playwright 9/9 + real-Supabase billing 3/3 Pass | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## Roadmap
 
@@ -232,21 +237,30 @@ Security hardening update: **BL-021 is complete**. All eight design/finalization
 | Project type detection | Auto-detect 1 of 7 project types from user input |
 | Kickoff doc generation | Markdown document with section-based card UI preview |
 | OAuth + Admin | Google/GitHub login, admin dashboard for user/announcement management |
-| Multilingual UI | Korean + English, fixed per project at creation |
 | Progress visualization | Step progress bar showing interview completion |
 | Pause & resume | Event-based session save + resume from last question |
 | Announcements | Admin-authored notices and patch notes |
+| Phase-based credits | Atomic per-phase charging with row locks + idempotent charge stamps |
 | API cost optimization | Prompt STEP splitting + caching + compression |
 
-### MVP-2
+### Out of Scope — deliberately dropped
+
+| Feature | Why dropped |
+|---|---|
+| Payment (Toss) | Needs business registration + e-commerce filing — non-engineering prerequisites |
+| Real-time cost meter | Only meaningful once paid plans exist |
+| Model tiering / routing | Existed solely to fix paid-tier unit economics ([BL-020](BACKLOG.md)) |
+| Multilingual UI (ko/en) | The interview skills driving every AI response are authored in Korean, so an English shell would still return Korean output. A partial translation reads as a defect rather than a feature, and the audience is Korean-speaking. Korean-only is now a stated limitation, not a gap |
+
+What these would have been built on top of — per-phase credit metering — **is** implemented and verified. See [Credits & Cost Model](#credits--cost-model).
+
+### Still Planned
 
 | Feature | Description |
 |---|---|
-| Token tracking + quota | Per-session token/cost logging, usage-based limits |
-| Payment (Toss) | Basic/Pro plan subscription |
-| Real-time cost meter | Live remaining quota display during interview |
 | Template gallery | Sample kickoff results by project type |
-| Model routing | Haiku for simple turns, Sonnet for analysis/generation |
+
+The Claude model is pinned at a single call site (`claude_client.py`) and is **updated by hand when there's a reason to** — not tracked as pending work. A generation bump is a small migration rather than a string swap: newer models think by default, which changes response parsing, `max_tokens` budgeting, and token counts. The steps and the traps are recorded in [BL-020](BACKLOG.md).
 
 ### v2
 
@@ -254,10 +268,10 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-8 complete (setup, auth, project management, interview pipeline, design, evaluation/finalization, doc preview + Markdown export, admin & supporting features); Phase 9 in progress (Steps 1-3 — legal pages, landing footer, error handling & pytest coverage 64% done; i18n, E2E execution, deploy remaining)
-- **Desktop only** — Tablet support in MVP-2, mobile not planned
-- **Language lock** — Project language (ko/en) fixed at creation; changing requires a new project
-- **No payment in MVP-1** — Free tier (2 kickoffs) with no upgrade path until MVP-2
+- **Early development** — Phase 1-8 complete; Phase 9 in progress (legal/error handling/account purge/pytest done, deterministic Playwright 9/9, real-Supabase billing 3/3, and 16/18 numbered E2E TCs Pass; OAuth, TC-018 AI generation, and deployment remain)
+- **Desktop only** — tablet and mobile are not supported
+- **Korean only** — UI and AI-generated documents are Korean. Multilingual support is out of scope (see [Roadmap](#out-of-scope--deliberately-dropped))
+- **No payment, by design** — 2 free credits per account with no upgrade path; monetization is out of scope, and the credit system exists to demonstrate the metering layer rather than to sell anything
 - **Runtime skills** — `backend/skills/` is the single source of truth for AI prompts; edit those files directly. `.claude/skills/` is the separate dev harness (CLI) and is not synced to runtime
 
 ---

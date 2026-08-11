@@ -1,0 +1,246 @@
+================================================================================
+Prequel 코드 리뷰 리포트
+================================================================================
+작성일: 2026-06-09
+리뷰 대상: prequel (저장소 루트)
+리뷰 범위: 백엔드 전수 + 프론트엔드 페이지/훅/주요 컴포넌트 정독
+리뷰 관점: 코드 문제(버그/보안/로직) + 중복 코드
+단계 메모: 현재 데모 개발 중, 추후 수익화/배포 예정 → "production 미비" 류
+          사소한 지적은 제외하고 실제 버그·보안·매출 영향 중심으로 정리
+
+--------------------------------------------------------------------------------
+[ 대상 파악 ]
+--------------------------------------------------------------------------------
+Prequel = AI 인터뷰 기반 프로젝트 기획 검증 웹툴
+
+  Backend : FastAPI(Python) + Supabase + Alembic
+            27개 파일 / 약 2,900 LOC (api / core / models / schemas / middleware)
+  Frontend: React + TypeScript + Vite
+            58개 파일 / 약 7,100 LOC (components / contexts / hooks / pages / i18n)
+  합계    : 풀스택 모노레포 약 10,000 LOC
+
+핵심 전제(보안 관점):
+  백엔드가 Supabase SERVICE_KEY로 접속(core/supabase.py:11) → RLS 우회.
+  따라서 모든 권한 검사는 애플리케이션 코드가 직접 책임져야 함.
+  즉, 각 엔드포인트가 user_id로 쿼리를 스코핑하지 않으면 곧바로 IDOR 취약점이 됨.
+
+
+================================================================================
+[ 우선순위 Top — 수익화 전 처리 순 ]
+================================================================================
+
+ #1  IDOR 8개 — 세션 소유권 미검사          (design.py×7, finalize.py×1)  🔴 Critical
+ #2  크레딧 경쟁조건 — 과금/한도 우회        (projects.py:34)              🔴 Critical
+ #3  free_used ↔ credits_used — 할당량 UI 영구 오작동 (useAuth.ts +2곳)    🟠 High
+ #4  데이터모델 편집 미저장 — 데이터 손실    (DataModelStep.tsx)           🟠 High
+ #5  AI 출력 키 직접 접근으로 500            (design.py 다수)              🟡 Medium
+ #6  body: dict 무검증 저장                  (design.py:266,461,563)       🟡 Medium
+
+
+================================================================================
+[ Critical 1 — 권한 검사 누락 (IDOR / Broken Access Control) ]
+================================================================================
+근본 원인:
+  POST(생성) 계열은 project_id + user_id로 소유권을 잘 검증하지만,
+  session_id를 받는 조회/수정 엔드포인트는 "그 세션이 호출자 소유인지" 확인하지 않고
+  바로 조회/수정함. SERVICE_KEY라 DB단에서도 안 막힘.
+
+영향 엔드포인트:
+  design.py:210   GET /requirements/{session_id}            → 타인 데이터 열람
+  design.py:228   PUT /requirements/{session_id}/{req_id}   → 타인 데이터 수정
+  design.py:266   PUT /requirements/{session_id}            → 타인 데이터 덮어쓰기
+  design.py:443   GET /architecture/{session_id}            → 열람
+  design.py:461   PUT /architecture/{session_id}            → 수정
+  design.py:545   GET /data-model/{session_id}              → 열람
+  design.py:563   PUT /data-model/{session_id}              → 수정
+  finalize.py:248 PUT /{step}/{session_id}                  → 수정
+
+공격 시나리오:
+  로그인한 사용자 A가 session_id만 B의 세션 값으로 바꿔 호출 → B의 설계 내용을
+  읽거나 덮어쓸 수 있음. UUID라 추측은 어렵지만 "인증 통과 = 인가 무방비" 상태.
+  전형적 OWASP A01(Broken Access Control).
+
+해결 방향:
+  세션→프로젝트 조인으로 user_id를 확인하는 공유 헬퍼
+  (_verify_session_owner(session_id, user_id))를 만들어 8개 모두에 적용.
+  finalize.py엔 이미 _verify_project가 있으나 update_finalize_step에는 안 걸려 있음.
+
+
+================================================================================
+[ Critical 2 — 크레딧 증가 경쟁 조건 (과금/한도 우회) ]
+================================================================================
+위치: projects.py:34-38  _increment_credits()
+
+문제:
+  credits_used를 읽고 +1을 쓰는 비원자적(read-modify-write) 연산.
+  무료 사용자가 generate 요청을 병렬로 N개 쏘면 전부 used=0을 읽고 통과 →
+  무료 한도(2회)를 우회해 N회 생성 가능. 수익화 단계에서 매출 누수/한도 무력화 직결.
+
+해결 방향:
+  DB 원자적 증가로 변경.
+  예) Postgres RPC 또는 update ... set credits_used = credits_used + 1
+
+
+================================================================================
+[ High 3 — 할당량 표시 영구 오작동 (free_used ↔ credits_used) ]
+================================================================================
+원인:
+  백엔드 schemas/user.py는 credits_used를 반환하는데, 프론트는 free_used를 읽음.
+  API가 free_used를 절대 안 보내므로 항상 undefined → 0.
+
+영향 위치:
+  useAuth.ts:12        free_used: number   (타입 정의 — 백엔드와 이름 불일치)
+  MyProjectsPage.tsx:66 user?.free_used ?? 0  → 항상 0
+  TopBar.tsx:35        user?.free_used ?? 0  → 항상 0
+
+실제 영향:
+  - 헤더 "잔여 2/2", 대시보드 "이번 달 사용 0/2"가 실사용량과 무관하게 고정
+    (TopBar.tsx:97, MyProjectsPage.tsx:119)
+  - MyProjectsPage.tsx:88 isQuotaExceeded = ... freeUsed >= 2 → 항상 false
+    → "새 프로젝트" 버튼이 클라이언트단에서 절대 안 막힘
+      (서버 _check_credits는 막지만, UX·클라 가드가 죽음)
+
+해결 방향:
+  useAuth.ts의 UserProfile 타입을 credits_used로 통일하면 3곳 동시 해결.
+  부가: useAuth.ts UserProfile엔 suspended_at/deleted_at 누락 등 백엔드 스키마와
+        타입 드리프트 존재 → 공유 타입 한 곳으로 정리 권장.
+
+
+================================================================================
+[ High 4 — 데이터 모델 수동 편집이 저장 안 됨 (데이터 손실) ]
+================================================================================
+설계 단계에서 RequirementsStep과 DataModelStep의 저장 처리가 불일치.
+
+  RequirementsStep.tsx:36-48 : persist() → PUT /design/requirements/{id} 호출 (정상)
+  DataModelStep.tsx:41-94    : onUpdateSession(setSession)만 호출, PUT 없음 (버그)
+
+상세:
+  DataModelStep의 removeEntity / addEntity / addFieldToEntity / removeRelationship
+  4개 모두 로컬 React state만 갱신하고 백엔드에 안 보냄.
+  백엔드 PUT /design/data-model/{session_id}(design.py:563)는 존재하는데
+  프론트가 호출하지 않음 → 배선 누락.
+
+체감 시나리오:
+  사용자가 엔티티·필드를 추가/삭제 → 푸터엔 "자동 저장됨" 표시 →
+  새로고침하면 AI 생성 원본으로 롤백. 편집 기능이 사실상 무력.
+
+해결 방향:
+  RequirementsStep의 persist 패턴을 그대로 복제해 PUT 호출 추가.
+
+
+================================================================================
+[ Medium 5 — AI 출력 키 직접 접근으로 500 ]
+================================================================================
+위치: design.py:333, 390, 500, 505, 601, 608 등
+      (interview.py:282, 336의 parsed["message"] KeyError도 동일 계열)
+
+문제:
+  r['priority'].upper(), c['name'] 등 AI 출력 키를 직접 인덱싱.
+  AI가 키를 누락하면 KeyError/AttributeError → 500.
+  정작 _shared.py:96은 (r.get('priority') or '')로 방어 — 같은 패턴인데 한쪽만 안전.
+
+해결 방향:
+  .get() 접근으로 통일. (Tool Use로 스키마를 강제하지 않으므로 방어 필요)
+
+
+================================================================================
+[ Medium 6 — body: dict 무검증 저장 ]
+================================================================================
+위치: design.py:266 (replace_requirements), 461 (update_architecture),
+      563 (update_data_model)
+
+문제:
+  Pydantic 스키마 없이 임의 JSON을 세션에 그대로 저장.
+  잘못된 형태가 들어가면 이후 _session_to_out / _coerce_ai_workflow 읽기에서 깨짐.
+  위 IDOR(소유권 미검사)와 결합되면 위험도 상승.
+
+해결 방향:
+  요청 본문에 Pydantic 스키마 부여.
+
+
+================================================================================
+[ 중복 코드 정리 ]
+================================================================================
+백엔드:
+  - 프로젝트 소유권 검증 6줄 블록이 design.py generate 엔드포인트마다 ~7회 복붙.
+    finalize.py는 _verify_project()로 추출해 깔끔 → design.py도 동일 헬퍼로 통일.
+    (IDOR #1 해결과 동시에 처리하면 일석이조)
+  - JSON 파싱/복구 로직 2벌:
+    interview.py:35-101 (_repair_truncated_json + _parse_ai_response)
+    ≈ _shared.py:121-156 (repair_truncated_json + parse_json_response)
+    → _shared 버전으로 통일.
+  - _get_or_create_session(design) ↔ _get_or_create_finalize_session(finalize) 쌍둥이.
+    → 테이블명/컬럼 파라미터화로 하나로 통합.
+  - 컨텍스트 빌드(requirements_text / prev_context 조립)가
+    architecture/data-model/ai-workflow 생성부에 반복.
+
+프론트엔드:
+  - DesignPage(459줄) ≈ FinalizePage(351줄) 약 70% 동일 (headline 중복):
+    동일한 ScreenState union, STEP_HEADERS/NEXT_PREVIEWS/FOOTER_LABELS 구조,
+    init() 로직, updateStepStatuses, handleNext/Back/TransitionNext/Back/StepClick,
+    loading/error/transition/complete/step 렌더 분기, buildTransitionData.
+    → useStepWizard 훅 + StepWizardLayout 컴포넌트로 추출.
+  - 단건 조회에 전체 목록 fetch:
+    InterviewPage.tsx:266, DesignPage.tsx:126, FinalizePage.tsx:110에서
+    GET /projects 전체 받아 .find(). GET /projects/{id}가 이미 있는데 안 씀
+    (DocumentPreviewPage.tsx:122는 올바르게 단건 조회함 → 이 패턴으로 통일).
+  - 상태→라우트 매핑이 5곳에 흩어짐
+    (resumeRoute, 메뉴 버튼, 각 페이지 init 가드) → 한 함수로.
+  - import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' 약 5회 반복 → 상수 1개로.
+  - 로딩 스피너 / 에러 화면 마크업 반복(AuthGuard·AuthCallback·Interview·Design·Finalize)
+    → 공통 LoadingScreen / ErrorScreen 컴포넌트화.
+  - ArchitectureStep 카테고리 분류 정규식 3벌
+    (getRoleColor:14 / getCompColor:29 / categorizeComponent:183),
+    그중 getRoleColor는 호출되지 않는 죽은 코드로 보임 → 하나의 categorize()로 통일.
+
+
+================================================================================
+[ 잘 되어 있는 부분 (그대로 유지) ]
+================================================================================
+백엔드:
+  - 인증 스코핑: POST 생성·조회 대부분 user_id로 정확히 필터링
+    (interview / projects / export 전부 OK)
+  - 권한상승 차단: UserProfileUpdate 스키마가 display_name/avatar_url만 허용 →
+    사용자가 role/plan 못 바꿈 (Pydantic 화이트리스트가 방어 역할)
+  - _shared.py의 canonical 세션 선택, truncation 복구 등 리팩터링 의식이 보임
+  - structlog 구조적 로깅, 프롬프트 cache_control 적용
+
+프론트엔드:
+  - XSS 안전: ReactMarkdown(raw HTML off) 사용,
+    dangerouslySetInnerHTML / innerHTML / eval 0건, 토큰 localStorage 미저장
+    (AI 출력을 그대로 렌더하는 앱인데 안전하게 처리)
+  - apiFetch가 매 호출 Supabase 세션 토큰 자동 첨부, AuthGuard 보호 라우팅
+  - 페이지별 명시적 ScreenState 유니온으로 상태 전이 명확
+  - useProjects 낙관적 업데이트(createProject/deleteProject) 깔끔
+  - RequirementsStep: 낙관적 업데이트 + 서버 영속화의 모범 패턴
+    (DataModelStep이 따라야 할 기준)
+  - DocumentPreviewPage: GET /projects/{id} 단건 조회 올바르게 사용
+  - LoginPage: Supabase OAuth 정석
+
+
+================================================================================
+[ 종합 평가 ]
+================================================================================
+데모 단계 기준으로 구조 설계·인증 흐름·XSS 안전성은 양호함.
+다만 수익화로 가려면:
+  - IDOR(#1) / 과금 경쟁조건(#2) = 출시 전 반드시 막아야 하는 보안·매출 결함
+  - 할당량 UI(#3) / 데이터모델 저장(#4) = 사용자가 바로 체감하는 기능 버그
+
+핵심 원인은 대부분 "일부 엔드포인트/컴포넌트만 올바른 패턴
+(_verify_project, persist, GET /{id})을 쓰고 나머지는 빠뜨림"이라,
+이미 코드 안에 존재하는 모범 패턴을 일관 적용하면 대부분 해결됨.
+
+
+================================================================================
+[ 커버리지 메모 ]
+================================================================================
+- 백엔드: 전수 정독
+  (main, config, supabase, claude_client, doc_engine, prompt_manager,
+   harness_loader, middleware/auth, api/_shared, interview, projects, users,
+   export, admin, design, finalize, 주요 schemas)
+- 프론트엔드: 페이지 6 + 훅 2 + 공유 레이어(api/auth/markdown/TopBar/AuthGuard)
+  + 주요 컴포넌트(ChatCenter, DataModelStep, RequirementsStep, ArchitectureStep,
+   DocumentPreviewPage, LoginPage) 정독
+- 미정독(표시 전용, 버그 위험 낮음): AiWorkflowStep, finalize step 컴포넌트들,
+  LandingPage, 각종 LeftRail/HelperPanel/Complete 표시용 컴포넌트
+================================================================================

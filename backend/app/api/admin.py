@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.activity import record_activity
+from app.core.purge import purge_user
 from app.core.supabase import get_supabase
 from app.middleware.auth import require_admin
 
@@ -198,6 +199,38 @@ async def soft_delete_user(user_id: str, admin: dict = Depends(require_admin)):
     )
     record_activity(admin, "user.delete", "user", user_id, {"email": result.data[0].get("email")})
     return result.data[0]
+
+
+@router.post("/users/{user_id}/purge")
+async def purge_user_account(user_id: str, admin: dict = Depends(require_admin)):
+    """대상 사용자의 개인정보를 완전 파기한다. soft delete 와 달리 복구 불가. (BL-005 (b))
+
+    이용 정지·복구는 기존 `/delete`·`/restore`(soft delete)를 계속 쓰고,
+    이 엔드포인트는 파기 요구를 이행할 때만 사용한다.
+    """
+    if user_id == admin["id"]:
+        raise HTTPException(
+            status_code=403,
+            detail="본인 계정은 이 화면에서 파기할 수 없어요. 다른 관리자에게 요청해주세요.",
+        )
+
+    sb = get_supabase()
+    existing = sb.table("users").select("id").eq("id", user_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    result = purge_user(user_id)
+
+    if not result.complete:
+        raise HTTPException(
+            status_code=500,
+            detail="파기를 끝내지 못했어요. 남은 데이터를 확인한 뒤 다시 시도해주세요.",
+        )
+
+    # 파기 후에 기록해야 한다 — 먼저 남기면 target_id 정리 단계에서 함께 지워진다.
+    # 대상 uuid 는 참조할 행이 사라져 개인을 식별할 수 없으므로 감사용으로 남긴다.
+    record_activity(admin, "user.purge", "user", user_id, {"initiator": "admin", "deleted_rows": result.total_deleted})
+    return {"deleted": True, "deleted_rows": result.total_deleted}
 
 
 @router.post("/users/{user_id}/restore")

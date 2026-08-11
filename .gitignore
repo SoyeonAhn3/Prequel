@@ -33,9 +33,18 @@ node_modules/
 dist/
 frontend/dist/
 
+# Playwright
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+
 # Python build
 *.egg-info/
 build/
 
 # Alembic
 backend/migrations/versions/__pycache__/
+
+# 로컬 스크래치 (커밋 대상 아님)
+backups/
+mermaid-preview.html
