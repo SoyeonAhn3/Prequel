@@ -12,7 +12,7 @@ export default function LegalPage({ title, content }: LegalPageProps) {
     <div className="min-h-screen bg-bg">
       {/* Header */}
       <header className="h-16 border-b border-border bg-surface">
-        <div className="max-w-[820px] mx-auto px-8 h-full flex items-center">
+        <div className="max-w-[820px] mx-auto px-4 sm:px-8 h-full flex items-center">
           <Link to="/" className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
               <span className="text-white text-xs font-bold">P</span>
@@ -23,9 +23,9 @@ export default function LegalPage({ title, content }: LegalPageProps) {
       </header>
 
       {/* Content */}
-      <main className="max-w-[820px] mx-auto px-8 py-14">
-        <h1 className="text-[28px] font-bold tracking-tight text-text mb-8">{title}</h1>
-        <div className="bg-surface border border-border rounded-xl p-8 text-[13px]">
+      <main className="max-w-[820px] mx-auto px-4 sm:px-8 py-8 sm:py-14">
+        <h1 className="text-[22px] sm:text-[28px] font-bold tracking-tight text-text mb-6 sm:mb-8">{title}</h1>
+        <div className="bg-surface border border-border rounded-xl p-5 sm:p-8 text-[13px]">
           <Markdown>{content}</Markdown>
         </div>
         <div className="mt-8">

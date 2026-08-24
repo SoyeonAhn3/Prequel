@@ -5,7 +5,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-bg">
       {/* Header */}
       <header className="h-16 border-b border-border bg-surface">
-        <div className="max-w-[1280px] mx-auto px-14 h-full flex items-center">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8 lg:px-14 h-full flex items-center">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
             <span className="text-white text-xs font-bold">P</span>
@@ -13,13 +13,13 @@ export default function LandingPage() {
           <span className="text-[15px] font-semibold text-text tracking-tight">Prequel</span>
         </div>
         <div className="flex-1" />
-        <div className="flex items-center gap-6">
-          <Link to="/guide" className="text-[13.5px] text-text-muted hover:text-text transition-colors">가이드</Link>
-          <Link to="/notices" className="text-[13.5px] text-text-muted hover:text-text transition-colors">공지사항</Link>
-          <Link to="/login" className="text-[13.5px] text-text-muted hover:text-text transition-colors">로그인</Link>
+        <div className="flex items-center gap-3 sm:gap-6">
+          <Link to="/guide" className="hidden sm:inline text-[13.5px] text-text-muted hover:text-text transition-colors">가이드</Link>
+          <Link to="/notices" className="hidden sm:inline text-[13.5px] text-text-muted hover:text-text transition-colors">공지사항</Link>
+          <Link to="/login" className="hidden sm:inline text-[13.5px] text-text-muted hover:text-text transition-colors">로그인</Link>
           <Link
             to="/login"
-            className="px-4 py-2 bg-accent text-white text-[13.5px] font-medium rounded-lg hover:bg-accent-deep transition-colors"
+            className="px-3.5 sm:px-4 py-2 bg-accent text-white text-[13.5px] font-medium rounded-lg hover:bg-accent-deep transition-colors whitespace-nowrap"
           >
             시작하기
           </Link>
@@ -28,26 +28,26 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <div className="max-w-[1280px] mx-auto px-14 pt-[88px] flex gap-14">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 lg:px-14 pt-10 lg:pt-[88px] flex flex-col lg:flex-row gap-10 lg:gap-14">
         {/* Left content */}
-        <div className="flex-1 max-w-[540px] flex flex-col justify-center pb-[10%]" style={{ minHeight: 'calc(100vh - 64px - 88px - 65px)' }}>
+        <div className="flex-1 lg:max-w-[540px] flex flex-col justify-center lg:pb-[10%] lg:[min-height:calc(100vh-64px-88px-65px)]">
           {/* Beta badge */}
           <div className="inline-flex items-center gap-1.5 py-[4px] pr-[9px] pl-[7px] bg-accent-soft rounded-full mb-[22px] w-fit">
             <span className="w-[6px] h-[6px] rounded-full bg-accent shrink-0" />
             <span className="text-[13px] text-accent-deep font-semibold whitespace-nowrap">BETA · 무료 2회 제공</span>
           </div>
 
-          <h1 className="text-[52px] leading-[1.12] tracking-tight font-bold m-0 text-text">
+          <h1 className="text-[34px] sm:text-[44px] lg:text-[52px] leading-[1.15] lg:leading-[1.12] tracking-tight font-bold m-0 text-text">
             모든 좋은 프로젝트엔<br />
             <span className="text-accent">프리퀄</span>이 있다.
           </h1>
 
-          <p className="text-[17px] leading-relaxed text-text-muted mt-[22px] mb-8 max-w-[480px]">
+          <p className="text-[15px] sm:text-[17px] leading-relaxed text-text-muted mt-[18px] lg:mt-[22px] mb-8 max-w-[480px]">
             AI가 먼저 질문하며 기획의 빈틈을 찾아냅니다.<br />
             구조화된 인터뷰로 킥오프 문서와 아키텍처를 완성하세요.
           </p>
 
-          <div className="flex gap-2.5">
+          <div className="flex flex-wrap gap-2.5">
             <Link
               to="/login"
               className="flex items-center gap-2 px-6 py-3 bg-accent text-white text-[15px] font-medium rounded-lg hover:bg-accent-deep transition-colors"
@@ -68,8 +68,8 @@ export default function LandingPage() {
 
         </div>
 
-        {/* Right preview card */}
-        <div className="flex-1 relative">
+        {/* Right preview card (desktop/tablet only — decorative product mockup) */}
+        <div className="hidden lg:block flex-1 relative">
           <div
             className="bg-surface border border-border rounded-[14px] p-[22px] relative mt-3"
             style={{ boxShadow: '0 1px 0 rgba(0,0,0,.02), 0 24px 48px -20px rgba(40,30,20,.18)' }}
@@ -134,7 +134,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border">
-        <div className="max-w-[1280px] mx-auto px-14 h-16 flex items-center gap-5 text-[12.5px] text-text-subtle">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8 lg:px-14 min-h-16 py-4 sm:py-0 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-text-subtle">
           <span>&copy; 2026 Prequel</span>
           <Link to="/terms" className="hover:text-text transition-colors">이용약관</Link>
           <Link to="/privacy" className="hover:text-text transition-colors">개인정보처리방침</Link>

@@ -35,9 +35,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left brand panel */}
-      <div className="w-[420px] shrink-0 bg-surface-alt border-r border-border flex flex-col px-12 py-14">
+      <div className="w-full md:w-[420px] md:shrink-0 bg-surface-alt border-b md:border-b-0 md:border-r border-border flex flex-col px-6 py-8 md:px-12 md:py-14">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
@@ -82,8 +82,8 @@ export default function LoginPage() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex items-center justify-center p-12">
-        <div className="w-[380px]">
+      <div className="flex-1 flex items-center justify-center p-6 py-10 md:p-12">
+        <div className="w-full max-w-[380px]">
           <div className="text-[12px] text-text-subtle font-mono mb-2.5">WELCOME</div>
           <h3 className="text-[24px] font-bold tracking-tight m-0 text-text">계정에 로그인</h3>
           <p className="text-[13.5px] text-text-muted mt-1.5 mb-7">
