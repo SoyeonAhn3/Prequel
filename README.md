@@ -4,6 +4,8 @@
 
 > Every great project deserves a prequel. An AI-powered web tool that conducts structured interviews to find gaps in your project planning.
 
+🔗 **Live**: https://prequel-production.netlify.app
+
 ## Overview
 
 Most AI planning tools generate documents from a single prompt. Prequel takes a different approach — it **interviews** you. Through structured, type-specific questions, it systematically uncovers blind spots in your project plan before a single line of code is written.
@@ -212,7 +214,7 @@ Basic (₩9,900/mo · 10 kickoffs) and Pro (₩24,900/mo · 30 kickoffs) were sp
 | Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
 | Phase 7: Doc Preview & Generation | ✅ Done | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. Note: progressive v1→v2→v3 generation dropped in favor of live assembly; **Mermaid diagram rendering removed from scope** |
 | Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. BL-003 prompt caching completed with real Anthropic A/B verification; BL-004 tracked separately. |
-| Phase 9: Testing & Deploy | 🚧 In Progress | Legal pages, integrated error handling, account purge, and pytest ≥60% are done. Deterministic Playwright is **9/9 Pass**, the opt-in real-Supabase billing suite is **3/3 Pass**, and the numbered E2E contract is **16/18 Pass**. Multilingual UI was dropped from scope. Remaining: real OAuth, TC-018's AI-generation remainder, and Netlify + Railway deploy. |
+| Phase 9: Testing & Deploy | 🚧 In Progress | Legal pages, integrated error handling, account purge, pytest ≥60%, and production deployment (Netlify + Railway) are done. Deterministic Playwright is **9/9 Pass**, the opt-in real-Supabase billing suite is **3/3 Pass**, and the numbered E2E contract is **17/18 Pass** — real Google/GitHub OAuth login (TC-002) is now confirmed live in production. Multilingual UI was dropped from scope. Remaining: TC-018's AI-generation leg. |
 | Monetization | ❌ Out of scope | Payment, cost meter, and model tiering deliberately dropped — the verified free-credit metering layer ships instead |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
 
@@ -225,7 +227,7 @@ Security hardening update: **BL-021 is complete**. All eight design/finalization
 | Phase 3: Project Management | ✅ Pass (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 | BL-021: Session ownership / IDOR | ✅ Pass (real Supabase Auth A/B JWT verification) | [BACKLOG.md](BACKLOG.md) |
 | BL-022/023: Atomic phase credits | ✅ Real Supabase concurrency 4/4 + actual-JWT browser billing 3/3 Pass; TC-018 AI generation remains | [BACKLOG.md](BACKLOG.md) |
-| Phase 9: E2E Demo Scenario | 🚧 18 TCs (16 Pass); deterministic Playwright 9/9 + real-Supabase billing 3/3 Pass | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
+| Phase 9: E2E Demo Scenario | 🚧 18 TCs (17 Pass); deterministic Playwright 9/9 + real-Supabase billing 3/3 Pass | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## Roadmap
 
@@ -268,7 +270,7 @@ Gap analysis & honest evaluation, document export (Markdown/DOCX), team collabor
 
 ## Limitations
 
-- **Early development** — Phase 1-8 complete; Phase 9 in progress (legal/error handling/account purge/pytest done, deterministic Playwright 9/9, real-Supabase billing 3/3, and 16/18 numbered E2E TCs Pass; OAuth, TC-018 AI generation, and deployment remain)
+- **Early development** — Phase 1-8 complete; Phase 9 nearly done (legal/error handling/account purge/pytest/deployment done, deterministic Playwright 9/9, real-Supabase billing 3/3, and 17/18 numbered E2E TCs Pass; only TC-018's AI-generation leg remains)
 - **Desktop only** — tablet and mobile are not supported
 - **Korean only** — UI and AI-generated documents are Korean. Multilingual support is out of scope (see [Roadmap](#out-of-scope--deliberately-dropped))
 - **No payment, by design** — 2 free credits per account with no upgrade path; monetization is out of scope, and the credit system exists to demonstrate the metering layer rather than to sell anything

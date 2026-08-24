@@ -162,7 +162,7 @@ export default function MyProjectsPage() {
                 {remaining > 0 ? `${remaining}회 남았어요` : '무료 횟수를 모두 사용했어요'}
               </div>
               <div className="text-xs text-text-muted mt-0.5">
-                유료 전환 시 월 10~30회 사용 가능
+                무료 2회는 계정당 고정이에요
               </div>
             </div>
           </div>

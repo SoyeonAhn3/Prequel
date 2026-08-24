@@ -2,7 +2,7 @@
 
 > Build the landing page, conduct E2E testing, and deploy to production.
 
-**Status**: 🚧 In Progress — Steps 1–8 done; deterministic Playwright 9/9, real-Supabase Playwright 3/3, and numbered E2E contract 16/18 Pass. Multilingual support (`#1`, `#2`) dropped from scope on 2026-08-11; only deployment and two real-service test gates remain.
+**Status**: 🚧 In Progress — Steps 1–9 done; deterministic Playwright 9/9, real-Supabase Playwright 3/3, and numbered E2E contract 17/18 Pass. Multilingual support (`#1`, `#2`) dropped from scope on 2026-08-11; production deployment (Netlify + Railway) and real OAuth (TC-002) are live as of 2026-08-24. Only TC-018's AI-generation leg remains.
 **Prerequisites**: Phase 8 completion (Admin features, rate limiting, logging)
 
 ---
@@ -24,9 +24,9 @@ The final phase brings everything together. Build the landing page and legal pag
 | 5 | Error handling integration (Claude API timeout → retry, network drop → offline save) | Common | ✅ | NFR-003 |
 | 6 | E2E demo scenario test (10 features sequential execution) | Common | 🚧 | DoD |
 | 7 | pytest backend coverage 60%+ on core logic | Backend | ✅ | NFR-013 |
-| 8 | Deployment setup (Netlify + Railway, env vars, CI/CD) | Common | 🔲 | — |
-| 9 | CORS finalization (Netlify domain) | Backend | 🔲 | NFR-007 |
-| 10 | Production environment verification | Common | 🔲 | — |
+| 8 | Deployment setup (Netlify + Railway, env vars, CI/CD) | Common | ✅ | — |
+| 9 | CORS finalization (Netlify domain) | Backend | ✅ | NFR-007 |
+| 10 | Production environment verification | Common | 🚧 | — |
 
 ### Progress — Step 1 (2026-07-01, commit `3ca88ba`)
 
@@ -97,6 +97,16 @@ Follow-up **BL-008** was later implemented on 2026-07-13: the project row menu n
 - **Documentation reconciliation** — BL-023 was still marked "browser E2E pending" although Step 7's TC-017 had already covered exactly that path with real Supabase evidence; it is now closed. Deliverable `#3` is marked done: the MVP-1 landing scope (intro, CTA, stats, footer, legal links) shipped in Step 1, and the template gallery it was waiting on is a separately tracked planned item, not Phase 9 work.
 - **Three loose ends closed** — (1) the top-nav **템플릿** tab pointed at `/templates`, which has no route, so the catch-all bounced logged-in users out to the landing page; the tab is removed until the gallery exists. (2) `deriveValidationRules` still parsed relationships with the `→`-only regex that `parseRelationship` had already outgrown in P5-14, so the data-model step rendered **zero** relationship-based integrity rules for the `A 1--N B` format the skill actually emits; both call sites now share one parser, with a `structured` flag so the loose whitespace fallback can't produce nonsense rules. (3) The TC-011 accessibility finding is fixed — 9 labels across the new-project, edit-project, and announcement modals are associated with their controls (the two announcement "labels" that front button groups got `role="group"`/`aria-pressed` instead, since `htmlFor` cannot target a button), and TC-011 now locates the input via `getByLabel` so the association is a regression test rather than a note.
 - **Verification** — deterministic Playwright **9/9**, backend **161 passed / 5 skipped**, `tsc -b` clean. ESLint is unchanged at 41 problems (40 errors, 1 warning), all pre-existing.
+
+### Progress — Step 9 (2026-08-24) — Production deployment
+
+- **Backend (Railway)** — `backend/Procfile` (`uvicorn app.main:app --host 0.0.0.0 --port $PORT`) and `backend/.python-version` (`3.12`, since 3.14 lacks prebuilt wheels) added so Railpack can build the service with Root Directory set to `backend`. Environment variables set: `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `CORS_ORIGINS`, `LOG_LEVEL=INFO`, `DEV_BYPASS_AUTH=false`. Live at `https://prequel-production.up.railway.app`, `/health` returns `{"status":"ok"}`.
+- **Frontend (Netlify)** — `frontend/netlify.toml` added: build command `npm run build`, publish `dist`, an `/api/*` redirect proxying to the Railway backend (the app's `fetch('/api/...')` calls stay relative, so no frontend code changed), and a SPA fallback (`/* → /index.html`) for React Router refresh. Environment variables set: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_DEV_BYPASS_AUTH=false`. Live at `https://prequel-production.netlify.app`.
+- **CORS (`#9`)** — Railway `CORS_ORIGINS` updated to include the Netlify domain; confirmed working by a successful project-creation call from the deployed frontend (browser → Netlify redirect → Railway → Supabase, no CORS rejection).
+- **Supabase Auth** — Site URL and Redirect URLs (Authentication → URL Configuration) updated to the Netlify domain.
+- **Real OAuth confirmed (`TC-002` ✅)** — Google and GitHub login both verified working end-to-end on the production Netlify site, closing the last fully-manual E2E gate; the numbered contract moves from 16/18 to **17/18**.
+- **Production bug found and fixed** — `MyProjectsPage.tsx`'s quota card still read "유료 전환 시 월 10~30회 사용 가능" ("upgrade to a paid plan for 10-30/month"), left over from before monetization was dropped from scope (2026-08-11). Since the site is now actually public, this advertised an upgrade path that does not exist. Replaced with "무료 2회는 계정당 고정이에요" ("the 2 free credits are fixed per account"). `tsc -b` clean.
+- **Remaining for `#10`** — the full interview → design/finalize → document flow has not yet been exercised against the live Anthropic API in production (TC-018's AI-generation leg); no custom domain purchased (Railway/Netlify default subdomains only, acceptable for this scope).
 
 ---
 
@@ -178,10 +188,10 @@ Automation foundation: `frontend/playwright.config.ts` + `frontend/e2e/*.spec.ts
 - [x] Landing page accessible without login
 - [x] Terms/Privacy pages accessible and linked from login
 - [x] Users can permanently purge their own account and personal data (BL-005 (b))
-- [ ] E2E demo scenario completes without errors — 16/18; real OAuth (TC-002) and TC-018's AI-generation leg remain
+- [ ] E2E demo scenario completes without errors — 17/18; only TC-018's AI-generation leg remains
 - [x] Backend core logic test coverage ≥ 60% (64%)
-- [ ] Production deployment live on custom domain
-- [ ] CORS correctly restricts to Netlify production domain
+- [x] Production deployment live (Netlify + Railway; default subdomains, no custom domain purchased)
+- [x] CORS correctly restricts to Netlify production domain
 - ~~Korean ↔ English UI switching works on all pages~~ — withdrawn (out of scope)
 - ~~AI-generated content respects project language setting~~ — withdrawn (out of scope)
 
@@ -200,6 +210,7 @@ Automation foundation: `frontend/playwright.config.ts` + `frontend/e2e/*.spec.ts
 | 2026-07-22 | Step 6 — deterministic protected-screen automation added on isolated auth-bypass frontend 5178 with fail-closed API mocks. TC-011/013/014/016 + three state redirects pass; full Playwright suite is 9/9 and numbered contract 13/18 Pass. One non-blocking project-name label/input accessibility finding remains. |
 | 2026-07-22 | Step 7 — opt-in real-Supabase Playwright billing suite added with disposable Auth/JWT fixtures and zero-row teardown verification. Real RPC 4/4 + browser 3/3 pass; TC-007/012/017 are now Pass and TC-018 billing transitions pass without Anthropic spend. Numbered contract 16/18; OAuth and TC-018's AI-generation remainder remain. |
 | 2026-08-11 | Step 8 — account purge shipped (BL-005 (b)): FK-ordered hard delete + auth user removal + residual re-check, self/admin endpoints, typed-confirmation modal, privacy policy rewritten; 13 new tests, backend 161 passed / 5 skipped. Multilingual support (#1, #2) dropped from scope and FR-009 withdrawn; monetization already dropped. BL-023 closed against Step 7's TC-017 evidence and #3 marked done. Remaining: deployment (#8–#10), TC-002, TC-018 AI leg. |
+| 2026-08-24 | Step 9 — production deployment shipped: Railway backend (`Procfile`, `.python-version`, env vars) + Netlify frontend (`netlify.toml` with `/api` proxy redirect + SPA fallback, env vars), CORS opened to the Netlify domain, Supabase Auth redirect URLs updated. Real Google/GitHub OAuth confirmed live (TC-002 ✅), numbered contract 16/18 → 17/18. Found and fixed a stale paid-plan upsell string left over from the monetization scope-drop. Remaining: TC-018's AI-generation leg. |
 
 ---
 ---
@@ -208,7 +219,7 @@ Automation foundation: `frontend/playwright.config.ts` + `frontend/e2e/*.spec.ts
 
 > 랜딩 페이지 구축, E2E 테스트 수행, 프로덕션 배포.
 
-**상태**: 🚧 진행 중 — Step 1~8 완료; 결정적 Playwright 9/9, 실제 Supabase Playwright 3/3, 번호형 E2E 계약 16/18 Pass. 다국어(`#1`·`#2`)는 2026-08-11에 범위 제외했고, 배포와 실서비스 테스트 게이트 2건만 남았다.
+**상태**: 🚧 진행 중 — Step 1~9 완료; 결정적 Playwright 9/9, 실제 Supabase Playwright 3/3, 번호형 E2E 계약 17/18 Pass. 다국어(`#1`·`#2`)는 2026-08-11에 범위 제외했고, 프로덕션 배포(Netlify + Railway)와 실제 OAuth(TC-002)는 2026-08-24에 확인 완료했다. 잔여는 TC-018 AI 생성 구간뿐이다.
 **선행 조건**: Phase 8 완료 (Admin 기능, Rate Limiting, 로깅)
 
 ---
@@ -230,9 +241,9 @@ Automation foundation: `frontend/playwright.config.ts` + `frontend/e2e/*.spec.ts
 | 5 | 에러 처리 통합 (Claude API 타임아웃 → 재시도, 네트워크 끊김 → 오프라인 저장) | 공통 | ✅ | NFR-003 |
 | 6 | E2E 데모 시나리오 테스트 (10개 기능 순차 실행) | 공통 | 🚧 | DoD |
 | 7 | pytest 백엔드 핵심 로직 60%+ 커버리지 | Backend | ✅ | NFR-013 |
-| 8 | 배포 설정 (Netlify + Railway, 환경 변수, CI/CD) | 공통 | 🔲 | — |
-| 9 | CORS 최종 설정 (Netlify 도메인) | Backend | 🔲 | NFR-007 |
-| 10 | 프로덕션 환경 검증 | 공통 | 🔲 | — |
+| 8 | 배포 설정 (Netlify + Railway, 환경 변수, CI/CD) | 공통 | ✅ | — |
+| 9 | CORS 최종 설정 (Netlify 도메인) | Backend | ✅ | NFR-007 |
+| 10 | 프로덕션 환경 검증 | 공통 | 🚧 | — |
 
 ### 진행 상황 — Step 1 (2026-07-01, 커밋 `3ca88ba`)
 
@@ -303,6 +314,16 @@ AI검증 가능한 부분은 **선검증**: **TC-015(답변 멱등성)는 `test_
 - **문서 정합성** — BL-023이 "브라우저 E2E 대기"로 남아 있었으나 Step 7의 TC-017이 실제 Supabase 증거로 같은 경로를 이미 검증했으므로 완료 처리했다. 산출물 `#3`도 완료로 정정했다 — MVP-1 랜딩 범위(소개·CTA·통계·푸터·법적 링크)는 Step 1에서 끝났고, 대기 사유였던 템플릿 갤러리는 Phase 9가 아니라 별도 계획 항목이다.
 - **잔여 3건 정리** — (1) 상단 네비게이션의 **템플릿** 탭이 라우트 없는 `/templates`를 가리켜, 로그인 사용자가 catch-all에 걸려 랜딩으로 튕겨 나갔다. 갤러리를 만들 때까지 탭을 제거했다. (2) `deriveValidationRules`가 P5-14에서 이미 고친 `parseRelationship`과 달리 `→` 전용 정규식을 그대로 써서, 스킬이 실제로 내보내는 `A 1--N B` 포맷에서는 관계 기반 정합성 규칙이 **한 건도** 표시되지 않았다. 두 호출부가 파서 하나를 공유하도록 합치고, 공백 분리 폴백이 엉뚱한 규칙을 만들지 않도록 `structured` 플래그를 뒀다. (3) TC-011 접근성 지적을 해결했다 — 새 프로젝트·프로젝트 수정·공지 모달의 label 9곳을 입력 요소와 연결했고(공지의 버튼 묶음 2곳은 `htmlFor` 대상이 아니라 `role="group"`·`aria-pressed`로 처리), TC-011이 `getByLabel`로 입력칸을 찾게 해 연결 자체를 회귀 테스트로 고정했다.
 - **검증** — 결정적 Playwright **9/9**, 백엔드 **161 passed / 5 skipped**, `tsc -b` 통과. ESLint는 41건(오류 40·경고 1)으로 변동 없으며 모두 기존 항목이다.
+
+### 진행 상황 — Step 9 (2026-08-24) — 프로덕션 배포
+
+- **백엔드 (Railway)** — `backend/Procfile`(`uvicorn app.main:app --host 0.0.0.0 --port $PORT`)과 `backend/.python-version`(`3.12`, 3.14는 사전 빌드 wheel 없어 미지원)을 추가해 Railpack이 Root Directory `backend` 기준으로 빌드하게 했다. 환경변수 설정: `ANTHROPIC_API_KEY`·`SUPABASE_URL`·`SUPABASE_ANON_KEY`·`SUPABASE_SERVICE_KEY`·`CORS_ORIGINS`·`LOG_LEVEL=INFO`·`DEV_BYPASS_AUTH=false`. `https://prequel-production.up.railway.app`에서 서비스 중, `/health`가 `{"status":"ok"}` 반환.
+- **프론트엔드 (Netlify)** — `frontend/netlify.toml` 추가: 빌드 명령 `npm run build`, publish `dist`, `/api/*` 요청을 Railway 백엔드로 전달하는 리다이렉트(앱의 `fetch('/api/...')` 상대경로 호출은 그대로 유지 — 프론트 코드 변경 없음), React Router 새로고침용 SPA 폴백(`/* → /index.html`). 환경변수 설정: `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY`·`VITE_DEV_BYPASS_AUTH=false`. `https://prequel-production.netlify.app`에서 서비스 중.
+- **CORS (`#9`)** — Railway `CORS_ORIGINS`에 Netlify 도메인을 추가. 배포된 프론트에서 프로젝트 생성 API 호출이 성공(브라우저 → Netlify 리다이렉트 → Railway → Supabase, CORS 차단 없음)한 것으로 동작 확인.
+- **Supabase Auth** — Authentication → URL Configuration의 Site URL·Redirect URLs를 Netlify 도메인으로 갱신.
+- **실제 OAuth 확인 (`TC-002` ✅)** — 프로덕션 Netlify 사이트에서 구글·깃허브 로그인 모두 end-to-end로 정상 동작 확인. 마지막까지 남아있던 완전 수동 E2E 게이트가 닫혔고, 번호형 계약이 16/18 → **17/18**로 올라갔다.
+- **프로덕션에서 발견·수정한 버그** — `MyProjectsPage.tsx`의 쿼터 카드가 "유료 전환 시 월 10~30회 사용 가능" 문구를 여전히 표시하고 있었다. 2026-08-11 수익화 범위 제외 이전에 만들어진 채 남아있던 것으로, 사이트가 실제로 공개된 지금 상태에서는 **존재하지 않는 업그레이드 경로를 광고**하는 셈이었다. "무료 2회는 계정당 고정이에요"로 교체했다. `tsc -b` 통과.
+- **`#10` 잔여** — 인터뷰 → 설계/평가 → 문서 전체 흐름을 프로덕션의 실제 Anthropic API로 아직 실행해보지 않았다(TC-018 AI 생성 구간). 커스텀 도메인은 구매하지 않음(Railway/Netlify 기본 서브도메인만 사용, 현재 범위에서는 충분하다고 판단).
 
 ---
 
@@ -384,10 +405,10 @@ MVP-1의 10개 기능을 순서대로 커버하는 E2E 데모 시나리오:
 - [x] 랜딩 페이지가 로그인 없이 접근 가능
 - [x] 이용약관/개인정보처리방침 페이지 접근 가능 및 로그인에서 링크
 - [x] 이용자가 본인 계정과 개인정보를 직접 완전 파기 가능 (BL-005 (b))
-- [ ] E2E 데모 시나리오 에러 없이 완료 — 16/18, 실제 OAuth(TC-002)와 TC-018 AI 생성 구간 잔여
+- [ ] E2E 데모 시나리오 에러 없이 완료 — 17/18, TC-018 AI 생성 구간만 잔여
 - [x] 백엔드 핵심 로직 테스트 커버리지 ≥ 60% (64%)
-- [ ] 커스텀 도메인에서 프로덕션 배포 완료
-- [ ] CORS가 Netlify 프로덕션 도메인으로 올바르게 제한
+- [x] 프로덕션 배포 완료 (Netlify + Railway, 기본 서브도메인 — 커스텀 도메인은 구매하지 않음)
+- [x] CORS가 Netlify 프로덕션 도메인으로 올바르게 제한
 - ~~한국어 ↔ 영어 UI 전환이 모든 페이지에서 동작~~ — 철회 (범위 제외)
 - ~~AI 생성 콘텐츠가 프로젝트 언어 설정을 따름~~ — 철회 (범위 제외)
 
@@ -406,3 +427,4 @@ MVP-1의 10개 기능을 순서대로 커버하는 E2E 데모 시나리오:
 | 2026-07-22 | Step 6 — 인증 우회 프론트 5178과 미정의 API를 차단하는 mock으로 결정적 보호 화면 자동화 추가. TC-011/013/014/016 및 상태 리다이렉트 3건 통과, Playwright 전체 9/9·번호형 계약 13/18 Pass. 프로젝트 이름 label/input 접근성 연결 1건은 비차단 후속으로 남김. |
 | 2026-07-22 | Step 7 — 일회용 Auth/JWT fixture와 정리 0건 검증을 갖춘 명시 실행형 실제 Supabase Playwright 과금 스위트 추가. 실제 RPC 4/4·브라우저 3/3 통과, TC-007/012/017 Pass 및 TC-018 과금 전환 통과. 번호형 계약 16/18, OAuth와 TC-018 AI 생성 잔여. |
 | 2026-08-11 | Step 8 — 계정 완전 파기 구현(BL-005 (b)): FK 역순 물리 삭제 + auth 사용자 삭제 + 잔존 행 재확인, 본인·관리자 엔드포인트, 확인 문구 입력식 모달, 개인정보처리방침 개정. 신규 테스트 13개, 백엔드 161 passed / 5 skipped. 다국어(#1·#2) 범위 제외·FR-009 철회(수익화는 앞서 제외). BL-023을 Step 7의 TC-017 증거로 완료 처리하고 #3도 완료로 정정. 잔여: 배포(#8~#10)·TC-002·TC-018 AI 구간. |
+| 2026-08-24 | Step 9 — 프로덕션 배포 완료: Railway 백엔드(`Procfile`·`.python-version`·환경변수) + Netlify 프론트(`netlify.toml`의 `/api` 프록시 리다이렉트 + SPA 폴백·환경변수), CORS를 Netlify 도메인으로 개방, Supabase Auth 리다이렉트 URL 갱신. 실제 구글/깃허브 OAuth 프로덕션에서 확인(TC-002 ✅), 번호형 계약 16/18 → 17/18. 수익화 범위 제외 당시 남아있던 유료 전환 문구 버그 발견·수정. 잔여: TC-018 AI 생성 구간. |
