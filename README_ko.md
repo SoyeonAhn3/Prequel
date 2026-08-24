@@ -6,7 +6,7 @@
 
 🔗 **Live**: https://prequel-production.netlify.app
 
-https://github.com/user-attachments/assets/6367e41e-51da-454c-b6fc-8bf98d76649f
+https://github.com/user-attachments/assets/bec615fa-9401-4c1d-9820-8c3417265120
 
 ## 개요
 
