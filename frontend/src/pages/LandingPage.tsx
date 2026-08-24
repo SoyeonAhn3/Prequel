@@ -30,7 +30,7 @@ export default function LandingPage() {
       {/* Hero */}
       <div className="max-w-[1280px] mx-auto px-4 sm:px-8 lg:px-14 pt-10 lg:pt-[88px] flex flex-col lg:flex-row gap-10 lg:gap-14">
         {/* Left content */}
-        <div className="flex-1 lg:max-w-[540px] flex flex-col justify-center lg:pb-[10%] lg:[min-height:calc(100vh-64px-88px-65px)]">
+        <div className="flex-1 lg:max-w-[540px] flex flex-col items-center text-center lg:items-start lg:text-left justify-center min-h-[60vh] lg:pb-[10%] lg:[min-height:calc(100vh-64px-88px-65px)]">
           {/* Beta badge */}
           <div className="inline-flex items-center gap-1.5 py-[4px] pr-[9px] pl-[7px] bg-accent-soft rounded-full mb-[22px] w-fit">
             <span className="w-[6px] h-[6px] rounded-full bg-accent shrink-0" />
@@ -47,7 +47,7 @@ export default function LandingPage() {
             구조화된 인터뷰로 킥오프 문서와 아키텍처를 완성하세요.
           </p>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap justify-center lg:justify-start gap-2.5">
             <Link
               to="/login"
               className="flex items-center gap-2 px-6 py-3 bg-accent text-white text-[15px] font-medium rounded-lg hover:bg-accent-deep transition-colors"
