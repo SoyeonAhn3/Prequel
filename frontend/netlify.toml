@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# /api/* 요청을 Railway 백엔드로 그대로 전달한다 (프론트 코드는 상대경로 fetch('/api/...')를 그대로 사용).
+# YOUR-RAILWAY-URL 부분을 실제 Railway 배포 후 발급되는 도메인으로 교체할 것.
+[[redirects]]
+  from = "/api/*"
+  to = "https://YOUR-RAILWAY-URL.up.railway.app/api/:splat"
+  status = 200
+  force = true
+
+# React Router(SPA) 새로고침 시 404 방지 — 모든 경로를 index.html로.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
