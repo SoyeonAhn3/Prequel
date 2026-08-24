@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left brand panel */}
-      <div className="w-full md:w-[420px] md:shrink-0 bg-surface-alt border-b md:border-b-0 md:border-r border-border flex flex-col px-6 py-8 md:px-12 md:py-14">
+      <div className="w-full md:w-[420px] md:shrink-0 md:bg-surface-alt md:border-r border-border flex flex-col px-6 pt-8 md:px-12 md:py-14">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
@@ -47,19 +47,18 @@ export default function LoginPage() {
         </div>
 
         {/* Center content */}
-        <div className="flex-1 flex flex-col justify-center">
-          <div className="text-[13px] text-accent font-semibold font-mono mb-3.5">
+        <div className="md:flex-1 flex flex-col md:justify-center mt-6 md:mt-0">
+          <div className="text-[13px] text-accent font-semibold font-mono mb-2 md:mb-3.5">
             STEP 1 / 4
           </div>
-          <h2 className="text-[28px] leading-[1.25] tracking-tight font-bold text-text m-0">
-            로그인하고<br />킥오프를 시작하세요.
+          <h2 className="text-[22px] md:text-[28px] leading-[1.25] tracking-tight font-bold text-text m-0">
+            로그인하고 킥오프를 시작하세요.
           </h2>
-          <p className="text-[14px] text-text-muted leading-relaxed mt-[18px]">
-            계정당 무료 킥오프 2회를 제공합니다.<br />
-            결제 정보 없이 바로 시작할 수 있어요.
+          <p className="text-[13.5px] md:text-[14px] text-text-muted leading-relaxed mt-2 md:mt-[18px]">
+            계정당 무료 킥오프 2회를 제공합니다. 결제 정보 없이 바로 시작할 수 있어요.
           </p>
 
-          <ul className="mt-8 flex flex-col gap-3 list-none p-0 m-0">
+          <ul className="hidden md:flex mt-8 flex-col gap-3 list-none p-0 m-0">
             {VALUE_PROPS.map((text) => (
               <li key={text} className="flex items-center gap-2.5 text-[13.5px] text-text">
                 <span className="w-[18px] h-[18px] rounded-full bg-green-soft text-green flex items-center justify-center shrink-0">
@@ -73,8 +72,8 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        {/* Footer */}
-        <div className="text-[12px] text-text-subtle">
+        {/* Footer (desktop only — mobile has the same links in the terms notice below) */}
+        <div className="hidden md:block text-[12px] text-text-subtle">
           &copy; 2026 Prequel &middot;{' '}
           <Link to="/terms" className="underline hover:text-text transition-colors">이용약관</Link> &middot;{' '}
           <Link to="/privacy" className="underline hover:text-text transition-colors">개인정보처리방침</Link>
@@ -82,7 +81,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex items-center justify-center p-6 py-10 md:p-12">
+      <div className="flex flex-col items-center md:flex-1 md:justify-center p-6 pt-10 pb-10 md:p-12">
         <div className="w-full max-w-[380px]">
           <div className="text-[12px] text-text-subtle font-mono mb-2.5">WELCOME</div>
           <h3 className="text-[24px] font-bold tracking-tight m-0 text-text">계정에 로그인</h3>

@@ -17,6 +17,13 @@ export class ApiError extends Error {
   }
 }
 
+// 세션이 만료/무효(401)면 에러 배너로 막다른 길을 보여주는 대신
+// 즉시 로그아웃 후 로그인 화면으로 돌려보낸다.
+async function handleUnauthorized(): Promise<void> {
+  await supabase.auth.signOut()
+  window.location.href = '/login'
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
@@ -41,6 +48,9 @@ export async function apiFetch<T = unknown>(
     const response = await fetch(`/api${path}`, { ...options, headers, signal: controller.signal })
 
     if (!response.ok) {
+      if (response.status === 401) {
+        await handleUnauthorized()
+      }
       const error = await response.json().catch(() => ({ detail: response.statusText }))
       throw new ApiError(
         error.detail || `API error ${response.status}`,
@@ -80,6 +90,9 @@ export async function apiDownload(path: string, filename: string): Promise<void>
 
   const response = await fetch(`/api${path}`, { headers })
   if (!response.ok) {
+    if (response.status === 401) {
+      await handleUnauthorized()
+    }
     const error = await response.json().catch(() => ({ detail: response.statusText }))
     throw new Error(error.detail || `다운로드 실패 (${response.status})`)
   }
