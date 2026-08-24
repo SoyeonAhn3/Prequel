@@ -6,6 +6,8 @@
 
 🔗 **Live**: https://prequel-production.netlify.app
 
+https://github.com/user-attachments/assets/6367e41e-51da-454c-b6fc-8bf98d76649f
+
 ## 개요
 
 대부분의 AI 기획 도구는 한 번의 프롬프트로 문서를 생성한다. Prequel은 다르다 — AI가 **질문한다**. 프로젝트 유형에 맞는 구조화된 질문을 통해, 코드를 작성하기 전에 기획의 빈틈을 체계적으로 찾아낸다.

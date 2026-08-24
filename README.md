@@ -6,6 +6,8 @@
 
 🔗 **Live**: https://prequel-production.netlify.app
 
+https://github.com/user-attachments/assets/6367e41e-51da-454c-b6fc-8bf98d76649f
+
 ## Overview
 
 Most AI planning tools generate documents from a single prompt. Prequel takes a different approach — it **interviews** you. Through structured, type-specific questions, it systematically uncovers blind spots in your project plan before a single line of code is written.
