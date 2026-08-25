@@ -137,7 +137,7 @@ prequel/
 │   │   │   ├── admin/             # Admin dashboard
 │   │   │   ├── auth/              # Login / signup
 │   │   │   └── common/            # Badge, ProgressBar, Header, Footer
-│   │   ├── pages/                 # Route pages (8 screens)
+│   │   ├── pages/                 # Route pages (9 screens)
 │   │   ├── hooks/                 # useInterview, useAuth, etc.
 │   │   └── lib/                   # API client, Supabase client
 │   └── package.json
@@ -168,7 +168,7 @@ prequel/
 │   ├── Phase6_EvalFinalize.md     # ✅ Evaluation & finalization
 │   ├── Phase7_DocGeneration.md    # ✅ Document preview & generation (Markdown export; Mermaid out of scope)
 │   ├── Phase8_AdminFeatures.md    # ✅ Admin & supporting features
-│   └── Phase9_IntegrationDeploy.md # 🚧 Testing & deployment (Playwright 9/9 + real Supabase 3/3; 16/18 TCs)
+│   └── Phase9_IntegrationDeploy.md # ✅ Testing & deployment (Playwright 9/9 + real Supabase 3/3; 18/18 TCs)
 ├── .env.example
 └── README.md
 ```
@@ -177,7 +177,7 @@ prequel/
 
 | # | Screen | Description |
 |---|---|---|
-| 1 | Landing page | Service intro + stats + "Get Started" (template gallery not built) |
+| 1 | Landing page | Service intro + stats + "Get Started" + "샘플 결과 보기" link |
 | 2 | Login / Signup | OAuth (Google + GitHub) |
 | 3 | My Projects | Project list + management |
 | 4 | Interview (Chat UI) | Core — structured Q&A with progress bar |
@@ -185,6 +185,7 @@ prequel/
 | 6 | Admin Dashboard | User/token/cost management + announcements |
 | 7 | User Guide | How-to + FAQ |
 | 8 | Announcements | Updates + patch notes |
+| 9 | Sample Document | Public, no-login preview of a real completed kickoff document (`/templates`) — a static snapshot of one project, not a live per-user page |
 
 ## Credits & Cost Model
 
@@ -213,10 +214,10 @@ Basic (₩9,900/mo · 10 kickoffs) and Pro (₩24,900/mo · 30 kickoffs) were sp
 | Phase 3: Project Management | ✅ Done | Project CRUD API, free quota enforcement, My Projects page (stat cards, filters, search, table), new project modal, delete modal |
 | Phase 4: Interview Pipeline | ✅ Done | Backend API (6 endpoints), 3-column chat UI, type detection, pause/resume, design-decision UI — all 29 deliverables (test 28/28) |
 | Phase 5: Design (How) | ✅ Done | 9-screen guided wizard (requirements → architecture → data model → AI workflow), dynamic design pipeline, interview insights persistence |
-| Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard — pending E2E test |
+| Phase 6: Evaluation & Finalization | ✅ Done | `finalize.py` API (evaluate → done → gap → checklist), 4 rewritten skills, migration 008, doc v3 engine, FinalizePage card wizard |
 | Phase 7: Doc Preview & Generation | ✅ Done | On-read document assembly (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2-col TOC + completeness + Markdown download). **Dashboard-summary section rendering** — building blocks (stat strip / table+chips / meter / layer band / callout) per section `kind`, markdown export unchanged. Note: progressive v1→v2→v3 generation dropped in favor of live assembly; **Mermaid diagram rendering removed from scope** |
 | Phase 8: Admin & Supporting | ✅ Done | Admin dashboard (user mgmt + token usage chart + activity log), announcements CRUD + page, per-call token logging (incl. cache), `slowapi` rate limiting (interview 20/min, general 60/min), `structlog` JSON logging, user guide page. BL-003 prompt caching completed with real Anthropic A/B verification; BL-004 tracked separately. |
-| Phase 9: Testing & Deploy | 🚧 In Progress | Legal pages, integrated error handling, account purge, pytest ≥60%, and production deployment (Netlify + Railway) are done. Deterministic Playwright is **9/9 Pass**, the opt-in real-Supabase billing suite is **3/3 Pass**, and the numbered E2E contract is **17/18 Pass** — real Google/GitHub OAuth login (TC-002) is now confirmed live in production. Multilingual UI was dropped from scope. Remaining: TC-018's AI-generation leg. |
+| Phase 9: Testing & Deploy | ✅ Done | Legal pages, integrated error handling, account purge, pytest ≥60%, and production deployment (Netlify + Railway) are done. Deterministic Playwright is **9/9 Pass**, the opt-in real-Supabase billing suite is **3/3 Pass**, and the numbered E2E contract is **18/18 Pass** — real Google/GitHub OAuth login (TC-002) and the full interview → design/evaluation → document flow against the live Anthropic API (TC-018) are both confirmed live in production (2026-08-25). Multilingual UI was dropped from scope. |
 | Monetization | ❌ Out of scope | Payment, cost meter, and model tiering deliberately dropped — the verified free-credit metering layer ships instead |
 | v2 | 📋 Planned | DOCX export, share links, "decide design later" re-entry |
 
@@ -228,8 +229,8 @@ Security hardening update: **BL-021 is complete**. All eight design/finalization
 |---|---|---|
 | Phase 3: Project Management | ✅ Pass (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 | BL-021: Session ownership / IDOR | ✅ Pass (real Supabase Auth A/B JWT verification) | [BACKLOG.md](BACKLOG.md) |
-| BL-022/023: Atomic phase credits | ✅ Real Supabase concurrency 4/4 + actual-JWT browser billing 3/3 Pass; TC-018 AI generation remains | [BACKLOG.md](BACKLOG.md) |
-| Phase 9: E2E Demo Scenario | 🚧 18 TCs (17 Pass); deterministic Playwright 9/9 + real-Supabase billing 3/3 Pass | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
+| BL-022/023: Atomic phase credits | ✅ Real Supabase concurrency 4/4 + actual-JWT browser billing 3/3 Pass; TC-018 AI-generation leg confirmed live in production (2026-08-25) | [BACKLOG.md](BACKLOG.md) |
+| Phase 9: E2E Demo Scenario | ✅ 18/18 Pass; deterministic Playwright 9/9 + real-Supabase billing 3/3 Pass | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## Roadmap
 
@@ -260,19 +261,17 @@ What these would have been built on top of — per-phase credit metering — **i
 
 ### Still Planned
 
-| Feature | Description |
-|---|---|
-| Template gallery | Sample kickoff results by project type |
+Nothing outstanding at MVP-1 scope — see [v2](#v2) below for what's next.
 
 The Claude model is pinned at a single call site (`claude_client.py`) and is **updated by hand when there's a reason to** — not tracked as pending work. A generation bump is a small migration rather than a string swap: newer models think by default, which changes response parsing, `max_tokens` budgeting, and token counts. The steps and the traps are recorded in [BL-020](BACKLOG.md).
 
 ### v2
 
-Gap analysis & honest evaluation, document export (Markdown/DOCX), team collaboration via share links.
+Document export (DOCX), team collaboration via share links, and re-entering design after choosing to skip it.
 
 ## Limitations
 
-- **Early development** — Phase 1-8 complete; Phase 9 nearly done (legal/error handling/account purge/pytest/deployment done, deterministic Playwright 9/9, real-Supabase billing 3/3, and 17/18 numbered E2E TCs Pass; only TC-018's AI-generation leg remains)
+- **Early development** — Phase 1-9 complete (legal/error handling/account purge/pytest/deployment/full E2E all done; deterministic Playwright 9/9, real-Supabase billing 3/3, numbered E2E contract 18/18 Pass)
 - **Desktop only** — tablet and mobile are not supported
 - **Korean only** — UI and AI-generated documents are Korean. Multilingual support is out of scope (see [Roadmap](#out-of-scope--deliberately-dropped))
 - **No payment, by design** — 2 free credits per account with no upgrade path; monetization is out of scope, and the credit system exists to demonstrate the metering layer rather than to sell anything

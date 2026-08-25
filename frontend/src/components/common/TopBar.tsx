@@ -3,11 +3,9 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthContext } from '../../contexts/AuthContext'
 import DeleteAccountModal from './DeleteAccountModal'
 
-// 템플릿 갤러리는 미구현 계획 항목이라 탭을 두지 않는다.
-// `/templates` 라우트가 없어 catch-all이 랜딩으로 되돌리므로, 탭이 있으면
-// 로그인 사용자가 앱 밖으로 튕겨 나간다. 갤러리 구현 시 라우트와 함께 추가할 것.
 const NAV_TABS = [
   { label: '내 프로젝트', path: '/projects' },
+  { label: '샘플 문서', path: '/templates' },
   { label: '공지사항', path: '/notices' },
   { label: '가이드', path: '/guide' },
 ]

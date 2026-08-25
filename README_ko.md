@@ -137,7 +137,7 @@ prequel/
 │   │   │   ├── admin/             # Admin 대시보드
 │   │   │   ├── auth/              # 로그인/회원가입
 │   │   │   └── common/            # Badge, ProgressBar, Header, Footer
-│   │   ├── pages/                 # 라우트별 페이지 (8개 화면)
+│   │   ├── pages/                 # 라우트별 페이지 (9개 화면)
 │   │   ├── hooks/                 # useInterview, useAuth 등
 │   │   └── lib/                   # API 클라이언트, Supabase 클라이언트
 │   └── package.json
@@ -168,7 +168,7 @@ prequel/
 │   ├── Phase6_EvalFinalize.md     # ✅ 평가 & 마무리
 │   ├── Phase7_DocGeneration.md    # ✅ 문서 미리보기 & 생성 (Markdown 내보내기; Mermaid 스코프 제외)
 │   ├── Phase8_AdminFeatures.md    # ✅ Admin & 부가 기능
-│   └── Phase9_IntegrationDeploy.md # 🚧 테스트 & 배포 (Playwright 9/9 + 실제 Supabase 3/3, E2E 17/18)
+│   └── Phase9_IntegrationDeploy.md # ✅ 테스트 & 배포 (Playwright 9/9 + 실제 Supabase 3/3, E2E 18/18)
 ├── .env.example
 └── README.md
 ```
@@ -177,7 +177,7 @@ prequel/
 
 | # | 화면 | 설명 |
 |---|---|---|
-| 1 | 랜딩 페이지 | 서비스 소개 + 통계 + 시작하기 (템플릿 갤러리는 미구현) |
+| 1 | 랜딩 페이지 | 서비스 소개 + 통계 + 시작하기 + "샘플 결과 보기" 링크 |
 | 2 | 로그인/회원가입 | OAuth (Google + GitHub) |
 | 3 | 내 프로젝트 목록 | 프로젝트 관리 |
 | 4 | 인터뷰 (채팅 UI) | 핵심 — 구조화 Q&A + 프로그레스바 |
@@ -185,6 +185,7 @@ prequel/
 | 6 | Admin 대시보드 | 사용자/토큰/비용 관리 + 공지 작성 |
 | 7 | 사용자 가이드 | 사용법 안내 + FAQ |
 | 8 | 공지사항/패치내역 | 업데이트 이력 + 공지 |
+| 9 | 샘플 문서 | 실제 완성된 킥오프 문서를 로그인 없이 미리 보는 공개 화면(`/templates`) — 프로젝트 1개를 정적으로 스냅샷한 것, 실시간 개인별 페이지 아님 |
 
 ## 크레딧 & 비용 모델
 
@@ -213,12 +214,12 @@ prequel/
 | Phase 3: 프로젝트 관리 | ✅ 완료 | 프로젝트 CRUD API, 무료 쿼터 검증, 내 프로젝트 페이지 (스탯카드, 필터, 검색, 테이블), 생성 모달, 삭제 모달 |
 | Phase 4: 인터뷰 파이프라인 | ✅ 완료 | 백엔드 API (6개 엔드포인트), 3컬럼 채팅 UI, 유형 감지, 일시정지/이어하기, 설계 결정 UI — 산출물 29개 (테스트 28/28) |
 | Phase 5: 설계 (How) | ✅ 완료 | 9화면 가이드 위저드 (요구사항 → 아키텍처 → 데이터 모델 → AI 워크플로우), 동적 설계 파이프라인, 인터뷰 인사이트 영속화 |
-| Phase 6: 평가 & 마무리 | ✅ 완료 | `finalize.py` API (평가 → 완료조건 → 갭 → 체크리스트), 스킬 4종 재작성, 마이그레이션 008, doc v3 엔진, FinalizePage 카드 위저드 — E2E 테스트 대기 |
+| Phase 6: 평가 & 마무리 | ✅ 완료 | `finalize.py` API (평가 → 완료조건 → 갭 → 체크리스트), 스킬 4종 재작성, 마이그레이션 008, doc v3 엔진, FinalizePage 카드 위저드 |
 | Phase 7: 문서 미리보기 & 생성 | ✅ 완료 | 읽을 때 조립 방식 (`doc_model.build_sections`), `GET /document-model` + `GET /export/markdown`, DocumentPreviewPage (2컬럼 TOC + 완성도 + Markdown 다운로드). **대시보드 요약 섹션 렌더링** — 섹션 `kind`별 빌딩블록(스탯 스트립 / 표+chip / 미터 / 레이어 밴드 / 콜아웃), markdown 내보내기 불변. 참고: 점진적 v1→v2→v3 생성은 실시간 조립으로 폐기; **Mermaid 다이어그램 렌더링은 스코프 제외** |
 | Phase 8: Admin & 부가 기능 | ✅ 완료 | Admin 대시보드(사용자 관리 + 토큰 사용량 차트 + 활동 로그), 공지 CRUD + 페이지, 호출별 토큰 로깅(캐시 포함), `slowapi` Rate Limiting(인터뷰 20/분, 일반 60/분), `structlog` JSON 로깅, 사용자 가이드 페이지. BL-003 프롬프트 캐싱은 실제 Anthropic A/B 검증으로 완료했으며 BL-004는 별도 추적. |
-| Phase 9: 테스트·배포 | 🚧 진행 중 | 법적 페이지, 에러 처리 통합, 계정 완전 파기, pytest 60% 이상, 프로덕션 배포(Netlify + Railway)까지 완료했다. 결정적 Playwright **9/9 Pass**, 명시 실행형 실제 Supabase 과금 스위트 **3/3 Pass**, 번호형 E2E 계약 **17/18 Pass** — 실제 구글/깃허브 OAuth 로그인(TC-002)을 프로덕션에서 확인했다. 다국어 UI는 범위에서 제외했다. 잔여: TC-018 AI 생성 구간뿐이다. |
+| Phase 9: 테스트·배포 | ✅ 완료 | 법적 페이지, 에러 처리 통합, 계정 완전 파기, pytest 60% 이상, 프로덕션 배포(Netlify + Railway)까지 완료했다. 결정적 Playwright **9/9 Pass**, 명시 실행형 실제 Supabase 과금 스위트 **3/3 Pass**, 번호형 E2E 계약 **18/18 Pass** — 실제 구글/깃허브 OAuth 로그인(TC-002)과 실제 Anthropic API를 대상으로 한 인터뷰→설계/평가→문서 전체 흐름(TC-018)을 모두 프로덕션에서 확인했다(2026-08-25). 다국어 UI는 범위에서 제외했다. |
 | 수익화 | ❌ 범위 제외 | 결제·비용 미터·모델 티어링을 의도적으로 제외. 대신 검증 완료된 무료 크레딧 계측 레이어를 산출물로 남김 |
-| v2 | 📋 Planned | 갭 분석, DOCX 내보내기, 공유 링크 |
+| v2 | 📋 예정 | DOCX 내보내기, 공유 링크, "설계 나중에 결정" 재진입 |
 
 보안 강화 현황: **BL-021 완료**. `session_id`를 받는 설계·마감 API 8개가 조회·수정 전에 세션 → 삭제되지 않은 프로젝트 → 로그인 사용자 소유권을 확인한다. 실제 Supabase Auth 사용자 A/B와 각 사용자의 로그인 JWT로 회귀 검증해 소유자 요청 8/8 성공, 타 사용자 요청 8/8 동일한 404 및 데이터 불변, 프로젝트 soft delete 후 요청 8/8 거부를 확인했다. 현재 백엔드 테스트는 148개가 통과하고 명시 실행형 통합 테스트 5개는 기본 실행에서 skip된다.
 
@@ -228,8 +229,8 @@ prequel/
 |---|---|---|
 | Phase 3: 프로젝트 관리 | ✅ 전체 통과 (12/12) | [20260520_Phase3_프로젝트관리.md](test-scenarios/20260520_Phase3_프로젝트관리.md) |
 | BL-021: 세션 소유권 / IDOR | ✅ 통과 (실제 Supabase Auth 사용자 A/B JWT 검증) | [BACKLOG.md](BACKLOG.md) |
-| BL-022/023: 단계별 원자 과금 | ✅ 실제 Supabase 동시성 4/4 + 실제 JWT 브라우저 과금 3/3 통과, TC-018 AI 생성 잔여 | [BACKLOG.md](BACKLOG.md) |
-| Phase 9: E2E 데모 시나리오 | 🚧 18개 TC(17 Pass), 결정적 Playwright 9/9 + 실제 Supabase 과금 3/3 Pass | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
+| BL-022/023: 단계별 원자 과금 | ✅ 실제 Supabase 동시성 4/4 + 실제 JWT 브라우저 과금 3/3 통과, TC-018 AI 생성 구간까지 완료 | [BACKLOG.md](BACKLOG.md) |
+| Phase 9: E2E 데모 시나리오 | ✅ 18/18 Pass, 결정적 Playwright 9/9 + 실제 Supabase 과금 3/3 Pass | [20260707_E2E데모시나리오.md](test-scenarios/20260707_E2E데모시나리오.md) |
 
 ## 로드맵
 
@@ -260,19 +261,17 @@ prequel/
 
 ### 남은 계획
 
-| 기능 | 설명 |
-|---|---|
-| 템플릿 갤러리 | 유형별 샘플 킥오프 결과 쇼케이스 |
+MVP-1 범위에서 남은 항목 없음 — 다음 단계는 아래 [v2](#v2) 참고.
 
 Claude 모델은 `claude_client.py` 한 곳에 고정돼 있고, **필요할 때 수동으로 갱신**한다(대기 중인 작업이 아니다). 세대 갱신은 문자열 교체가 아니라 작은 마이그레이션이다 — 최신 모델은 thinking이 기본으로 켜져 응답 파싱·`max_tokens` 배분·토큰 수가 함께 달라진다. 절차와 함정은 [BL-020](BACKLOG.md)에 정리해 뒀다.
 
 ### v2
 
-갭 분석 & 정직한 평가, 문서 내보내기 (Markdown/DOCX), 공유 링크를 통한 팀 협업.
+문서 내보내기(DOCX), 팀 협업용 공유 링크, 설계를 건너뛴 뒤 나중에 다시 들어가 진행하는 재진입.
 
 ## 한계점
 
-- **초기 개발 단계** — Phase 1-8 완료, Phase 9 거의 완료(법적·에러 처리·계정 파기·pytest·배포 완료, 결정적 Playwright 9/9·실제 Supabase 과금 3/3·번호형 E2E 17/18 Pass; TC-018 AI 생성 구간만 잔여)
+- **초기 개발 단계** — Phase 1-9 완료(법적·에러 처리·계정 파기·pytest·배포·전체 E2E 모두 완료, 결정적 Playwright 9/9·실제 Supabase 과금 3/3·번호형 E2E 계약 18/18 Pass)
 - **데스크탑 전용** — 태블릿·모바일 미지원
 - **한국어 전용** — UI와 AI 생성 문서 모두 한국어다. 다국어는 범위 제외([로드맵](#범위-제외--의도적으로-접은-것) 참고)
 - **결제 없음 (의도적 결정)** — 계정당 무료 2크레딧뿐이며 유료 전환 경로 없음. 수익화는 범위 제외이고, 크레딧 시스템은 판매가 아니라 계측 레이어 구현을 보여주기 위한 것

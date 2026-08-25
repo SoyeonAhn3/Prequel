@@ -57,13 +57,12 @@ export default function LandingPage() {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
-            <button
-              disabled
-              title="준비 중입니다 (MVP-2)"
-              className="px-6 py-3 bg-surface border border-border text-text-subtle text-[15px] font-medium rounded-lg opacity-60 cursor-not-allowed"
+            <Link
+              to="/templates"
+              className="px-6 py-3 bg-surface border border-border text-text text-[15px] font-medium rounded-lg hover:bg-surface-alt transition-colors"
             >
               샘플 결과 보기
-            </button>
+            </Link>
           </div>
 
         </div>

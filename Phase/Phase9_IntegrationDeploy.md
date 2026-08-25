@@ -1,8 +1,8 @@
-# Phase 9 — Integration Testing & Deployment `🚧 In Progress`
+# Phase 9 — Integration Testing & Deployment `✅ Done`
 
 > Build the landing page, conduct E2E testing, and deploy to production.
 
-**Status**: 🚧 In Progress — Steps 1–9 done; deterministic Playwright 9/9, real-Supabase Playwright 3/3, and numbered E2E contract 17/18 Pass. Multilingual support (`#1`, `#2`) dropped from scope on 2026-08-11; production deployment (Netlify + Railway) and real OAuth (TC-002) are live as of 2026-08-24. Only TC-018's AI-generation leg remains.
+**Status**: ✅ Done — Steps 1–10 complete; deterministic Playwright 9/9, real-Supabase Playwright 3/3, and numbered E2E contract 18/18 Pass. Multilingual support (`#1`, `#2`) dropped from scope on 2026-08-11; production deployment (Netlify + Railway), real OAuth (TC-002), and the full interview → design/evaluation → document flow against the live Anthropic API (TC-018) are all confirmed live in production as of 2026-08-25.
 **Prerequisites**: Phase 8 completion (Admin features, rate limiting, logging)
 
 ---
@@ -22,11 +22,11 @@ The final phase brings everything together. Build the landing page and legal pag
 | 3 | Landing page (service intro + "Get Started") | Frontend | ✅ | — |
 | 4 | Terms of Service / Privacy Policy pages | Frontend | ✅ | FR-018 |
 | 5 | Error handling integration (Claude API timeout → retry, network drop → offline save) | Common | ✅ | NFR-003 |
-| 6 | E2E demo scenario test (10 features sequential execution) | Common | 🚧 | DoD |
+| 6 | E2E demo scenario test (10 features sequential execution) | Common | ✅ | DoD |
 | 7 | pytest backend coverage 60%+ on core logic | Backend | ✅ | NFR-013 |
 | 8 | Deployment setup (Netlify + Railway, env vars, CI/CD) | Common | ✅ | — |
 | 9 | CORS finalization (Netlify domain) | Backend | ✅ | NFR-007 |
-| 10 | Production environment verification | Common | 🚧 | — |
+| 10 | Production environment verification | Common | ✅ | — |
 
 ### Progress — Step 1 (2026-07-01, commit `3ca88ba`)
 
@@ -106,7 +106,13 @@ Follow-up **BL-008** was later implemented on 2026-07-13: the project row menu n
 - **Supabase Auth** — Site URL and Redirect URLs (Authentication → URL Configuration) updated to the Netlify domain.
 - **Real OAuth confirmed (`TC-002` ✅)** — Google and GitHub login both verified working end-to-end on the production Netlify site, closing the last fully-manual E2E gate; the numbered contract moves from 16/18 to **17/18**.
 - **Production bug found and fixed** — `MyProjectsPage.tsx`'s quota card still read "유료 전환 시 월 10~30회 사용 가능" ("upgrade to a paid plan for 10-30/month"), left over from before monetization was dropped from scope (2026-08-11). Since the site is now actually public, this advertised an upgrade path that does not exist. Replaced with "무료 2회는 계정당 고정이에요" ("the 2 free credits are fixed per account"). `tsc -b` clean.
-- **Remaining for `#10`** — the full interview → design/finalize → document flow has not yet been exercised against the live Anthropic API in production (TC-018's AI-generation leg); no custom domain purchased (Railway/Netlify default subdomains only, acceptable for this scope).
+- **Scope note** — no custom domain purchased (Railway/Netlify default subdomains only, acceptable for this scope).
+
+### Progress — Step 10 (2026-08-25) — TC-018 AI-generation leg verified in production
+
+- **Full live flow** — the complete interview → design/evaluation → finalize → document path was exercised end-to-end against the live Anthropic API on the production deployment (Netlify + Railway), not a local/staging environment.
+- **Result** — the run completed successfully with no errors, closing the last open gate in the numbered E2E contract. The suite is now **18/18 Pass** (deterministic Playwright 9/9 + real-Supabase billing 3/3 + all numbered TCs including TC-002 and TC-018).
+- **Phase 9 status** — with `#6` and `#10` both complete, Phase 9 is done.
 
 ---
 
@@ -188,7 +194,7 @@ Automation foundation: `frontend/playwright.config.ts` + `frontend/e2e/*.spec.ts
 - [x] Landing page accessible without login
 - [x] Terms/Privacy pages accessible and linked from login
 - [x] Users can permanently purge their own account and personal data (BL-005 (b))
-- [ ] E2E demo scenario completes without errors — 17/18; only TC-018's AI-generation leg remains
+- [x] E2E demo scenario completes without errors — 18/18 Pass (TC-018 AI-generation leg verified live in production, 2026-08-25)
 - [x] Backend core logic test coverage ≥ 60% (64%)
 - [x] Production deployment live (Netlify + Railway; default subdomains, no custom domain purchased)
 - [x] CORS correctly restricts to Netlify production domain

@@ -194,6 +194,22 @@ export default function FinalizePage() {
     }
   }, [session, fail])
 
+  // BL-015: 평가 항목/AI 권고를 사용자가 ✕로 제외 — 남긴 것만 최종 문서·다음 단계에 반영.
+  const handleUpdateEvaluation = useCallback(async (data: FinalizeSession['evaluation']) => {
+    if (!session || !data) return
+    setSession({ ...session, evaluation: data })
+    try {
+      const res = await apiFetch<FinalizeSession>(`/finalize/evaluate/${session.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ data }),
+      })
+      setSession(res)
+      setLastSavedLabel('방금 저장됨')
+    } catch (e) {
+      fail(e)
+    }
+  }, [session, fail])
+
   // BL-015: 빈틈 항목을 사용자가 ✕로 제외 — 남긴 것만 최종 문서·다음 단계에 반영.
   const handleUpdateGap = useCallback(async (data: FinalizeSession['gaps']) => {
     if (!session || !data) return
@@ -370,7 +386,7 @@ export default function FinalizePage() {
 
           <div className="flex-1 overflow-auto px-6 py-5">
             {screen.stepId === 'evaluate' && (
-              <EvaluateStep session={session} generating={generating} onGenerate={() => handleGenerate('evaluate')} />
+              <EvaluateStep session={session} generating={generating} onGenerate={() => handleGenerate('evaluate')} onUpdate={handleUpdateEvaluation} />
             )}
             {screen.stepId === 'done' && (
               <DoneStep session={session} generating={generating} onGenerate={() => handleGenerate('done')} onUpdate={handleUpdateDone} />

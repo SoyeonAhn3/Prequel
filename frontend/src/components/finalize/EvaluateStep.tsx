@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import Explainer from '../design/Explainer'
 import { StepLoading, StepRetry } from './FinalizeStates'
-import type { FinalizeSession, FinalizeLevel } from '../design/types'
+import type { FinalizeSession, FinalizeLevel, Evaluation } from '../design/types'
 
 interface Props {
   session: FinalizeSession | null
   generating: boolean
   onGenerate: () => void
+  onUpdate?: (evaluation: Evaluation) => void
 }
 
 const LEVEL: Record<FinalizeLevel, { emoji: string; cls: string; label: string }> = {
@@ -15,7 +16,7 @@ const LEVEL: Record<FinalizeLevel, { emoji: string; cls: string; label: string }
   red: { emoji: '🔴', cls: 'text-red bg-red-soft', label: '재검토' },
 }
 
-export default function EvaluateStep({ session, generating, onGenerate }: Props) {
+export default function EvaluateStep({ session, generating, onGenerate, onUpdate }: Props) {
   const evaluation = session?.evaluation
   const autoGenRef = useRef(false)
 
@@ -50,6 +51,14 @@ export default function EvaluateStep({ session, generating, onGenerate }: Props)
 
   const overall = LEVEL[evaluation!.overall_level] ?? LEVEL.yellow
 
+  function removeDimension(idx: number) {
+    onUpdate?.({ ...evaluation!, dimensions: evaluation!.dimensions.filter((_, i) => i !== idx) })
+  }
+
+  function dismissRecommendation() {
+    onUpdate?.({ ...evaluation!, recommendation: '' })
+  }
+
   return (
     <div className="pb-7">
       {explainer}
@@ -62,6 +71,11 @@ export default function EvaluateStep({ session, generating, onGenerate }: Props)
       </div>
 
       <div className="flex flex-col gap-2 mb-4">
+        {evaluation!.dimensions.length === 0 && (
+          <div className="text-center py-6 bg-surface-alt rounded-xl">
+            <p className="text-[12.5px] text-text-muted">모든 평가 항목을 제외했어요.</p>
+          </div>
+        )}
         {evaluation!.dimensions.map((d, i) => {
           const lv = LEVEL[d.level] ?? LEVEL.yellow
           return (
@@ -85,6 +99,16 @@ export default function EvaluateStep({ session, generating, onGenerate }: Props)
                   {d.applicable ? d.comment : '해당 없음'}
                 </div>
               </div>
+              {onUpdate && (
+                <button
+                  type="button"
+                  onClick={() => removeDimension(i)}
+                  className="text-[11px] text-text-subtle cursor-pointer bg-transparent border-none hover:text-red shrink-0"
+                  aria-label="제외"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           )
         })}
@@ -92,7 +116,19 @@ export default function EvaluateStep({ session, generating, onGenerate }: Props)
 
       {evaluation!.recommendation && (
         <div className="p-[14px_16px] bg-accent-soft rounded-xl">
-          <div className="text-[11px] font-mono font-bold text-accent-deep mb-1.5">AI 권고</div>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="text-[11px] font-mono font-bold text-accent-deep">AI 권고</div>
+            {onUpdate && (
+              <button
+                type="button"
+                onClick={dismissRecommendation}
+                className="text-[11px] text-accent-deep cursor-pointer bg-transparent border-none hover:text-red shrink-0"
+                aria-label="제외"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <div className="text-[13px] text-accent-deep leading-relaxed">{evaluation!.recommendation}</div>
         </div>
       )}

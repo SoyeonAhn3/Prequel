@@ -13,6 +13,7 @@ import InterviewPage from './pages/InterviewPage'
 import DesignPage from './pages/DesignPage'
 import FinalizePage from './pages/FinalizePage'
 import DocumentPreviewPage from './pages/DocumentPreviewPage'
+import SampleDocumentPage from './pages/SampleDocumentPage'
 import TermsPage from './pages/TermsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import ErrorBoundary from './components/common/ErrorBoundary'
@@ -29,6 +30,7 @@ function App() {
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/templates" element={<SampleDocumentPage />} />
 
             {/* Protected */}
             <Route element={<AuthGuard />}>

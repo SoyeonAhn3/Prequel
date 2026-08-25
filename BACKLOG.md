@@ -505,9 +505,9 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 
 ---
 
-## BL-015 · 마감 단계 AI 산출물(정직한 평가·빈틈 점검)이 사용자 동의 없이 반영됨 — 채택/제외 큐레이션 필요 🚧
+## BL-015 · 마감 단계 AI 산출물(정직한 평가·빈틈 점검)이 사용자 동의 없이 반영됨 — 채택/제외 큐레이션 필요 ✅
 
-**상태**: 🚧 **빈틈 ✕ 구현 완료 (2026-07-13)** — `GapStep.tsx`에 항목별 ✕(제외) 버튼 + `remove()` + `onUpdate`, `FinalizePage.tsx`에 `handleUpdateGap`→`PUT /finalize/gap/{id}`(기존 generic 엔드포인트) 배선. 남긴 빈틈만 `_prior_results_context`·최종 문서에 반영. 스키마 무변경·백엔드 무변경, `tsc -b` OK. **평가(evaluation) dismiss/문서포함 토글은 후속(선택) 잔여.**
+**상태**: ✅ **완료 (2026-08-25)** — 빈틈 ✕는 2026-07-13에 완료됐고, 나머지였던 평가(evaluation) 큐레이션도 이번에 마무리. `EvaluateStep.tsx`에 차원별 ✕(제외) 버튼 + AI 권고 ✕ 버튼 추가, `FinalizePage.tsx`에 `handleUpdateEvaluation`→`PUT /finalize/evaluate/{id}`(기존 generic 엔드포인트, 신규 코드 없음) 배선. 남긴 항목만 `_prior_results_context`·최종 문서에 반영. 스키마 무변경·백엔드 무변경, `tsc -b` + 프로덕션 빌드 OK.
 **발견일**: 2026-07-13
 **관련 영역**: `frontend/src/components/finalize/GapStep.tsx`·`EvaluateStep.tsx`·`DoneStep.tsx`(기존 ✕ 패턴), `frontend/src/pages/FinalizePage.tsx`(`handleUpdateDone` 배선), `backend/app/api/finalize.py`(`_prior_results_context` + generic `PUT /finalize/{step}`), `backend/app/core/doc_engine.py`·`doc_model.py`(문서 삽입)
 
@@ -529,9 +529,15 @@ README·설계상 `sync_harness.py`가 `.claude/skills` → `backend/skills`를 
 - **빈틈 ✕만**: ~1~2h. GapStep.tsx `onUpdate`+✕(~15줄), FinalizePage `handleUpdateGap`+배선(~8줄), **백엔드 변경 0, 마이그레이션 0**.
 - 평가(권고 dismiss/문서포함 토글)까지 확장: **+1~2h**(dimensions 구조라 살짝 더).
 
-### 완료 조건 (구현 시)
-- 빈틈 항목을 ✕로 제외 가능 + 제외분이 최종 문서·다음 단계에 들어가지 않음.
-- (선택) 평가를 문서에 포함할지 사용자가 선택.
+### 적용한 수정 (2026-08-25, 평가 큐레이션)
+- **`EvaluateStep.tsx`**: `onUpdate?: (evaluation: Evaluation) => void` prop 추가. 6개 차원 카드마다 `removeDimension(idx)`(배열에서 제거) ✕ 버튼, "AI 권고" 박스에 `dismissRecommendation()`(`recommendation: ''`로 비움, 기존 `evaluation!.recommendation &&` 조건으로 자동 숨김) ✕ 버튼. 모든 차원을 제외하면 "모든 평가 항목을 제외했어요" 빈 상태 표시(`GapStep.tsx`의 빈 상태 패턴과 동일).
+- **`FinalizePage.tsx`**: `handleUpdateEvaluation` 추가 — `handleUpdateGap`과 동일 패턴, `PUT /finalize/evaluate/{session.id}`(기존 generic 엔드포인트를 `step="evaluate"`로 호출, 백엔드 신규 코드 0줄). `<EvaluateStep onUpdate={handleUpdateEvaluation} />` 배선.
+- **검증**: `tsc -b` + `vite build` 프로덕션 빌드 통과.
+- **한계**: gap과 동일 — 문서·다음 단계가 이미 생성된 뒤에 제외하면 소급 반영 안 됨(재생성해야 반영).
+
+### 완료 조건
+- ~~빈틈 항목을 ✕로 제외 가능 + 제외분이 최종 문서·다음 단계에 들어가지 않음.~~ ✅ (2026-07-13)
+- ~~평가를 문서에 포함할지 사용자가 선택.~~ ✅ (2026-08-25, 차원별 ✕ + AI 권고 ✕)
 
 ---
 
